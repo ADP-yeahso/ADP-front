@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'data/app_data.dart';
 import 'data/garden_nav_controller.dart';
-import 'screens/root_shell.dart';
+import 'screens/auth/login_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -24,7 +24,7 @@ class CareGardenApp extends StatelessWidget {
         title: '마음정원',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
-        home: const RootShell(),
+        home: const LoginScreen(),
       ),
     );
   }

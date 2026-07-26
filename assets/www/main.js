@@ -161,7 +161,7 @@ window.initGarden = function (treeUrl, flowerUrl, diariesJson) {
         clone.position.y = 0; // 임시로 0 설정 후 BoundingBox 기반으로 바닥에 딱 맞게 자동 조정
 
         // 베이스 모델 크기가 무려 180이나 되므로, 0.015 수준으로 대폭 축소
-        clone.scale.set(0.015, 0.015, 0.015);
+        clone.scale.set(1.5, 1.5, 1.5);
 
         // Face the tree
         clone.lookAt(origin);

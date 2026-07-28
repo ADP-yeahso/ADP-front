@@ -12,8 +12,8 @@ String _fmtDate(DateTime d) {
   return '${d.year}년 ${d.month}월 ${d.day}일 (${weekdays[d.weekday - 1]})';
 }
 
-Future<void> showLeafListSheet(BuildContext context, List<PatientLeaf> leaves) {
-  return showModalBottomSheet(
+void showLeafListSheet(BuildContext context, List<PatientLeaf> leaves) {
+  showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -101,8 +101,8 @@ void showLeafDetailSheet(BuildContext context, PatientLeaf leaf) {
   );
 }
 
-Future<void> showDiaryDetailSheet(BuildContext context, DiaryEntry diary) {
-  return showModalBottomSheet(
+void showDiaryDetailSheet(BuildContext context, DiaryEntry diary) {
+  showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,

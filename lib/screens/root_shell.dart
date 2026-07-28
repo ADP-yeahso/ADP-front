@@ -62,96 +62,24 @@ class _RootShellState extends State<RootShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _index, children: _screens),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openRecordChoice,
-        elevation: 2,
-        backgroundColor: Theme.of(context).primaryColor,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, size: 32, color: Colors.white),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              // 1. 홈
-              _buildNavItem(
-                index: 0,
-                icon: Icons.home_outlined,
-                selectedIcon: Icons.home,
-                label: '홈',
-              ),
-              // 2. 기억 보기
-              _buildNavItem(
-                index: 1,
-                icon: Icons.park_outlined,
-                selectedIcon: Icons.park,
-                label: '기억 보기',
-              ),
-              // 가운데 + 버튼을 위한 여백
-              const SizedBox(width: 48),
-              // 3. 갤러리
-              _buildNavItem(
-                index: 2,
-                icon: Icons.photo_library_outlined,
-                selectedIcon: Icons.photo_library,
-                label: '갤러리',
-              ),
-              // 4. Setting
-              _buildNavItem(
-                index: 3,
-                icon: Icons.settings_outlined,
-                selectedIcon: Icons.settings,
-                label: 'Setting',
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required IconData icon,
-    required IconData selectedIcon,
-    required String label,
-  }) {
-    final isSelected = _index == index;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey[600];
-
-    return InkWell(
-      onTap: () => setState(() => _index = index),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isSelected ? selectedIcon : icon,
-              color: color,
-              size: 24,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: color,
-              ),
-            ),
-          ],
-        ),
+      floatingActionButton: _index == 0
+          ? FloatingActionButton.extended(
+              onPressed: _openRecordChoice,
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('기록하기'),
+            )
+          : null,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.park_outlined), selectedIcon: Icon(Icons.park), label: '정원'),
+          NavigationDestination(
+              icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: '캘린더'),
+          NavigationDestination(icon: Icon(Icons.groups_outlined), selectedIcon: Icon(Icons.groups), label: '가족 공유'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: '마이'),
+        ],
       ),
     );
   }
 }
-

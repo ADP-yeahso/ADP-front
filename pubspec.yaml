@@ -36,8 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
   intl: ^0.20.2
-  shelf: ^1.4.2
-  webview_flutter: ^4.14.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -61,9 +60,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/
-    - assets/www/
-
+    - assets/images/tree.png
+    - assets/images/flower.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

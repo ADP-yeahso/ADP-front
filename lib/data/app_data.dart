@@ -90,14 +90,6 @@ class AppData extends ChangeNotifier {
     return entry;
   }
 
-  DiaryEntry? diaryById(String id) {
-    try {
-      return diaries.firstWhere((d) => d.id == id);
-    } catch (_) {
-      return null;
-    }
-  }
-
   void toggleLeafPublic(String id) {
     final leaf = leaves.firstWhere((l) => l.id == id);
     leaf.isPublic = !leaf.isPublic;

@@ -103,8 +103,8 @@ class _StatRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final myDiaries = appData.diaries.where((d) => d.authorId == appData.me.id).length;
-    final myLeaves = appData.leaves.where((l) => l.authorId == appData.me.id).length;
+    final myDiaries = appData.diaries.where((d) => d.userId == appData.me.id).length;
+    final myLeaves = appData.memories.where((l) => l.userId == appData.me.id).length;
 
     return Row(
       children: [

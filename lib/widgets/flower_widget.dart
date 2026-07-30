@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/emotion.dart';
-
+import '../models/emotions.dart';
+import '../utils/emotion_utils.dart';
 class FlowerWidget extends StatelessWidget {
   final Emotion emotion;
   final double size;

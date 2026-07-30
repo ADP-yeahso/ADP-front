@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../models/emotion.dart';
-import '../models/recommendation.dart';
+import '../models/emotions.dart';
+import '../utils/emotion_utils.dart';
+import '../models/legacy/recommendation.dart';
 
 class RecommendationCard extends StatelessWidget {
   final Emotion emotion;

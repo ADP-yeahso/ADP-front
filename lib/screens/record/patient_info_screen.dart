@@ -41,7 +41,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
       );
       return;
     }
-    context.read<AppData>().addLeaf(
+    context.read<AppData>().addMemory(
           date: _date,
           title: _titleController.text.trim(),
           content: _contentController.text.trim(),

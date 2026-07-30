@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
-import '../../models/emotion.dart';
+import '../../utils/emotion_utils.dart';
 
 class VisibilitySettingsScreen extends StatelessWidget {
   const VisibilitySettingsScreen({super.key});
@@ -10,10 +10,10 @@ class VisibilitySettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
-    final myLeaves = appData.leaves.where((l) => l.authorId == appData.me.id).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-    final myDiaries = appData.diaries.where((d) => d.authorId == appData.me.id).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final myMemories = appData.memories.where((m) => m.userId == appData.me.id).toList()
+      ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
+    final myDiaries = appData.diaries.where((d) => d.userId == appData.me.id).toList()
+      ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
 
     return Scaffold(
       appBar: AppBar(title: const Text('기록 공개 범위 관리')),
@@ -25,21 +25,21 @@ class VisibilitySettingsScreen extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: Colors.black54),
           ),
           const SizedBox(height: 16),
-          if (myLeaves.isEmpty && myDiaries.isEmpty)
+          if (myMemories.isEmpty && myDiaries.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Text('아직 작성한 기록이 없어요.', style: TextStyle(color: Colors.black45)),
             ),
-          if (myLeaves.isNotEmpty) ...[
+          if (myMemories.isNotEmpty) ...[
             const _SectionLabel('나무 기록 (잎)'),
-            for (final leaf in myLeaves)
+            for (final memory in myMemories)
               _RecordRow(
                 icon: Icons.eco,
                 iconColor: const Color(0xFF6FBF8B),
-                title: leaf.title,
-                date: leaf.date,
-                isPublic: leaf.isPublic,
-                onToggle: () => appData.toggleLeafPublic(leaf.id),
+                title: '가족 기록',
+                date: memory.recordDate,
+                isPublic: memory.isPublic,
+                onToggle: () => appData.toggleMemoryPublic(memory.id),
               ),
             const SizedBox(height: 12),
           ],
@@ -47,11 +47,11 @@ class VisibilitySettingsScreen extends StatelessWidget {
             const _SectionLabel('감정 일기 (꽃)'),
             for (final diary in myDiaries)
               _RecordRow(
-                icon: diary.emotion.flowerIcon,
-                iconColor: diary.emotion.color,
-                title: diary.emotion.label,
-                date: diary.date,
-                isPublic: diary.isPublic,
+                icon: diary.flowerType.emotionId.flowerIcon,
+                iconColor: diary.flowerType.emotionId.color,
+                title: diary.flowerType.emotionId.label,
+                date: diary.recordDate,
+                isPublic: appData.isDiaryPublic(diary.id),
                 onToggle: () => appData.toggleDiaryPublic(diary.id),
               ),
           ],

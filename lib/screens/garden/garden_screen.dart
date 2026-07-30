@@ -8,7 +8,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../data/app_data.dart';
 import '../../data/garden_range.dart';
-import '../../models/diary_entry.dart';
+
 import '../../utils/local_asset_server.dart';
 import 'entry_detail_sheet.dart';
 
@@ -102,7 +102,7 @@ class _GardenScreenState extends State<GardenScreen> {
     final appData = context.read<AppData>();
     final diaries = appData.diariesForMonth(_currentMonth);
     
-    final diariesJson = jsonEncode(diaries.map((e) => {'id': e.id, 'emotion': e.emotion.name}).toList());
+    final diariesJson = jsonEncode(diaries.map((e) => {'id': e.id, 'emotion': e.flowerType.emotionId.name}).toList());
     final ts = DateTime.now().millisecondsSinceEpoch;
     final treeUrl = 'http://localhost:8080/images/worldtree.glb?v=$ts';
     final flowerUrl = 'http://localhost:8080/images/flower2.glb?v=$ts';
@@ -123,7 +123,7 @@ class _GardenScreenState extends State<GardenScreen> {
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
     final month = _currentMonth;
-    final leaves = appData.leavesForMonth(month);
+    final memories = appData.memoriesForMonth(month);
     final diariesCount = appData.diariesForMonth(month).length;
 
     return Scaffold(
@@ -187,7 +187,7 @@ class _GardenScreenState extends State<GardenScreen> {
                           bottom: 16,
                           child: Center(
                             child: GestureDetector(
-                              onTap: () => showLeafListSheet(context, leaves),
+                              onTap: () => showMemoryListSheet(context, memories),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 8),
@@ -202,7 +202,7 @@ class _GardenScreenState extends State<GardenScreen> {
                                   ],
                                 ),
                                 child: Text(
-                                  '🌳 잎 ${leaves.length}개 / 🌸 꽃 $diariesCount송이',
+                                  '🌳 잎 ${memories.length}개 / 🌸 꽃 $diariesCount송이',
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -230,7 +230,7 @@ class _GardenScreenState extends State<GardenScreen> {
     if (diaryId.startsWith('dummy')) return;
 
     final appData = context.read<AppData>();
-    final diary = appData.diaryById(diaryId);
+    final diary = appData.diaryById(int.tryParse(diaryId) ?? -1);
     if (diary == null) return;
 
     setState(() {
@@ -249,13 +249,13 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _handleTreeTap() async {
     final appData = context.read<AppData>();
-    final leaves = appData.leavesForMonth(_currentMonth);
+    final memories = appData.memoriesForMonth(_currentMonth);
 
     setState(() {
       _isFocusing = true;
     });
 
-    await showLeafListSheet(context, leaves);
+    await showMemoryListSheet(context, memories);
 
     if (mounted) {
       setState(() {

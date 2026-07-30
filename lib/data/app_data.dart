@@ -1,14 +1,31 @@
 import 'package:flutter/material.dart';
 
-import '../models/diary_entry.dart';
-import '../models/emotion.dart';
-import '../models/family_member.dart';
-import '../models/patient_leaf.dart';
+import '../models/diary.dart';
+import '../models/emotions.dart';
+import '../models/flower.dart';
+import '../models/media.dart';
+import '../models/memory.dart';
+import '../models/users.dart';
 import 'emotion_analyzer.dart';
 
 bool isSameMonth(DateTime a, DateTime b) => a.year == b.year && a.month == b.month;
 bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
+
+extension UserUIInfo on User {
+  bool get isMe => id == 1;
+  String get nickname => name;
+  String get relation {
+    if (id == 1) return '딸';
+    if (id == 2) return '아들';
+    return '며느리';
+  }
+  Color get color {
+    if (id == 1) return const Color(0xFF6B93D1);
+    if (id == 2) return const Color(0xFF6FBF8B);
+    return const Color(0xFF9B7FC7);
+  }
+}
 
 class AppData extends ChangeNotifier {
   AppData() {
@@ -17,125 +34,171 @@ class AppData extends ChangeNotifier {
 
   final String patientRelationLabel = '아버지';
 
-  final List<FamilyMember> familyMembers = [
-    const FamilyMember(
-      id: 'me',
-      nickname: '닉네임 1',
-      relation: '딸',
-      color: Color(0xFF6B93D1),
-      isMe: true,
+  final List<User> users = [
+    User(
+      id: 1,
+      email: 'me@example.com',
+      password: '',
+      name: '닉네임 1',
+      phoneNumber: '',
+      profileImageUrl: null,
+      createdAt: DateTime.now(),
     ),
-    const FamilyMember(
-      id: 'f2',
-      nickname: '닉네임 2',
-      relation: '아들',
-      color: Color(0xFF6FBF8B),
+    User(
+      id: 2,
+      email: 'son@example.com',
+      password: '',
+      name: '닉네임 2',
+      phoneNumber: '',
+      profileImageUrl: null,
+      createdAt: DateTime.now(),
     ),
-    const FamilyMember(
-      id: 'f3',
-      nickname: '닉네임 3',
-      relation: '며느리',
-      color: Color(0xFF9B7FC7),
+    User(
+      id: 3,
+      email: 'inlaw@example.com',
+      password: '',
+      name: '닉네임 3',
+      phoneNumber: '',
+      profileImageUrl: null,
+      createdAt: DateTime.now(),
     ),
   ];
 
-  FamilyMember get me => familyMembers.firstWhere((m) => m.isMe);
+  User get me => users.firstWhere((u) => u.isMe);
 
-  FamilyMember memberById(String id) =>
-      familyMembers.firstWhere((m) => m.id == id, orElse: () => me);
+  User userById(int id) => users.firstWhere((u) => u.id == id, orElse: () => me);
 
-  final List<PatientLeaf> leaves = [];
-  final List<DiaryEntry> diaries = [];
+  final List<Memory> memories = [];
+  final List<Diary> diaries = [];
+  
+  // To keep track of public states since Diary doesn't have isPublic
+  final Set<int> _publicDiaryIds = {};
 
   int _idCounter = 1000;
-  String _nextId() => (_idCounter++).toString();
+  int _nextId() => _idCounter++;
 
-  void addLeaf({
+  void addMemory({
     required DateTime date,
-    required String title,
+    required String title, // Used as mock UI title if needed
     required String content,
     bool hasPhoto = false,
     bool isPublic = true,
   }) {
-    leaves.add(PatientLeaf(
+    List<Media> media = [];
+    if (hasPhoto) {
+      media.add(Media(id: _nextId(), memoryId: _idCounter, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now()));
+    }
+    memories.add(Memory(
       id: _nextId(),
-      date: date,
-      title: title,
-      content: content,
-      authorId: me.id,
-      hasPhoto: hasPhoto,
+      patientId: 1,
+      userId: me.id,
+      contextText: content,
+      mediaList: media,
       isPublic: isPublic,
+      recordDate: date,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     ));
     notifyListeners();
   }
 
-  DiaryEntry addDiary({
+  Diary addDiary({
     required DateTime date,
     required String content,
     bool isPublic = true,
   }) {
     final analysis = analyzeEmotion(content);
-    final entry = DiaryEntry(
-      id: _nextId(),
-      date: date,
-      content: content,
-      authorId: me.id,
-      emotion: analysis.primary,
-      emotionScores: analysis.scores,
-      recommendation: recommendationFor(analysis.primary),
-      isPublic: isPublic,
+    final flower = Flower(
+      id: analysis.primary.id,
+      emotionId: analysis.primary,
+      flowerName: 'Mock Flower',
+      colorCode: '#000000',
+      sentence: 'Mock sentence',
     );
+    
+    final entry = Diary(
+      id: _nextId(),
+      userId: me.id,
+      context: content,
+      flowerType: flower,
+      mediaList: [],
+      recordDate: date,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    
     diaries.add(entry);
+    if (isPublic) {
+      _publicDiaryIds.add(entry.id);
+    }
     notifyListeners();
     return entry;
   }
 
-  DiaryEntry? diaryById(String id) {
+  Diary? diaryById(int id) {
     try {
       return diaries.firstWhere((d) => d.id == id);
     } catch (_) {
       return null;
     }
   }
+  
+  bool isDiaryPublic(int id) => _publicDiaryIds.contains(id);
 
-  void toggleLeafPublic(String id) {
-    final leaf = leaves.firstWhere((l) => l.id == id);
-    leaf.isPublic = !leaf.isPublic;
+  void toggleMemoryPublic(int id) {
+    final idx = memories.indexWhere((m) => m.id == id);
+    if (idx != -1) {
+      final old = memories[idx];
+      memories[idx] = Memory(
+        id: old.id,
+        patientId: old.patientId,
+        userId: old.userId,
+        contextText: old.contextText,
+        mediaList: old.mediaList,
+        isPublic: !old.isPublic,
+        recordDate: old.recordDate,
+        createdAt: old.createdAt,
+        updatedAt: DateTime.now(),
+      );
+      notifyListeners();
+    }
+  }
+
+  void toggleDiaryPublic(int id) {
+    if (_publicDiaryIds.contains(id)) {
+      _publicDiaryIds.remove(id);
+    } else {
+      _publicDiaryIds.add(id);
+    }
     notifyListeners();
   }
 
-  void toggleDiaryPublic(String id) {
-    final diary = diaries.firstWhere((d) => d.id == id);
-    diary.isPublic = !diary.isPublic;
-    notifyListeners();
-  }
+  List<Memory> memoriesForMonth(DateTime month) =>
+      memories.where((m) => isSameMonth(m.recordDate, month)).toList()
+        ..sort((a, b) => a.recordDate.compareTo(b.recordDate));
 
-  List<PatientLeaf> leavesForMonth(DateTime month) =>
-      leaves.where((l) => isSameMonth(l.date, month)).toList()
-        ..sort((a, b) => a.date.compareTo(b.date));
-
-  List<DiaryEntry> diariesForMonth(DateTime month) =>
-      diaries.where((d) => isSameMonth(d.date, month)).toList()
-        ..sort((a, b) => a.date.compareTo(b.date));
+  List<Diary> diariesForMonth(DateTime month) =>
+      diaries.where((d) => isSameMonth(d.recordDate, month)).toList()
+        ..sort((a, b) => a.recordDate.compareTo(b.recordDate));
 
   List<DateTime> entryDatesForMonth(DateTime month) => {
-        ...leavesForMonth(month).map((l) => l.date),
-        ...diariesForMonth(month).map((d) => d.date),
+        ...memoriesForMonth(month).map((m) => m.recordDate),
+        ...diariesForMonth(month).map((d) => d.recordDate),
       }.toList();
 
-  List<DiaryEntry> get sharedDiaries =>
-      diaries.where((d) => d.isPublic).toList()
-        ..sort((a, b) => b.date.compareTo(a.date));
+  List<Diary> get sharedDiaries =>
+      diaries.where((d) => _publicDiaryIds.contains(d.id)).toList()
+        ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
 
-  List<PatientLeaf> get sharedLeaves =>
-      leaves.where((l) => l.isPublic).toList()
-        ..sort((a, b) => b.date.compareTo(a.date));
+  List<Memory> get sharedMemories =>
+      memories.where((m) => m.isPublic).toList()
+        ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
 
-  Emotion? latestEmotionFor(String authorId) {
-    final entries = diaries.where((d) => d.authorId == authorId).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+  Emotion? latestEmotionFor(int userId) {
+    final entries = diaries.where((d) => d.userId == userId).toList()
+      ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
     if (entries.isEmpty) return null;
-    return entries.first.emotion;
+    return entries.first.flowerType.emotionId;
   }
 
   void _seed() {
@@ -143,18 +206,18 @@ class AppData extends ChangeNotifier {
     DateTime d(int monthsAgo, int day) =>
         DateTime(today.year, today.month - monthsAgo, day);
 
-    addLeaf(
+    addMemory(
       date: d(2, 6),
       title: '함께 본 옛날 사진',
       content: '$patientRelationLabel과 함께 젊은 시절 사진을 꺼내 보았다. 잠시 웃으셨다.',
       hasPhoto: true,
     );
-    addLeaf(
+    addMemory(
       date: d(1, 12),
       title: '병원 정기 검진',
       content: '정기 검진을 다녀왔다. 컨디션은 평소와 비슷하다는 소견을 들었다.',
     );
-    addLeaf(
+    addMemory(
       date: d(0, 3),
       title: '산책',
       content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/image_asset_button.dart';
 import 'group_created_screen.dart';
 
 class CreateFamilyScreen extends StatelessWidget {
@@ -80,19 +81,16 @@ class CreateFamilyScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _LabelInputRow(label: '환자 관계', primaryColor: primaryColor),
             const SizedBox(height: 40),
-            OutlinedButton(
+            ImageAssetButton(
+              // imagePath: 'assets/images/btn_create_family.png',
+              fallbackText: '만들기',
+              fallbackColor: primaryColor,
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const GroupCreatedScreen()),
                 );
               },
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: BorderSide(color: primaryColor, width: 2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: Text('만들기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
             ),
           ],
         ),

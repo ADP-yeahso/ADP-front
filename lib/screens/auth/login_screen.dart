@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../widgets/image_asset_button.dart';
+import '../../widgets/image_asset_placeholder.dart';
 import 'signup_screen.dart';
 import 'family_group_list_screen.dart';
 
@@ -18,22 +20,12 @@ class LoginScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 40),
-              // 일러스트 플레이스홀더
-              Container(
+              // 일러스트 플레이스홀더 (에셋이 오면 imagePath 속성 추가)
+              ImageAssetPlaceholder(
+                // imagePath: 'assets/images/illust_login.png',
                 height: 160,
-                decoration: BoxDecoration(
-                  border: Border.all(color: primaryColor, width: 2),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '일러스트',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
-                  ),
-                ),
+                fallbackText: '일러스트',
+                fallbackColor: primaryColor,
               ),
               const SizedBox(height: 24),
               Text(
@@ -58,34 +50,32 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 16),
               _OutlinedInput(hint: 'P.W', primaryColor: primaryColor, obscureText: true),
               const SizedBox(height: 24),
-              OutlinedButton(
+              
+              // 로그인 버튼 (에셋이 오면 imagePath 속성 추가)
+              ImageAssetButton(
+                // imagePath: 'assets/images/btn_login.png',
+                fallbackText: '로그인',
+                fallbackColor: primaryColor,
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const FamilyGroupListScreen()),
                   );
                 },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(color: primaryColor, width: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Text('로그인', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
               ),
               const SizedBox(height: 12),
-              OutlinedButton(
+              
+              // 회원가입 버튼 (에셋이 오면 imagePath 속성 추가)
+              ImageAssetButton(
+                // imagePath: 'assets/images/btn_signup.png',
+                fallbackText: '회원가입',
+                fallbackColor: primaryColor,
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const SignupScreen()),
                   );
                 },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(color: primaryColor, width: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Text('회원가입', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
               ),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/image_asset_button.dart';
 import 'family_group_list_screen.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -71,19 +72,16 @@ class _SignupScreenState extends State<SignupScreen> {
             _buildCheckboxRow('모두 동의', _agreeAll, _updateAll, primaryColor, isBold: true),
             
             const SizedBox(height: 32),
-            OutlinedButton(
+            ImageAssetButton(
+              // imagePath: 'assets/images/btn_signup_complete.png',
+              fallbackText: '회원 가입',
+              fallbackColor: primaryColor,
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const FamilyGroupListScreen()),
                 );
               },
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: BorderSide(color: primaryColor, width: 2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: Text('회원 가입', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
             ),
             const SizedBox(height: 16),
             Center(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/image_asset_button.dart';
 import 'create_family_screen.dart';
 import 'group_created_screen.dart';
 
@@ -95,17 +96,14 @@ class FamilyGroupListScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            OutlinedButton.icon(
+            ImageAssetButton(
+              // imagePath: 'assets/images/btn_new_family_group.png',
+              fallbackText: '새 가족 그룹 만들기',
+              fallbackColor: primaryColor,
+              icon: Icons.add_circle_outline,
               onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateFamilyScreen()));
               },
-              icon: Icon(Icons.add_circle_outline, color: primaryColor),
-              label: Text('새 가족 그룹 만들기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: BorderSide(color: primaryColor, width: 2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
             ),
             const SizedBox(height: 16),
             Container(
@@ -142,19 +140,19 @@ class FamilyGroupListScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () {
-                          // TODO: 코드 검증 후 그룹 참여
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          elevation: 0,
+                      Expanded(
+                        flex: 2,
+                        child: ImageAssetButton(
+                          // imagePath: 'assets/images/btn_join.png',
+                          fallbackText: '확인',
+                          fallbackColor: primaryColor,
+                          isFilled: true,
+                          height: 48,
+                          onPressed: () {
+                            // TODO: 코드 검증 후 그룹 참여
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
+                          },
                         ),
-                        child: const Text('확인', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -222,14 +220,13 @@ class _GroupCard extends StatelessWidget {
               ],
             ),
           ),
-          OutlinedButton(
+          ImageAssetButton(
+            // imagePath: 'assets/images/btn_enter.png',
+            fallbackText: '입장하기',
+            fallbackColor: primaryColor,
+            width: 80,
+            height: 36,
             onPressed: onTap,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              side: BorderSide(color: primaryColor, width: 1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-            child: Text('입장하기', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: primaryColor)),
           ),
         ],
       ),

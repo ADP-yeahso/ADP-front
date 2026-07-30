@@ -18,21 +18,12 @@ class LoginScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 40),
-              // 일러스트 플레이스홀더
-              Container(
-                height: 160,
-                decoration: BoxDecoration(
-                  border: Border.all(color: primaryColor, width: 2),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '일러스트',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
-                  ),
+              // 일러스트 적용
+              Center(
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  height: 160,
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 24),

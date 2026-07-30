@@ -193,7 +193,7 @@ class _YearGrid extends StatelessWidget {
           ),
           itemBuilder: (context, i) {
             final month = DateTime(year, i + 1);
-            final leafCount = appData.leavesForMonth(month).length;
+            final leafCount = appData.memoriesForMonth(month).length;
             final diaryCount = appData.diariesForMonth(month).length;
             final active = isNavigable(month);
             final isCurrent = month.year == today.year && month.month == today.month;

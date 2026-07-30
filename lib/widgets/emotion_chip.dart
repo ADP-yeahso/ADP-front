@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/emotion.dart';
-
+import '../models/emotions.dart';
+import '../utils/emotion_utils.dart';
 class EmotionChip extends StatelessWidget {
   final Emotion emotion;
   const EmotionChip({super.key, required this.emotion});

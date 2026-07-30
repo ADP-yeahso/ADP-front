@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
-import '../../models/family_member.dart';
+import '../../models/users.dart';
 
 class FamilyManagementScreen extends StatelessWidget {
   const FamilyManagementScreen({super.key});
@@ -66,7 +66,7 @@ class FamilyManagementScreen extends StatelessWidget {
             style: const TextStyle(fontSize: 13, color: Colors.black54),
           ),
           const SizedBox(height: 16),
-          for (final member in appData.familyMembers) _MemberTile(member: member),
+          for (final member in appData.users) _MemberTile(member: member),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: () => _showInviteDialog(context),
@@ -81,7 +81,7 @@ class FamilyManagementScreen extends StatelessWidget {
 }
 
 class _MemberTile extends StatelessWidget {
-  final FamilyMember member;
+  final User member;
   const _MemberTile({required this.member});
 
   @override

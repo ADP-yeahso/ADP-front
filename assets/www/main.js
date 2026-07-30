@@ -95,6 +95,36 @@ function init() {
   window.addEventListener('resize', onWindowResize);
   window.addEventListener('click', onClick);
 
+  // ── 모바일 터치 지원 ──
+  // iOS WebView에서는 click 이벤트가 제대로 발생하지 않으므로
+  // touchstart/touchend로 "탭"을 감지하여 raycast를 수행합니다.
+  let touchStartX = 0, touchStartY = 0;
+  let touchStartTime = 0;
+
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', (e) => {
+    if (e.changedTouches.length !== 1) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
+    const dt = Date.now() - touchStartTime;
+
+    // 손가락 이동이 10px 이하이고 300ms 이내면 "탭"으로 간주
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && dt < 300) {
+      onClick({
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      });
+    }
+  });
+
   // Hide loading by default until data comes
   document.getElementById('loading').style.display = 'none';
 }
@@ -209,16 +239,19 @@ function onClick(event) {
 
   for (let i = 0; i < intersects.length; i++) {
     let object = intersects[i].object;
+    
     // Walk up to find the group with userData
-    while (object && !object.userData.isFlower && object.parent) {
+    while (object && !object.userData.isFlower && !object.userData.isTree && object.parent) {
       object = object.parent;
     }
 
     if (object && object.userData.isFlower) {
+      if (object.userData.diaryId && String(object.userData.diaryId).startsWith('dummy')) {
+        break;
+      }
       focusOnFlower(object);
       break;
     } else if (object && object.userData.isTree) {
-      // 중앙 나무가 클릭된 경우
       focusOnTree(object);
       break;
     }

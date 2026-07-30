@@ -227,11 +227,17 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Future<void> _handleFlowerTap(String diaryId) async {
     // 더미 데이터 클릭 시 무시 (아이디가 dummy로 시작)
-    if (diaryId.startsWith('dummy')) return;
+    if (diaryId.startsWith('dummy')) {
+      _webViewController.runJavaScript('if(typeof window.resetCamera === "function") window.resetCamera()');
+      return;
+    }
 
     final appData = context.read<AppData>();
     final diary = appData.diaryById(int.tryParse(diaryId) ?? -1);
-    if (diary == null) return;
+    if (diary == null) {
+      _webViewController.runJavaScript('if(typeof window.resetCamera === "function") window.resetCamera()');
+      return;
+    }
 
     setState(() {
       _isFocusing = true;

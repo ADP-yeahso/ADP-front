@@ -153,7 +153,7 @@ class ProfileScreen extends StatelessWidget {
           ),
           _SettingsTile(
             icon: Icons.family_restroom_outlined,
-            label: '가족 구성원 관리',
+            label: '그룹 정보 보기',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const FamilyManagementScreen()),

@@ -129,94 +129,97 @@ class _GardenScreenState extends State<GardenScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(month),
-                Expanded(
-                  child: Stack(
-                    children: [
-                      // ── 3D Three.js 뷰어 (WebView) ──
-                      if (_isServerStarted)
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            ignoring: _isFocusing,
-                            child: WebViewWidget(controller: _webViewController),
-                          ),
-                        ),
+          // ── 1. 가장 밑바탕: 3D Three.js 뷰어 (WebView) 전체 화면 ──
+          if (_isServerStarted)
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: _isFocusing,
+                child: WebViewWidget(controller: _webViewController),
+              ),
+            ),
 
-                      // ── Blur Overlay (포커싱 시 뒤쪽 배경 흐림 처리) ──
-                      if (_isFocusing)
-                        Positioned.fill(
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-                            child: Container(
-                              color: Colors.black.withValues(alpha: 0.2),
-                            ),
-                          ),
-                        ),
-
-                      // ── 양옆 달 변경 화살표 ──
-                      if (!_isFocusing) ...[
-                        Positioned(
-                          left: 12,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(
-                            child: _SideMonthButton(
-                              icon: Icons.chevron_left,
-                              onTap: _prevMonth,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 12,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(
-                            child: _SideMonthButton(
-                              icon: Icons.chevron_right,
-                              onTap: _nextMonth,
-                            ),
-                          ),
-                        ),
-
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 16,
-                          child: Center(
-                            child: GestureDetector(
-                              onTap: () => showMemoryListSheet(context, memories),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.1),
-                                      blurRadius: 8,
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  '🌳 잎 ${memories.length}개 / 🌸 꽃 $diariesCount송이',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF333333),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+          // ── 2. 포커싱 시 배경 흐림 효과 (WebView 위를 덮음) ──
+          if (_isFocusing)
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.2),
                 ),
+              ),
+            ),
+
+          // ── 3. UI 요소들 (SafeArea 안에서 겹침 배치) ──
+          SafeArea(
+            child: Stack(
+              children: [
+                // ── 상단 헤더 ──
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _buildHeader(month),
+                ),
+
+                // ── 양옆 달 변경 화살표 ──
+                if (!_isFocusing) ...[
+                  Positioned(
+                    left: 12,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: _SideMonthButton(
+                        icon: Icons.chevron_left,
+                        onTap: _prevMonth,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 12,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: _SideMonthButton(
+                        icon: Icons.chevron_right,
+                        onTap: _nextMonth,
+                      ),
+                    ),
+                  ),
+
+                  // ── 하단 기억/꽃 개수 안내 버튼 ──
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 16,
+                    child: Center(
+                      child: GestureDetector(
+                        onTap: () => showMemoryListSheet(context, memories),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            '🌳 잎 ${memories.length}개 / 🌸 꽃 $diariesCount송이',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -274,73 +277,49 @@ class _GardenScreenState extends State<GardenScreen> {
 
   Widget _buildHeader(DateTime month) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+      alignment: Alignment.topCenter,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            '기억의 정원',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              shadows: [
-                Shadow(
-                    color: Colors.black45,
-                    blurRadius: 4,
-                    offset: Offset(0, 1))
-              ],
+          // 날짜 (예: 07 . 26)
+          Text(
+            '${month.month.toString().padLeft(2, '0')} . ${month.year.toString().substring(2)}',
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF4A6B8A), // 스케치의 파란 펜 느낌 색상
+              letterSpacing: 2,
             ),
           ),
-          const SizedBox(height: 2),
-          const Text(
-            '우리의 소중한 시간',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
-              shadows: [
-                Shadow(
-                    color: Colors.black45,
-                    blurRadius: 4,
-                    offset: Offset(0, 1))
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+          const SizedBox(height: 4),
+          // 그룹 선택 (더미)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '우리가족',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF4A6B8A),
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${month.year}년 ${month.month}월',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF3A3A3A),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 18, color: Color(0xFF9E9E9E)),
-                ],
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF4A6B8A), width: 1.5),
+                ),
+                child: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 12,
+                  color: Color(0xFF4A6B8A),
+                ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 6),
         ],
       ),
     );

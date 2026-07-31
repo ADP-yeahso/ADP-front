@@ -83,8 +83,12 @@ class DiaryResultScreen extends StatelessWidget {
                 icon: const Icon(Icons.local_florist),
                 label: const Text('꽃으로 저장하기'),
                 onPressed: () {
-                  final entry = context.read<AppData>().addDiary(date: date, content: content, isPublic: isPublic);
-                  entry.mediaList.addAll(mediaList);
+                  context.read<AppData>().addDiary(
+                    date: date, 
+                    content: content, 
+                    mediaList: mediaList,
+                    isPublic: isPublic,
+                  );
                   Navigator.popUntil(context, (route) => route.isFirst);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('오늘의 감정이 꽃으로 피어났어요 🌸')),

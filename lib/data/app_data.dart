@@ -11,7 +11,8 @@ import '../models/users.dart';
 import '../models/users_groups.dart';
 import 'emotion_analyzer.dart';
 
-bool isSameMonth(DateTime a, DateTime b) => a.year == b.year && a.month == b.month;
+bool isSameMonth(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month;
 bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
@@ -32,13 +33,15 @@ class AppData extends ChangeNotifier {
   final int currentUserId = 1;
 
   // ── 새 모델 더미 데이터 ─────────────────────────────
-  final Patient patient = Patient(
+  Patient _patient = Patient(
     id: 1,
     groupId: 1,
     patientName: '고강민',
-    patientBirthDate: 19500515,
+    patientBirthDate: 20060515,
     createdAt: DateTime(2024, 1, 1),
   );
+
+  Patient get patient => _patient;
 
   final Group group = Group(
     id: 1,
@@ -49,15 +52,35 @@ class AppData extends ChangeNotifier {
   );
 
   final List<UserGroup> userGroups = [
-    UserGroup(id: 1, userId: 1, groupId: 1, patientsNickname: '아버지', joinedAt: DateTime(2024, 1, 1)),
-    UserGroup(id: 2, userId: 2, groupId: 1, patientsNickname: '아버지', joinedAt: DateTime(2024, 1, 1)),
-    UserGroup(id: 3, userId: 3, groupId: 1, patientsNickname: '시아버지', joinedAt: DateTime(2024, 1, 1)),
+    UserGroup(
+      id: 1,
+      userId: 1,
+      groupId: 1,
+      patientsNickname: '아버지',
+      joinedAt: DateTime(2024, 1, 1),
+    ),
+    UserGroup(
+      id: 2,
+      userId: 2,
+      groupId: 1,
+      patientsNickname: '아버지',
+      joinedAt: DateTime(2024, 1, 1),
+    ),
+    UserGroup(
+      id: 3,
+      userId: 3,
+      groupId: 1,
+      patientsNickname: '시아버지',
+      joinedAt: DateTime(2024, 1, 1),
+    ),
   ];
 
   /// 현재 유저가 환자를 부르는 호칭 (UserGroup.patientsNickname 기반)
   String get patientRelationLabel {
     try {
-      return userGroups.firstWhere((ug) => ug.userId == currentUserId).patientsNickname;
+      return userGroups
+          .firstWhere((ug) => ug.userId == currentUserId)
+          .patientsNickname;
     } catch (_) {
       return '환자';
     }
@@ -69,7 +92,9 @@ class AppData extends ChangeNotifier {
   /// userId에 해당하는 구성원이 환자를 부르는 호칭
   String userRelationOf(int userId) {
     try {
-      return userGroups.firstWhere((ug) => ug.userId == userId).patientsNickname;
+      return userGroups
+          .firstWhere((ug) => ug.userId == userId)
+          .patientsNickname;
     } catch (_) {
       return '';
     }
@@ -107,11 +132,81 @@ class AppData extends ChangeNotifier {
 
   User get me => users.firstWhere((u) => u.id == currentUserId);
 
-  User userById(int id) => users.firstWhere((u) => u.id == id, orElse: () => me);
+  User userById(int id) =>
+      users.firstWhere((u) => u.id == id, orElse: () => me);
+  void updateCurrentUserProfile({
+    required String name,
+    required String password,
+    required String phoneNumber,
+  }) {
+    final index = users.indexWhere((user) => user.id == currentUserId);
+
+    if (index == -1) {
+      return;
+    }
+
+    final currentUser = users[index];
+
+    users[index] = User(
+      id: currentUser.id,
+      email: currentUser.email,
+      password: password,
+      name: name,
+      phoneNumber: phoneNumber,
+      profileImageUrl: currentUser.profileImageUrl,
+      createdAt: currentUser.createdAt,
+    );
+
+    notifyListeners();
+  }
+
+  void updatePatientInfo({
+    required String patientName,
+    required int patientBirthDate,
+    required String patientsNickname,
+  }) {
+    _patient = Patient(
+      id: _patient.id,
+      groupId: _patient.groupId,
+      patientName: patientName,
+      patientBirthDate: patientBirthDate,
+      createdAt: _patient.createdAt,
+    );
+
+    final relationIndex = userGroups.indexWhere(
+      (userGroup) =>
+          userGroup.userId == currentUserId &&
+          userGroup.groupId == _patient.groupId,
+    );
+
+    if (relationIndex != -1) {
+      final currentRelation = userGroups[relationIndex];
+
+      userGroups[relationIndex] = UserGroup(
+        id: currentRelation.id,
+        userId: currentRelation.userId,
+        groupId: currentRelation.groupId,
+        patientsNickname: patientsNickname,
+        joinedAt: currentRelation.joinedAt,
+      );
+    }
+
+    notifyListeners();
+  }
+
+  String get patientBirthDateLabel {
+    final value = patient.patientBirthDate.toString().padLeft(8, '0');
+
+    final year = value.substring(0, 4);
+    final month = value.substring(4, 6);
+    final day = value.substring(6, 8);
+
+    return '$year.$month.$day';
+  }
 
   final List<Memory> memories = [];
   final List<Diary> diaries = [];
-  
+
   // To keep track of public states since Diary doesn't have isPublic
   final Set<int> _publicDiaryIds = {};
 
@@ -127,19 +222,32 @@ class AppData extends ChangeNotifier {
   }) {
     List<Media> media = [];
     if (hasPhoto) {
-      media.add(Media(id: _nextId(), memoryId: _idCounter, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now()));
+      media.add(
+        Media(
+          id: _nextId(),
+          memoryId: _idCounter,
+          diaryId: null,
+          fileUrl: 'dummy.jpg',
+          fileType: 'image',
+          duration: 0,
+          sortOrder: 1,
+          createdAt: DateTime.now(),
+        ),
+      );
     }
-    memories.add(Memory(
-      id: _nextId(),
-      patientId: 1,
-      userId: me.id,
-      contextText: content,
-      mediaList: media,
-      isPublic: isPublic,
-      recordDate: date,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ));
+    memories.add(
+      Memory(
+        id: _nextId(),
+        patientId: 1,
+        userId: me.id,
+        contextText: content,
+        mediaList: media,
+        isPublic: isPublic,
+        recordDate: date,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
     notifyListeners();
   }
 
@@ -156,7 +264,7 @@ class AppData extends ChangeNotifier {
       colorCode: '#000000',
       sentence: 'Mock sentence',
     );
-    
+
     final entry = Diary(
       id: _nextId(),
       userId: me.id,
@@ -167,7 +275,7 @@ class AppData extends ChangeNotifier {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-    
+
     diaries.add(entry);
     if (isPublic) {
       _publicDiaryIds.add(entry.id);
@@ -183,7 +291,7 @@ class AppData extends ChangeNotifier {
       return null;
     }
   }
-  
+
   bool isDiaryPublic(int id) => _publicDiaryIds.contains(id);
 
   void toggleMemoryPublic(int id) {
@@ -223,9 +331,9 @@ class AppData extends ChangeNotifier {
         ..sort((a, b) => a.recordDate.compareTo(b.recordDate));
 
   List<DateTime> entryDatesForMonth(DateTime month) => {
-        ...memoriesForMonth(month).map((m) => m.recordDate),
-        ...diariesForMonth(month).map((d) => d.recordDate),
-      }.toList();
+    ...memoriesForMonth(month).map((m) => m.recordDate),
+    ...diariesForMonth(month).map((d) => d.recordDate),
+  }.toList();
 
   List<Diary> get sharedDiaries =>
       diaries.where((d) => _publicDiaryIds.contains(d.id)).toList()
@@ -266,7 +374,10 @@ class AppData extends ChangeNotifier {
     );
 
     addDiary(date: d(2, 8), content: '오늘은 유난히 지치고 눈물이 났다. 혼자 감당하기 힘든 하루였다.');
-    addDiary(date: d(1, 15), content: '$patientRelationLabel이 나를 못 알아봐서 속상하고 화가 났다.');
+    addDiary(
+      date: d(1, 15),
+      content: '$patientRelationLabel이 나를 못 알아봐서 속상하고 화가 났다.',
+    );
     addDiary(
       date: d(1, 22),
       content: '$patientRelationLabel이 옛날 이야기를 하며 웃어서 오늘은 참 고맙고 행복했다.',

@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 import '../../data/app_data.dart';
 import 'family_management_screen.dart';
 import 'help_screen.dart';
-import 'notification_settings_screen.dart';
-import 'visibility_settings_screen.dart';
 import 'profile_edit_screen.dart';
 import 'patient_info_screen.dart';
+import 'app_settings_screen.dart';
+import '../auth/login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -31,9 +31,10 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
     if (confirmed == true && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('로그아웃 되었어요 (데모 모드)')));
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
     }
   }
 
@@ -77,7 +78,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${appData.patientRelationLabel} 보호자',
+                        '${appData.patient.patientName} 님의 보호자',
                         style: const TextStyle(
                           fontSize: 13,
                           color: Colors.black54,
@@ -132,40 +133,36 @@ class ProfileScreen extends StatelessWidget {
             },
           ),
           _SettingsTile(
-            icon: Icons.notifications_outlined,
-            label: '알림 설정',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const NotificationSettingsScreen(),
-              ),
-            ),
-          ),
-          _SettingsTile(
-            icon: Icons.lock_outline,
-            label: '기록 공개 범위 관리',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const VisibilitySettingsScreen(),
-              ),
-            ),
-          ),
-          _SettingsTile(
-            icon: Icons.family_restroom_outlined,
+            icon: Icons.groups_outlined,
             label: '그룹 정보 보기',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FamilyManagementScreen()),
-            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const FamilyManagementScreen(),
+                ),
+              );
+            },
+          ),
+          _SettingsTile(
+            icon: Icons.tune_outlined,
+            label: '앱 설정',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AppSettingsScreen()),
+              );
+            },
           ),
           _SettingsTile(
             icon: Icons.help_outline,
             label: '도움말',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const HelpScreen()),
-            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HelpScreen()),
+              );
+            },
           ),
           _SettingsTile(
             icon: Icons.logout,
@@ -269,12 +266,29 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: Colors.black54),
-      title: Text(label, style: const TextStyle(fontSize: 14)),
-      trailing: const Icon(Icons.chevron_right, color: Colors.black26),
-      onTap: onTap,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        leading: Icon(icon, color: Colors.black54),
+        title: Text(
+          label,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        trailing: const Icon(Icons.chevron_right, color: Colors.black26),
+        onTap: onTap,
+      ),
     );
   }
 }

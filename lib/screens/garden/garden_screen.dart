@@ -105,7 +105,7 @@ class _GardenScreenState extends State<GardenScreen> {
     final diariesJson = jsonEncode(diaries.map((e) => {'id': e.id, 'emotion': e.flowerType.emotionId.name}).toList());
     final ts = DateTime.now().millisecondsSinceEpoch;
     final treeUrl = 'http://localhost:8080/images/worldtree.glb?v=$ts';
-    final flowerUrl = 'http://localhost:8080/images/flower2.glb?v=$ts';
+    final flowerUrl = 'http://localhost:8080/images/flower/Affection_lisian_mid.glb?v=$ts';
     
     _webViewController.runJavaScript('''
       function tryInitGarden() {

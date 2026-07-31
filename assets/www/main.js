@@ -162,10 +162,7 @@ window.initGarden = function (treeUrl, flowerUrl, diariesJson) {
       document.getElementById('loading').style.display = 'none';
       const baseFlower = fgltf.scene;
 
-      // 12개가 될 때까지 테스트용 더미 꽃 추가
-      while (diaries.length < 12) {
-        diaries.push({ id: 'dummy_' + diaries.length });
-      }
+      // (더미 꽃 추가 로직 제거: 실제 일기 개수만큼만 렌더링되도록 수정)
 
       // Compute bounding box to debug size and offset
       const box = new THREE.Box3().setFromObject(baseFlower);
@@ -190,8 +187,8 @@ window.initGarden = function (treeUrl, flowerUrl, diariesJson) {
         clone.position.z = Math.sin(angle) * r;
         clone.position.y = 0; // 임시로 0 설정 후 BoundingBox 기반으로 바닥에 딱 맞게 자동 조정
 
-        // 베이스 모델 크기가 무려 180이나 되므로, 0.015 수준으로 대폭 축소
-        clone.scale.set(1.5, 1.5, 1.5);
+        // 새로 교체한 파일의 기본 크기에 맞춰 배율을 임시로 15배로 키움 (안 보일 경우 대비)
+        clone.scale.set(0.2, 0.2, 0.2);
 
         // Face the tree
         clone.lookAt(origin);
@@ -239,7 +236,7 @@ function onClick(event) {
 
   for (let i = 0; i < intersects.length; i++) {
     let object = intersects[i].object;
-    
+
     // Walk up to find the group with userData
     while (object && !object.userData.isFlower && !object.userData.isTree && object.parent) {
       object = object.parent;
@@ -359,3 +356,19 @@ function animate() {
   controls.update();
   renderer.render(scene, camera);
 }
+
+// --- Local Simulator Test Code ---
+// Flutter 환경이 아닐 경우(웹 브라우저에서 직접 실행 시) mid 꽃 파일로 시뮬레이터를 자동 실행합니다.
+setTimeout(() => {
+  if (!window.FlutterChannel) {
+    console.log("Running in local simulator. Initializing with mid flower...");
+    const dummyDiaries = JSON.stringify([
+      { id: "1" }, { id: "2" }, { id: "3" }, { id: "4" }, { id: "5" }
+    ]);
+    window.initGarden(
+      '../images/worldtree.glb',
+      '../images/flower/Affection_lisian_mid.glb',
+      dummyDiaries
+    );
+  }
+}, 500);

@@ -17,6 +17,8 @@ Future<void> showMemoryListSheet(BuildContext context, List<Memory> memories) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    useRootNavigator: false,
+    useSafeArea: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) => _MemoryListSheet(memories: memories),
   );
@@ -32,6 +34,13 @@ class _MemoryListSheet extends StatefulWidget {
 
 class _MemoryListSheetState extends State<_MemoryListSheet> {
   bool _showOnlyMine = false;
+  final DraggableScrollableController _sheetController = DraggableScrollableController();
+
+  @override
+  void dispose() {
+    _sheetController.dispose();
+    super.dispose();
+  }
 
   String _getDateLabel(DateTime date) {
     final now = DateTime.now();
@@ -64,10 +73,13 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
     }
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.5,
-      maxChildSize: 0.92,
+      controller: _sheetController,
+      initialChildSize: 0.4,
+      maxChildSize: 1.0,
       minChildSize: 0.3,
       expand: false,
+      snap: true,
+      snapSizes: const [0.4, 1.0],
       builder: (context, scrollController) => Container(
         decoration: const BoxDecoration(
           color: Color(0xFFF9F9F9),
@@ -75,10 +87,37 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
         ),
         child: Column(
           children: [
-            // Handle & Header
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
+            // ── 고정 헤더 (드래그 핸들 영역) ──
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragUpdate: (details) {
+                final screenHeight = MediaQuery.of(context).size.height;
+                final delta = -(details.primaryDelta ?? 0) / screenHeight;
+                final newSize = (_sheetController.size + delta).clamp(0.3, 1.0);
+                _sheetController.jumpTo(newSize);
+              },
+              onVerticalDragEnd: (details) {
+                final velocity = details.primaryVelocity ?? 0;
+                // velocity > 0: 아래로 드래그 (닫기 방향)
+                // velocity < 0: 위로 드래그 (열기 방향)
+                if (velocity > 300) {
+                  _sheetController.animateTo(0.4, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+                } else if (velocity < -300) {
+                  _sheetController.animateTo(1.0, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+                } else {
+                  // 스피드가 느릴 경우 위치 기준으로 스냅
+                  // 전체화면(1.0)에서 1~2할만 내려도(0.85 미만) 40%로 내려가도록 기준을 0.85로 높게 설정
+                  if (_sheetController.size > 0.85) {
+                    _sheetController.animateTo(1.0, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+                  } else {
+                    _sheetController.animateTo(0.4, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+                  }
+                }
+              },
+              child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Center(
                     child: Container(
@@ -94,7 +133,7 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const SizedBox(width: 40), // Balance the close button
+                      const SizedBox(width: 40),
                       const Text(
                         '나무 기억보기',
                         style: TextStyle(
@@ -110,7 +149,6 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  // Filter Chips
                   Row(
                     children: [
                       _buildFilterChip('전체 기록', !_showOnlyMine, () {
@@ -122,18 +160,24 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
                       }),
                     ],
                   ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
+            ), // GestureDetector 닫기
             const Divider(height: 1, color: Colors.black12),
-            // Timeline List
+            // DraggableScrollableSheet의 scrollController를 숨긴 스크롤뷰에 연결
+            // (시트가 내부적으로 요구하지만, 실제 리스트와는 분리)
+            Offstage(
+              child: SingleChildScrollView(controller: scrollController),
+            ),
+            // ── 독립적으로 스크롤되는 기록 리스트 ──
             Expanded(
               child: filtered.isEmpty
                   ? const Center(
                       child: Text('기록이 없습니다.', style: TextStyle(color: Colors.black45)),
                     )
                   : ListView.builder(
-                      controller: scrollController,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       itemCount: grouped.length,
                       itemBuilder: (context, index) {
@@ -308,6 +352,8 @@ void showMemoryDetailSheet(BuildContext context, Memory memory) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    useRootNavigator: false,
+    useSafeArea: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) => _SheetScaffold(
       title: '나무 기록',
@@ -361,6 +407,8 @@ Future<void> showDiaryDetailSheet(BuildContext context, Diary diary) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    useRootNavigator: false,
+    useSafeArea: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) => _SheetScaffold(
       title: '감정 일기',
@@ -468,3 +516,4 @@ class _SheetScaffold extends StatelessWidget {
     );
   }
 }
+

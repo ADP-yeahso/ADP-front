@@ -223,6 +223,30 @@ class AppData extends ChangeNotifier {
       content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
       hasPhoto: true,
     );
+    addMemory(
+      date: d(0, 8),
+      title: '가족 모임',
+      content: '오랜만에 온 가족이 모여 식사를 했다. $patientRelationLabel이 무척 즐거워하셨다.',
+      hasPhoto: false,
+    );
+    addMemory(
+      date: d(0, 11),
+      title: '옛 동네 방문',
+      content: '예전에 살던 동네를 차로 둘러보았다. 기억이 조금씩 나시는 듯했다.',
+      hasPhoto: true,
+    );
+    addMemory(
+      date: d(0, 18),
+      title: '좋아하시는 노래',
+      content: '라디오에서 옛날 노래가 나오자 따라 부르셨다.',
+      hasPhoto: false,
+    );
+    addMemory(
+      date: d(0, 22),
+      title: '손주와의 영상통화',
+      content: '손주와 영상통화를 하며 활짝 웃으시는 모습을 보니 내 마음도 따뜻해졌다.',
+      hasPhoto: true,
+    );
 
     addDiary(date: d(2, 8), content: '오늘은 유난히 지치고 눈물이 났다. 혼자 감당하기 힘든 하루였다.');
     addDiary(date: d(1, 15), content: '$patientRelationLabel이 나를 못 알아봐서 속상하고 화가 났다.');
@@ -236,5 +260,8 @@ class AppData extends ChangeNotifier {
       isPublic: false,
     );
     addDiary(date: d(0, 5), content: '오늘은 그냥 편안하고 괜찮은 하루였다.');
+    addDiary(date: d(0, 10), content: '가족들과 함께 맛있는 저녁을 먹어서 기분이 정말 좋았다.');
+    addDiary(date: d(0, 15), content: '비가 와서 조금 우울했지만, 책을 읽으며 마음을 달랬다.');
+    addDiary(date: d(0, 20), content: '내일은 더 좋은 하루가 될 거라고 믿으며 푹 자야겠다.');
   }
 }

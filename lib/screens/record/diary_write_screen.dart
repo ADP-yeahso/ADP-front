@@ -126,7 +126,8 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
 
   Future<void> _pickAudio() async {
     final result = await FilePicker.platform.pickFiles(
-      type: FileType.audio,
+      type: FileType.custom,
+      allowedExtensions: ['mp3', 'aac', 'wav', 'm4a', 'flac'],
       allowMultiple: true,
     );
     if (result != null && result.files.isNotEmpty) {

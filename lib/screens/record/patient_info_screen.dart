@@ -128,7 +128,8 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
 
   Future<void> _pickAudio() async {
     final result = await FilePicker.platform.pickFiles(
-      type: FileType.audio,
+      type: FileType.custom,
+      allowedExtensions: ['mp3', 'aac', 'wav', 'm4a', 'flac'],
       allowMultiple: true,
     );
     if (result != null && result.files.isNotEmpty) {
@@ -191,12 +192,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
       date: _date,
       title: _titleController.text.trim(),
       content: _contentController.text.trim(),
-      hasPhoto: _attachedMedia.isNotEmpty,
+      mediaList: _attachedMedia,
       isPublic: _isPublic,
     );
-    if (_attachedMedia.isNotEmpty && appData.memories.isNotEmpty) {
-      appData.memories.last.mediaList.addAll(_attachedMedia);
-    }
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('나무에 새 잎이 달렸어요 🌿')),

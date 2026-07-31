@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,11 +7,7 @@ import '../../models/users.dart';
 class FamilyManagementScreen extends StatelessWidget {
   const FamilyManagementScreen({super.key});
 
-  void _showInviteDialog(BuildContext context) {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final rand = Random();
-    final code = List.generate(6, (_) => chars[rand.nextInt(chars.length)]).join();
-
+  void _showInviteDialog(BuildContext context, String inviteCode) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -30,7 +24,7 @@ class FamilyManagementScreen extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(color: const Color(0xFFF3F1E9), borderRadius: BorderRadius.circular(12)),
               child: Text(
-                code,
+                inviteCode,
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: 4),
               ),
             ),
@@ -66,10 +60,15 @@ class FamilyManagementScreen extends StatelessWidget {
             style: const TextStyle(fontSize: 13, color: Colors.black54),
           ),
           const SizedBox(height: 16),
-          for (final member in appData.users) _MemberTile(member: member),
+          for (final member in appData.users)
+            _MemberTile(
+              member: member,
+              isMe: appData.isCurrentUser(member.id),
+              relation: appData.userRelationOf(member.id),
+            ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => _showInviteDialog(context),
+            onPressed: () => _showInviteDialog(context, appData.group.inviteCode),
             icon: const Icon(Icons.person_add_alt),
             label: const Text('가족 초대하기'),
             style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
@@ -82,7 +81,14 @@ class FamilyManagementScreen extends StatelessWidget {
 
 class _MemberTile extends StatelessWidget {
   final User member;
-  const _MemberTile({required this.member});
+  final bool isMe;
+  final String relation;
+
+  const _MemberTile({
+    required this.member,
+    required this.isMe,
+    required this.relation,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -106,8 +112,8 @@ class _MemberTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(member.nickname, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                    if (member.isMe) ...[
+                    Text(member.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    if (isMe) ...[
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -117,16 +123,16 @@ class _MemberTile extends StatelessWidget {
                     ],
                   ],
                 ),
-                Text(member.relation, style: const TextStyle(fontSize: 12, color: Colors.black45)),
+                Text(relation, style: const TextStyle(fontSize: 12, color: Colors.black45)),
               ],
             ),
           ),
-          if (!member.isMe)
+          if (!isMe)
             IconButton(
               icon: const Icon(Icons.more_horiz, color: Colors.black38),
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${member.nickname} 관리 메뉴는 준비 중이에요 (데모)')),
+                  SnackBar(content: Text('${member.name} 관리 메뉴는 준비 중이에요 (데모)')),
                 );
               },
             ),

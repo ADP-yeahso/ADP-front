@@ -53,9 +53,15 @@ class ProfileScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(me.nickname, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                    Text(me.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 4),
-                    Text('${appData.patientRelationLabel}의 ${me.relation}', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                    Text(
+                      '${appData.patientRelationLabel} 보호자',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                      ),
+                    ),
                   ],
                 ),
               ],

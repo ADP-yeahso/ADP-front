@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import '../models/diary.dart';
 import '../models/emotions.dart';
 import '../models/flower.dart';
+import '../models/groups.dart';
 import '../models/media.dart';
 import '../models/memory.dart';
+import '../models/patients.dart';
 import '../models/users.dart';
+import '../models/users_groups.dart';
 import 'emotion_analyzer.dart';
 
 bool isSameMonth(DateTime a, DateTime b) => a.year == b.year && a.month == b.month;
@@ -13,13 +16,6 @@ bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
 extension UserUIInfo on User {
-  bool get isMe => id == 1;
-  String get nickname => name;
-  String get relation {
-    if (id == 1) return '딸';
-    if (id == 2) return '아들';
-    return '며느리';
-  }
   Color get color {
     if (id == 1) return const Color(0xFF6B93D1);
     if (id == 2) return const Color(0xFF6FBF8B);
@@ -32,7 +28,52 @@ class AppData extends ChangeNotifier {
     _seed();
   }
 
-  final String patientRelationLabel = '아버지';
+  /// 현재 로그인한 유저 ID (데모: 실서버 연결 시 교체)
+  final int currentUserId = 1;
+
+  // ── 새 모델 더미 데이터 ─────────────────────────────
+  final Patient patient = Patient(
+    id: 1,
+    groupId: 1,
+    patientName: '고강민',
+    patientBirthDate: 19500515,
+    createdAt: DateTime(2024, 1, 1),
+  );
+
+  final Group group = Group(
+    id: 1,
+    inviteCode: 'ABCD12',
+    groupName: '고강민 가족',
+    members: 3,
+    createdAt: DateTime(2024, 1, 1),
+  );
+
+  final List<UserGroup> userGroups = [
+    UserGroup(id: 1, userId: 1, groupId: 1, patientsNickname: '아버지', joinedAt: DateTime(2024, 1, 1)),
+    UserGroup(id: 2, userId: 2, groupId: 1, patientsNickname: '아버지', joinedAt: DateTime(2024, 1, 1)),
+    UserGroup(id: 3, userId: 3, groupId: 1, patientsNickname: '시아버지', joinedAt: DateTime(2024, 1, 1)),
+  ];
+
+  /// 현재 유저가 환자를 부르는 호칭 (UserGroup.patientsNickname 기반)
+  String get patientRelationLabel {
+    try {
+      return userGroups.firstWhere((ug) => ug.userId == currentUserId).patientsNickname;
+    } catch (_) {
+      return '환자';
+    }
+  }
+
+  /// userId가 현재 로그인 유저인지 확인
+  bool isCurrentUser(int userId) => userId == currentUserId;
+
+  /// userId에 해당하는 구성원이 환자를 부르는 호칭
+  String userRelationOf(int userId) {
+    try {
+      return userGroups.firstWhere((ug) => ug.userId == userId).patientsNickname;
+    } catch (_) {
+      return '';
+    }
+  }
 
   final List<User> users = [
     User(
@@ -64,7 +105,7 @@ class AppData extends ChangeNotifier {
     ),
   ];
 
-  User get me => users.firstWhere((u) => u.isMe);
+  User get me => users.firstWhere((u) => u.id == currentUserId);
 
   User userById(int id) => users.firstWhere((u) => u.id == id, orElse: () => me);
 

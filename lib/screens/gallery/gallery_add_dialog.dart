@@ -133,7 +133,7 @@ class _GalleryAddDialogState extends State<GalleryAddDialog> {
               ),
             ],
             const SizedBox(height: 16),
-            const Text('기록 구분 연동', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            const Text('기록 구분', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: recordAssoc,
@@ -141,9 +141,14 @@ class _GalleryAddDialogState extends State<GalleryAddDialog> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               items: const [
-                DropdownMenuItem(value: 'none', child: Text('일반 (연동 없음)')),
-                DropdownMenuItem(value: 'patient', child: Text('환자 기록 연동')),
-                DropdownMenuItem(value: 'emotion', child: Text('감정 기록 연동')),
+                DropdownMenuItem(
+                  value: 'patient',
+                  child: Text('환자 기록에 연결'),
+                ),
+                DropdownMenuItem(
+                  value: 'emotion',
+                  child: Text('감정 기록에 연결'),
+                ),
               ],
               onChanged: (val) {
                 if (val != null) {

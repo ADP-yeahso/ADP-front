@@ -66,5 +66,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>기록에 사진 및 동영상을 첨부하기 위해 앨범 접근 권한이 필요합니다.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>기록에 첨부할 사진 및 동영상을 촬영하기 위해 카메라 접근 권한이 필요합니다.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>기록에 첨부할 동영상 및 음성을 녹음하기 위해 마이크 접근 권한이 필요합니다.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>기록에 오디오 파일을 첨부하기 위해 음악 라이브러리 접근 권한이 필요합니다.</string>
 </dict>
 </plist>

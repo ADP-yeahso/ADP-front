@@ -79,6 +79,7 @@ class _GardenScreenState extends State<GardenScreen> {
 
   @override
   void dispose() {
+    _webViewController.runJavaScript('if (typeof window.disposeGarden === "function") window.disposeGarden();');
     _localhostServer.stop();
     super.dispose();
   }
@@ -110,6 +111,7 @@ class _GardenScreenState extends State<GardenScreen> {
     _webViewController.runJavaScript('''
       function tryInitGarden() {
         if (typeof window.initGarden === 'function') {
+          if (typeof window.disposeGarden === 'function') window.disposeGarden();
           window.initGarden('$treeUrl', '$flowerUrl', '$diariesJson');
         } else {
           setTimeout(tryInitGarden, 100);

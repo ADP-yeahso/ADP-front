@@ -4,7 +4,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 let scene, camera, renderer, controls;
 let raycaster, mouse;
-let flowerMeshes = [];
+let flowerMeshes = []; // Not used for clones anymore, but we can keep for backwards compat or remove.
+let flowerData = [];
 let worldTree;
 let isFocusing = false;
 
@@ -162,57 +163,82 @@ window.initGarden = function (treeUrl, flowerUrl, diariesJson) {
       document.getElementById('loading').style.display = 'none';
       const baseFlower = fgltf.scene;
 
-      // (더미 꽃 추가 로직 제거: 실제 일기 개수만큼만 렌더링되도록 수정)
-
-      // Compute bounding box to debug size and offset
-      const box = new THREE.Box3().setFromObject(baseFlower);
-      const size = new THREE.Vector3();
-      box.getSize(size);
-      if (window.FlutterChannel) {
-        window.FlutterChannel.postMessage('FLOWER_SIZE: ' + size.x.toFixed(4) + ', ' + size.y.toFixed(4) + ', ' + size.z.toFixed(4));
-        window.FlutterChannel.postMessage('FLOWER_CENTER: ' + box.getCenter(new THREE.Vector3()).x.toFixed(4));
+      const numFlowers = diaries.length;
+      if (numFlowers === 0) {
+        document.getElementById('loading').style.display = 'none';
+        return;
       }
 
-      const numFlowers = diaries.length;
+      // Reset baseFlower transform before baking and bounding box calculation
+      baseFlower.position.set(0, 0, 0);
+      baseFlower.rotation.set(0, 0, 0);
+      baseFlower.scale.set(1, 1, 1);
+      baseFlower.updateMatrixWorld(true);
+
+      // 1. Calculate original BoundingBox to know the bottom offset
+      const baseBox = new THREE.Box3().setFromObject(baseFlower);
+      const baseMinY = baseBox.min.y;
+      const flowerScale = 0.2;
+
+      // 2. Create InstancedMesh for every mesh found in the GLB
+      const instancedMeshes = [];
+      baseFlower.traverse((child) => {
+        if (child.isMesh) {
+          const material = child.material ? child.material.clone() : new THREE.MeshStandardMaterial();
+          
+          // Bake local transforms (relative to baseFlower) into geometry to preserve multi-mesh layout
+          const geometry = child.geometry.clone();
+          geometry.applyMatrix4(child.matrixWorld);
+
+          const imesh = new THREE.InstancedMesh(geometry, material, numFlowers);
+          imesh.castShadow = true;
+          imesh.receiveShadow = true;
+          imesh.userData = { isFlower: true };
+          instancedMeshes.push(imesh);
+          scene.add(imesh);
+        }
+      });
+
+      // Clear data arrays
+      flowerData = [];
+      flowerMeshes = instancedMeshes;
+
+      const dummy = new THREE.Object3D();
 
       for (let i = 0; i < numFlowers; i++) {
         const diary = diaries[i];
-        const clone = baseFlower.clone();
 
-        // Random placement on the ground (반경 10 ~ 30 사이 무작위 배치)
+        // Random placement on the ground
         const angle = Math.random() * Math.PI * 2;
         const r = 10 + Math.random() * 20;
 
-        clone.position.x = Math.cos(angle) * r;
-        clone.position.z = Math.sin(angle) * r;
-        clone.position.y = 0; // 임시로 0 설정 후 BoundingBox 기반으로 바닥에 딱 맞게 자동 조정
-
-        // 새로 교체한 파일의 기본 크기에 맞춰 배율을 임시로 15배로 키움 (안 보일 경우 대비)
-        clone.scale.set(0.2, 0.2, 0.2);
-
+        dummy.position.x = Math.cos(angle) * r;
+        dummy.position.z = Math.sin(angle) * r;
+        
+        // Scale and align bottom to y=0
+        dummy.scale.set(flowerScale, flowerScale, flowerScale);
+        dummy.position.y = -(baseMinY * flowerScale);
+        
         // Face the tree
-        clone.lookAt(origin);
+        dummy.lookAt(origin);
+        dummy.updateMatrix();
 
-        clone.userData = { isFlower: true, diaryId: diary.id };
-
-        clone.traverse((child) => {
-          if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-            if (child.material) {
-              child.material = child.material.clone();
-            }
-          }
+        // Inject matrix into all instanced meshes
+        instancedMeshes.forEach(imesh => {
+          imesh.setMatrixAt(i, dummy.matrix);
         });
 
-        // BoundingBox를 계산하여 꽃의 맨 아랫부분(줄기 끝)이 정확히 바닥(y=0)에 닿도록 보정
-        clone.updateMatrixWorld(true);
-        const flowerBox = new THREE.Box3().setFromObject(clone);
-        clone.position.y += (0 - flowerBox.min.y);
-
-        scene.add(clone);
-        flowerMeshes.push(clone);
+        // Store metadata for raycasting
+        flowerData.push({
+          diaryId: diary.id,
+          position: dummy.position.clone()
+        });
       }
+
+      // Notify Three.js to update instances
+      instancedMeshes.forEach(imesh => {
+        imesh.instanceMatrix.needsUpdate = true;
+      });
     }, undefined, function (error) {
       if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_FLOWER: ' + error.message);
       document.getElementById('loading').style.display = 'none';
@@ -231,41 +257,47 @@ function onClick(event) {
 
   raycaster.setFromCamera(mouse, camera);
 
-  // We raycast against flower meshes
+  // We raycast against all objects
   const intersects = raycaster.intersectObjects(scene.children, true);
 
   for (let i = 0; i < intersects.length; i++) {
     let object = intersects[i].object;
 
-    // Walk up to find the group with userData
-    while (object && !object.userData.isFlower && !object.userData.isTree && object.parent) {
-      object = object.parent;
+    // Check if it's a flower InstancedMesh
+    if (object.userData && object.userData.isFlower) {
+      const instanceId = intersects[i].instanceId;
+      if (instanceId !== undefined) {
+        const data = flowerData[instanceId];
+        if (String(data.diaryId).startsWith('dummy')) {
+          break; // Ignore dummy clicks
+        }
+        focusOnFlower(data);
+        break; // Stop raycast loop
+      }
     }
 
-    if (object && object.userData.isFlower) {
-      if (object.userData.diaryId && String(object.userData.diaryId).startsWith('dummy')) {
-        break;
-      }
-      focusOnFlower(object);
-      break;
-    } else if (object && object.userData.isTree) {
-      focusOnTree(object);
+    // Walk up to find if it's the tree
+    let parent = object;
+    while (parent && !parent.userData?.isTree && parent.parent) {
+      parent = parent.parent;
+    }
+
+    if (parent && parent.userData?.isTree) {
+      focusOnTree(parent);
       break;
     }
   }
 }
 
-function focusOnFlower(flowerObj) {
+function focusOnFlower(fData) {
   isFocusing = true;
   controls.enabled = false;
 
-  // Calculate target camera position (zoom in slightly above and in front of flower)
-  const offset = new THREE.Vector3(0, 5, 8);
   // Transform offset to face same direction as flower to tree
-  const direction = new THREE.Vector3().subVectors(origin, flowerObj.position).normalize();
+  const direction = new THREE.Vector3().subVectors(origin, fData.position).normalize();
 
   // Just a simple heuristic: move camera closer to flower
-  const targetCamPos = flowerObj.position.clone().add(new THREE.Vector3(0, 4, 0)).sub(direction.multiplyScalar(8));
+  const targetCamPos = fData.position.clone().add(new THREE.Vector3(0, 4, 0)).sub(direction.multiplyScalar(8));
 
   // Tween Camera Position
   gsap.to(camera.position, {
@@ -282,15 +314,15 @@ function focusOnFlower(flowerObj) {
 
   // Tween Controls Target (LookAt)
   gsap.to(controls.target, {
-    x: flowerObj.position.x,
-    y: flowerObj.position.y,
-    z: flowerObj.position.z,
+    x: fData.position.x,
+    y: fData.position.y,
+    z: fData.position.z,
     duration: 1.5,
     ease: "power3.inOut",
     onComplete: () => {
       // Notify Flutter
       if (window.FlutterChannel) {
-        window.FlutterChannel.postMessage(flowerObj.userData.diaryId);
+        window.FlutterChannel.postMessage(fData.diaryId);
       }
     }
   });
@@ -355,6 +387,49 @@ function animate() {
   requestAnimationFrame(animate);
   controls.update();
   renderer.render(scene, camera);
+}
+
+window.disposeGarden = function() {
+  if (worldTree) {
+    scene.remove(worldTree);
+    worldTree.traverse((child) => {
+      if (child.isMesh) {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => {
+               if(m.map) m.map.dispose();
+               m.dispose();
+            });
+          } else {
+            if(child.material.map) child.material.map.dispose();
+            child.material.dispose();
+          }
+        }
+      }
+    });
+    worldTree = null;
+  }
+
+  if (flowerMeshes && flowerMeshes.length > 0) {
+    flowerMeshes.forEach(imesh => {
+      scene.remove(imesh);
+      if (imesh.geometry) imesh.geometry.dispose();
+      if (imesh.material) {
+          if (Array.isArray(imesh.material)) {
+            imesh.material.forEach(m => {
+               if(m.map) m.map.dispose();
+               m.dispose();
+            });
+          } else {
+            if(imesh.material.map) imesh.material.map.dispose();
+            imesh.material.dispose();
+          }
+      }
+    });
+    flowerMeshes = [];
+    flowerData = [];
+  }
 }
 
 // --- Local Simulator Test Code ---

@@ -350,6 +350,190 @@ class AppData extends ChangeNotifier {
     return entries.first.flowerType.emotionId;
   }
 
+  void _seedEmotionAnalysisTestData() {
+    final today = DateTime.now();
+
+    DateTime daysAgo(int days) {
+      final date = today.subtract(Duration(days: days));
+
+      return DateTime(date.year, date.month, date.day);
+    }
+
+    DateTime monthsAgo(int months, int day) {
+      final firstDay = DateTime(today.year, today.month - months, 1);
+
+      final lastDay = DateTime(firstDay.year, firstDay.month + 1, 0).day;
+
+      final safeDay = day > lastDay ? lastDay : day;
+
+      return DateTime(firstDay.year, firstDay.month, safeDay);
+    }
+
+    // ── 최근 1주 테스트 데이터 ──────────────────────
+
+    addDiary(
+      date: daysAgo(0),
+      content: '오늘은 마음이 편안하고 괜찮았다. 잠시 쉴 수 있어서 다행이었다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: daysAgo(1),
+      content: '계속 같은 설명을 반복해야 해서 답답하고 짜증이 났다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: daysAgo(2),
+      content: '오늘은 많이 지치고 속상해서 눈물이 날 것 같았다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: daysAgo(3),
+      content: '가족이 도와줘서 고맙고 다행이라는 생각이 들었다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: daysAgo(4),
+      content: '어제 화를 낸 것이 미안하고 계속 후회가 된다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: daysAgo(5),
+      content: '오늘은 환하게 웃으셔서 기쁘고 행복했다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: daysAgo(6),
+      content: '오늘 하루는 비교적 차분하고 평온하게 지나갔다.',
+      isPublic: false,
+    );
+
+    // ── 지난달 테스트 데이터 ────────────────────────
+
+    addDiary(
+      date: monthsAgo(1, 3),
+      content: '병원에 다녀온 뒤 많이 지치고 힘들었다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(1, 9),
+      content: '내가 조금 더 잘했어야 했다는 생각에 미안하고 후회됐다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(1, 15),
+      content: '오랜만에 함께 웃어서 고맙고 행복한 하루였다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(1, 21),
+      content: '같은 질문이 반복되어 답답하고 짜증이 났다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(1, 27),
+      content: '오늘은 별일 없이 편안하고 괜찮았다.',
+      isPublic: false,
+    );
+
+    // ── 최근 6개월 테스트 데이터 ────────────────────
+
+    addDiary(
+      date: monthsAgo(2, 8),
+      content: '오늘은 속상하고 외로운 마음이 크게 느껴졌다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(2, 20),
+      content: '잠시 웃어 주셔서 기쁘고 감사했다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(3, 6),
+      content: '돌봄이 뜻대로 되지 않아 답답하고 화가 났다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(3, 18),
+      content: '오늘은 마음이 차분하고 평온했다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(4, 10),
+      content: '내가 짜증을 낸 것 같아 미안하고 자책했다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(4, 23),
+      content: '가족과 함께해서 고맙고 행복한 시간이었다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(5, 7),
+      content: '너무 지치고 힘들어서 눈물이 났다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(5, 19),
+      content: '오늘은 비교적 편안하고 괜찮은 하루였다.',
+      isPublic: false,
+    );
+
+    // ── 1년 그래프 테스트용 데이터 ─────────────────
+
+    addDiary(
+      date: monthsAgo(6, 12),
+      content: '오랜만에 웃는 모습을 보니 기쁘고 고마웠다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(7, 14),
+      content: '계속 반복되는 상황이 답답하고 짜증이 났다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(8, 16),
+      content: '오늘은 많이 지치고 외롭고 슬펐다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(9, 18),
+      content: '내가 잘못한 것 같아 미안하고 후회가 됐다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(10, 20),
+      content: '평온하고 차분하게 하루를 마무리했다.',
+      isPublic: false,
+    );
+
+    addDiary(
+      date: monthsAgo(11, 22),
+      content: '함께 웃을 수 있어서 기쁘고 행복했다.',
+      isPublic: false,
+    );
+  }
+
   void _seed() {
     final today = DateTime.now();
     DateTime d(int monthsAgo, int day) =>
@@ -388,5 +572,6 @@ class AppData extends ChangeNotifier {
       isPublic: false,
     );
     addDiary(date: d(0, 5), content: '오늘은 그냥 편안하고 괜찮은 하루였다.');
+    _seedEmotionAnalysisTestData();
   }
 }

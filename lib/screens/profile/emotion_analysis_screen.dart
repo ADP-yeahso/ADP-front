@@ -473,23 +473,20 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
 
   Color _emotionColor(Emotion emotion) {
     switch (emotion.name.toLowerCase()) {
-      case 'anger':
-        return const Color(0xFFEF6464);
+      case 'calm':
+        return const Color(0xFF6FBF8B); // 초록
 
-      case 'anxiety':
-        return const Color(0xFF5E9ED6);
+      case 'joy':
+        return const Color(0xFFF5C34D); // 노랑
 
       case 'sadness':
-        return const Color(0xFF8B7CC6);
+        return const Color(0xFF8B7CC6); // 보라
+
+      case 'anger':
+        return const Color(0xFFEF6464); // 빨강
 
       case 'guilt':
-        return const Color(0xFFB9B9B9);
-
-      case 'gratitude':
-        return const Color(0xFFF5C34D);
-
-      case 'affection':
-        return const Color(0xFFF2A7B8);
+        return const Color(0xFF6B93D1); // 파랑
 
       default:
         return const Color(0xFF9E9E9E);

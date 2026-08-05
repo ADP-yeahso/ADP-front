@@ -8,6 +8,7 @@ import 'profile_edit_screen.dart';
 import 'patient_info_screen.dart';
 import 'app_settings_screen.dart';
 import '../auth/login_screen.dart';
+import 'emotion_analysis_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -151,6 +152,18 @@ class ProfileScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const AppSettingsScreen()),
+              );
+            },
+          ),
+          _SettingsTile(
+            icon: Icons.bar_chart_rounded,
+            label: '감정 분석',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const EmotionAnalysisScreen(),
+                ),
               );
             },
           ),

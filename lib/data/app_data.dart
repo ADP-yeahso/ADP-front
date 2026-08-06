@@ -82,39 +82,20 @@ class AppData extends ChangeNotifier {
     required String title, // Used as mock UI title if needed
     required String content,
     List<Media> mediaList = const [],
-    bool hasPhoto = false,
     bool isPublic = true,
   }) {
-    List<Media> targetMedia = mediaList;
-    if (targetMedia.isEmpty && hasPhoto) {
-      targetMedia = [
-        Media(
-          id: _nextId(),
-          memoryId: null,
-          diaryId: null,
-          fileUrl: 'dummy.jpg',
-          fileType: 'image',
-          duration: 0,
-          sortOrder: 1,
-          createdAt: DateTime.now(),
-        ),
-      ];
-    }
-
     // 메모리 저장 시 각 미디어의 연관 ID 세팅
     final memoryId = _nextId();
-    final updatedMedia = targetMedia
-        .map((m) => Media(
-              id: m.id,
-              memoryId: memoryId,
-              diaryId: null,
-              fileUrl: m.fileUrl,
-              fileType: m.fileType,
-              duration: m.duration,
-              sortOrder: m.sortOrder,
-              createdAt: m.createdAt,
-            ))
-        .toList();
+    final updatedMedia = mediaList.map((m) => Media(
+      id: m.id,
+      memoryId: memoryId,
+      diaryId: null,
+      fileUrl: m.fileUrl,
+      fileType: m.fileType,
+      duration: m.duration,
+      sortOrder: m.sortOrder,
+      createdAt: m.createdAt,
+    )).toList();
 
     memories.add(Memory(
       id: memoryId,
@@ -144,21 +125,19 @@ class AppData extends ChangeNotifier {
       colorCode: '#000000',
       sentence: 'Mock sentence',
     );
-
+    
     final diaryId = _nextId();
-    final updatedMedia = mediaList
-        .map((m) => Media(
-              id: m.id,
-              memoryId: null,
-              diaryId: diaryId,
-              fileUrl: m.fileUrl,
-              fileType: m.fileType,
-              duration: m.duration,
-              sortOrder: m.sortOrder,
-              createdAt: m.createdAt,
-            ))
-        .toList();
-
+    final updatedMedia = mediaList.map((m) => Media(
+      id: m.id,
+      memoryId: null,
+      diaryId: diaryId,
+      fileUrl: m.fileUrl,
+      fileType: m.fileType,
+      duration: m.duration,
+      sortOrder: m.sortOrder,
+      createdAt: m.createdAt,
+    )).toList();
+    
     final entry = Diary(
       id: diaryId,
       userId: me.id,
@@ -169,7 +148,7 @@ class AppData extends ChangeNotifier {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-
+    
     diaries.add(entry);
     if (isPublic) {
       _publicDiaryIds.add(entry.id);
@@ -254,16 +233,7 @@ class AppData extends ChangeNotifier {
       title: '함께 본 옛날 사진',
       content: '$patientRelationLabel과 함께 젊은 시절 사진을 꺼내 보았다. 잠시 웃으셨다.',
       mediaList: [
-        Media(
-          id: 0,
-          memoryId: null,
-          diaryId: null,
-          fileUrl: 'dummy.jpg',
-          fileType: 'image',
-          duration: 0,
-          sortOrder: 1,
-          createdAt: DateTime.now(),
-        ),
+        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
       ],
     );
     addMemory(
@@ -276,16 +246,7 @@ class AppData extends ChangeNotifier {
       title: '산책',
       content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
       mediaList: [
-        Media(
-          id: 0,
-          memoryId: null,
-          diaryId: null,
-          fileUrl: 'dummy.jpg',
-          fileType: 'image',
-          duration: 0,
-          sortOrder: 1,
-          createdAt: DateTime.now(),
-        ),
+        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
       ],
     );
 

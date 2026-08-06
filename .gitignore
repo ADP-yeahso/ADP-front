@@ -12,6 +12,10 @@
 .swiftpm/
 migrate_working_dir/
 
+# Xcode shared/user settings
+**/xcshareddata/
+**/xcuserdata/
+
 # IntelliJ related
 *.iml
 *.ipr

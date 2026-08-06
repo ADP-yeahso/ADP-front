@@ -1,9 +1,10 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
 import '../../models/media.dart';
-import 'gallery_add_dialog.dart';
 import 'gallery_filter_panel.dart';
 import 'gallery_media_tile.dart';
 
@@ -17,6 +18,7 @@ class GalleryScreen extends StatefulWidget {
 class _GalleryScreenState extends State<GalleryScreen> {
   final ScrollController _galleryScrollController =
       ScrollController();
+  final ImagePicker _picker = ImagePicker();
 
   // 선택된 기록 구분
   final Set<String> _selectedRecordTypes = {
@@ -37,9 +39,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   // 사용자가 갤러리에서 직접 추가한 미디어
   final List<Media> _customMediaList = [];
-
-  // 직접 추가 미디어의 임시 ID
-  int _customIdCounter = 5000;
 
   // 검색 조건 초기화
   void _resetFilters() {
@@ -64,51 +63,187 @@ class _GalleryScreenState extends State<GalleryScreen> {
     });
   }
 
-  // 미디어 추가 다이얼로그 표시
-  void _showAddMediaDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return GalleryAddDialog(
-          onMediaAdded: (newMedia, recordAssoc) {
-            final mediaWithId = Media(
-              id: _customIdCounter++,
-              memoryId: newMedia.memoryId,
-              diaryId: newMedia.diaryId,
-              fileUrl: newMedia.fileUrl,
-              fileType: newMedia.fileType,
-              duration: newMedia.duration,
-              sortOrder: newMedia.sortOrder,
+  // 선택된 미디어 공통 저장 및 처리
+  void _saveSelectedMedia(List<Media> selectedMedia, String mediaTypeText) {
+    if (!mounted || selectedMedia.isEmpty) return;
+    try {
+      context.read<AppData>().addMemory(
+        date: DateTime.now(),
+        title: '갤러리 직접 추가',
+        content: '',
+        mediaList: selectedMedia,
+        isPublic: true,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$mediaTypeText 파일이 추가되었습니다.'),
+          backgroundColor: Theme.of(context).primaryColor,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('파일 추가 중 오류가 발생했습니다.'),
+        ),
+      );
+    }
+  }
+
+  // 사진 다중 선택
+  Future<void> _pickImages() async {
+    final List<Media> selectedMedia = [];
+    try {
+      final List<XFile> images = await _picker.pickMultiImage();
+      if (images.isNotEmpty) {
+        for (final image in images) {
+          selectedMedia.add(
+            Media(
+              id: DateTime.now().microsecondsSinceEpoch,
+              memoryId: null,
+              diaryId: null,
+              fileUrl: image.path,
+              fileType: 'image',
+              duration: 0,
+              sortOrder: selectedMedia.length + 1,
               createdAt: DateTime.now(),
-            );
-
-            setState(() {
-              _customMediaList.insert(
-                0,
-                mediaWithId,
-              );
-            });
-
-            final String mediaTypeText;
-
-            if (newMedia.fileType == 'image') {
-              mediaTypeText = '사진';
-            } else if (newMedia.fileType == 'video') {
-              mediaTypeText = '동영상';
-            } else {
-              mediaTypeText = '음성';
-            }
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '$mediaTypeText 파일이 추가되었습니다.',
-                ),
-                backgroundColor:
-                    Theme.of(context).primaryColor,
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      final result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: true);
+      if (result != null && result.files.isNotEmpty) {
+        for (final file in result.files) {
+          if (file.path != null) {
+            selectedMedia.add(
+              Media(
+                id: DateTime.now().microsecondsSinceEpoch,
+                memoryId: null,
+                diaryId: null,
+                fileUrl: file.path!,
+                fileType: 'image',
+                duration: 0,
+                sortOrder: selectedMedia.length + 1,
+                createdAt: DateTime.now(),
               ),
             );
-          },
+          }
+        }
+      }
+    }
+    _saveSelectedMedia(selectedMedia, '사진');
+  }
+
+  // 동영상 선택
+  Future<void> _pickVideo() async {
+    final List<Media> selectedMedia = [];
+    try {
+      final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
+      if (video != null) {
+        selectedMedia.add(
+          Media(
+            id: DateTime.now().microsecondsSinceEpoch,
+            memoryId: null,
+            diaryId: null,
+            fileUrl: video.path,
+            fileType: 'video',
+            duration: 0,
+            sortOrder: 1,
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+    } catch (_) {
+      final result = await FilePicker.platform.pickFiles(type: FileType.video);
+      if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
+        selectedMedia.add(
+          Media(
+            id: DateTime.now().microsecondsSinceEpoch,
+            memoryId: null,
+            diaryId: null,
+            fileUrl: result.files.single.path!,
+            fileType: 'video',
+            duration: 0,
+            sortOrder: 1,
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+    }
+    _saveSelectedMedia(selectedMedia, '동영상');
+  }
+
+  // 음성 선택
+  Future<void> _pickAudio() async {
+    final List<Media> selectedMedia = [];
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['mp3', 'aac', 'wav', 'm4a', 'flac'],
+        allowMultiple: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        for (final file in result.files) {
+          if (file.path != null) {
+            selectedMedia.add(
+              Media(
+                id: DateTime.now().microsecondsSinceEpoch,
+                memoryId: null,
+                diaryId: null,
+                fileUrl: file.path!,
+                fileType: 'audio',
+                duration: 0,
+                sortOrder: selectedMedia.length + 1,
+                createdAt: DateTime.now(),
+              ),
+            );
+          }
+        }
+      }
+    } catch (_) {}
+    _saveSelectedMedia(selectedMedia, '음성');
+  }
+
+  // 미디어 추가 바텀시트 표시
+  void _showAddMediaDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('사진 추가'),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  _pickImages();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.video_library_outlined),
+                title: const Text('동영상 추가'),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  _pickVideo();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.audiotrack_outlined),
+                title: const Text('음성 추가'),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  _pickAudio();
+                },
+              ),
+            ],
+          ),
         );
       },
     );

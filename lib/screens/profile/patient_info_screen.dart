@@ -21,9 +21,12 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   bool _initialized = false;
 
   static const List<String> _relationOptions = [
+    '아버지',
+    '어머니',
+    '남편',
     '아내',
-    '아들',
-    '딸',
+    '할아버지',
+    '할머니',
     '기타',
   ];
 
@@ -39,16 +42,11 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     final patient = appData.patient;
     final currentRelation = appData.patientRelationLabel;
 
-    _patientNameController = TextEditingController(
-      text: patient.patientName,
-    );
+    _patientNameController = TextEditingController(text: patient.patientName);
 
-    _selectedBirthDate = _dateTimeFromInt(
-      patient.patientBirthDate,
-    );
+    _selectedBirthDate = _dateTimeFromInt(patient.patientBirthDate);
 
-    if (_relationOptions.contains(currentRelation) &&
-        currentRelation != '기타') {
+    if (_relationOptions.contains(currentRelation) && currentRelation != '기타') {
       _selectedRelation = currentRelation;
       _customRelationController = TextEditingController();
     } else {
@@ -79,9 +77,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     try {
       final date = DateTime(year, month, day);
 
-      if (date.year != year ||
-          date.month != month ||
-          date.day != day) {
+      if (date.year != year || date.month != month || date.day != day) {
         return null;
       }
 
@@ -130,11 +126,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     }
 
     if (_selectedBirthDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('생년월일을 선택해 주세요.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('생년월일을 선택해 주세요.')));
       return;
     }
 
@@ -143,16 +137,14 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
         : _selectedRelation;
 
     context.read<AppData>().updatePatientInfo(
-          patientName: _patientNameController.text.trim(),
-          patientBirthDate: _dateTimeToInt(_selectedBirthDate!),
-          patientsNickname: relation,
-        );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('환자 정보가 저장되었어요.'),
-      ),
+      patientName: _patientNameController.text.trim(),
+      patientBirthDate: _dateTimeToInt(_selectedBirthDate!),
+      patientsNickname: relation,
     );
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('환자 정보가 저장되었어요.')));
 
     Navigator.pop(context);
   }
@@ -167,9 +159,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('환자 정보 보기'),
-      ),
+      appBar: AppBar(title: const Text('환자 정보 보기')),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -178,18 +168,12 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
             children: [
               const Text(
                 '환자 기본 정보',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               const Text(
                 '환자의 정보와 내가 부르는 호칭을 수정할 수 있어요.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.black54,
-                ),
+                style: TextStyle(fontSize: 13, color: Colors.black54),
               ),
               const SizedBox(height: 24),
               TextFormField(
@@ -239,18 +223,12 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
               const SizedBox(height: 24),
               const Text(
                 '환자를 부르는 호칭',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               const Text(
                 '설정 화면과 기록 문구에 사용되는 호칭이에요.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.black54,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.black54),
               ),
               const SizedBox(height: 10),
               for (final relation in _relationOptions)

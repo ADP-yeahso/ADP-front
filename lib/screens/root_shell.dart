@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../data/garden_nav_controller.dart';
 import 'calendar/calendar_screen.dart';
-import 'family/family_share_screen.dart';
 import 'garden/garden_screen.dart';
 import 'profile/profile_screen.dart';
 import 'record/record_choice_sheet.dart';
+import 'gallery/gallery_screen.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -21,7 +21,7 @@ class _RootShellState extends State<RootShell> {
   static const _screens = [
     GardenScreen(),
     CalendarScreen(),
-    FamilyShareScreen(),
+    GalleryScreen(),
     ProfileScreen(),
   ];
 

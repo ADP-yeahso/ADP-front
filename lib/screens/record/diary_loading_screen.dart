@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/media.dart';
+import '../../models/emotions.dart';
 import 'diary_result_screen.dart';
 
 class DiaryLoadingScreen extends StatefulWidget {
@@ -49,12 +50,17 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> with SingleTick
   Future<void> _startAnalysis() async {
     await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
+    
+    // AI 모델 연동 전 임시로 첫 번째 감정을 사용 (또는 랜덤)
+    final mockEmotion = EmotionValues.values.first;
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => DiaryResultScreen(
           date: widget.date,
           content: widget.content,
+          emotion: mockEmotion,
           isPublic: widget.isPublic,
           mediaList: widget.mediaList,
         ),

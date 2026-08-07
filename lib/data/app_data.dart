@@ -114,13 +114,13 @@ class AppData extends ChangeNotifier {
   Diary addDiary({
     required DateTime date,
     required String content,
+    required Emotion emotion,
     List<Media> mediaList = const [],
     bool isPublic = true,
   }) {
-    final analysis = analyzeEmotion(content);
     final flower = Flower(
-      id: analysis.primary.id,
-      emotionId: analysis.primary,
+      id: emotion.id,
+      emotionId: emotion,
       flowerName: 'Mock Flower',
       colorCode: '#000000',
       sentence: 'Mock sentence',
@@ -276,20 +276,11 @@ class AppData extends ChangeNotifier {
       ],
     );
 
-    addDiary(date: d(2, 8), content: '오늘은 유난히 지치고 눈물이 났다. 혼자 감당하기 힘든 하루였다.');
-    addDiary(date: d(1, 15), content: '$patientRelationLabel이 나를 못 알아봐서 속상하고 화가 났다.');
-    addDiary(
-      date: d(1, 22),
-      content: '$patientRelationLabel이 옛날 이야기를 하며 웃어서 오늘은 참 고맙고 행복했다.',
-    );
-    addDiary(
-      date: d(0, 2),
-      content: '어제 짜증을 낸 것 같아 미안하고 후회된다. 더 잘해드리고 싶다.',
-      isPublic: false,
-    );
-    addDiary(date: d(0, 5), content: '오늘은 그냥 편안하고 괜찮은 하루였다.');
-    addDiary(date: d(0, 10), content: '가족들과 함께 맛있는 저녁을 먹어서 기분이 정말 좋았다.');
-    addDiary(date: d(0, 15), content: '비가 와서 조금 우울했지만, 책을 읽으며 마음을 달랬다.');
-    addDiary(date: d(0, 20), content: '내일은 더 좋은 하루가 될 거라고 믿으며 푹 자야겠다.');
+    addDiary(date: d(0, 2), content: '오늘은 정말 화가 나고 짜증나는 하루였다. 너무 답답하다.', emotion: EmotionValues.anger);
+    addDiary(date: d(0, 5), content: '내일 있을 일이 자꾸 걱정되고 불안해서 초조하다.', emotion: EmotionValues.anxiety);
+    addDiary(date: d(0, 8), content: '문득 옛날 생각이 나서 너무 외롭고 슬프고 눈물이 났다.', emotion: EmotionValues.sadness);
+    addDiary(date: d(0, 11), content: '내가 잘못한 것 같아 너무 미안하고 죄책감이 든다.', emotion: EmotionValues.guilt);
+    addDiary(date: d(0, 14), content: '오늘 나를 도와준 친구에게 정말 고맙고 감사하다. 다행이다.', emotion: EmotionValues.gratitude);
+    addDiary(date: d(0, 17), content: '가족들과 함께 시간을 보내며 깊은 애정과 사랑을 느꼈다.', emotion: EmotionValues.affection);
   }
 }

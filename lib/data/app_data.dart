@@ -6,6 +6,7 @@ import '../models/flower.dart';
 import '../models/media.dart';
 import '../models/memory.dart';
 import '../models/users.dart';
+import '../utils/emotion_utils.dart';
 import 'emotion_analyzer.dart';
 
 bool isSameMonth(DateTime a, DateTime b) => a.year == b.year && a.month == b.month;

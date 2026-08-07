@@ -1,6 +1,8 @@
-# care_garden
+# 모아온
 
-A new Flutter project.
+경희대학교 예술적인 소프트웨어 (이하 예소)
+
+ADP 팀 프로젝트
 
 ## Getting Started
 

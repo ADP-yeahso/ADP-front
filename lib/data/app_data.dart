@@ -81,19 +81,28 @@ class AppData extends ChangeNotifier {
     required DateTime date,
     required String title, // Used as mock UI title if needed
     required String content,
-    bool hasPhoto = false,
+    List<Media> mediaList = const [],
     bool isPublic = true,
   }) {
-    List<Media> media = [];
-    if (hasPhoto) {
-      media.add(Media(id: _nextId(), memoryId: _idCounter, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now()));
-    }
+    // 메모리 저장 시 각 미디어의 연관 ID 세팅
+    final memoryId = _nextId();
+    final updatedMedia = mediaList.map((m) => Media(
+      id: m.id,
+      memoryId: memoryId,
+      diaryId: null,
+      fileUrl: m.fileUrl,
+      fileType: m.fileType,
+      duration: m.duration,
+      sortOrder: m.sortOrder,
+      createdAt: m.createdAt,
+    )).toList();
+
     memories.add(Memory(
-      id: _nextId(),
+      id: memoryId,
       patientId: 1,
       userId: me.id,
       contextText: content,
-      mediaList: media,
+      mediaList: updatedMedia,
       isPublic: isPublic,
       recordDate: date,
       createdAt: DateTime.now(),
@@ -105,6 +114,7 @@ class AppData extends ChangeNotifier {
   Diary addDiary({
     required DateTime date,
     required String content,
+    List<Media> mediaList = const [],
     bool isPublic = true,
   }) {
     final analysis = analyzeEmotion(content);
@@ -116,12 +126,24 @@ class AppData extends ChangeNotifier {
       sentence: 'Mock sentence',
     );
     
+    final diaryId = _nextId();
+    final updatedMedia = mediaList.map((m) => Media(
+      id: m.id,
+      memoryId: null,
+      diaryId: diaryId,
+      fileUrl: m.fileUrl,
+      fileType: m.fileType,
+      duration: m.duration,
+      sortOrder: m.sortOrder,
+      createdAt: m.createdAt,
+    )).toList();
+    
     final entry = Diary(
-      id: _nextId(),
+      id: diaryId,
       userId: me.id,
       context: content,
       flowerType: flower,
-      mediaList: [],
+      mediaList: updatedMedia,
       recordDate: date,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -210,7 +232,9 @@ class AppData extends ChangeNotifier {
       date: d(2, 6),
       title: '함께 본 옛날 사진',
       content: '$patientRelationLabel과 함께 젊은 시절 사진을 꺼내 보았다. 잠시 웃으셨다.',
-      hasPhoto: true,
+      mediaList: [
+        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+      ],
     );
     addMemory(
       date: d(1, 12),
@@ -221,7 +245,9 @@ class AppData extends ChangeNotifier {
       date: d(0, 3),
       title: '산책',
       content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
-      hasPhoto: true,
+      mediaList: [
+        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+      ],
     );
 
     addDiary(date: d(2, 8), content: '오늘은 유난히 지치고 눈물이 났다. 혼자 감당하기 힘든 하루였다.');

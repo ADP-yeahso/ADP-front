@@ -3,7 +3,7 @@ class Media {
   final int? memoryId;
   final int? diaryId;
   final String fileUrl;
-  final String fileType; // 'image' 또는 'video'
+  final String fileType; // 'image', 'video' 또는 'audio'
   final int? duration; // 비디오의 경우 duration을 저장, 이미지의 경우 0으로 설정
   final int sortOrder; // 미디어의 정렬 순서를 나타내는 필드
   final DateTime createdAt;

@@ -69,12 +69,15 @@ class ImageAssetButton extends StatelessWidget {
                     Icon(icon, color: isFilled ? Colors.white : fallbackColor),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    fallbackText,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: isFilled ? Colors.white : fallbackColor,
+                  Flexible(
+                    child: Text(
+                      fallbackText,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isFilled ? Colors.white : fallbackColor,
+                      ),
                     ),
                   ),
                 ],

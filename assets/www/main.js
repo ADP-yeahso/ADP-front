@@ -137,9 +137,10 @@ function onWindowResize() {
 }
 
 // Function called from Flutter to initialize models
-window.initGarden = function (treeUrl, flowerUrl, diariesJson) {
+window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
   document.getElementById('loading').style.display = 'block';
   let diaries = JSON.parse(diariesJson);
+  let flowerUrlsMap = JSON.parse(flowerUrlsMapJson);
   const loader = new GLTFLoader();
 
   // Load Tree
@@ -158,91 +159,119 @@ window.initGarden = function (treeUrl, flowerUrl, diariesJson) {
     worldTree.scale.set(1.5, 1.5, 1.5);
     scene.add(worldTree);
 
-    // Load Flower
-    loader.load(flowerUrl, (fgltf) => {
+    const numFlowers = diaries.length;
+    if (numFlowers === 0) {
       document.getElementById('loading').style.display = 'none';
-      const baseFlower = fgltf.scene;
+      return;
+    }
 
-      const numFlowers = diaries.length;
-      if (numFlowers === 0) {
-        document.getElementById('loading').style.display = 'none';
-        return;
+    // Determine required flower URLs and mapping for diaries
+    let diariesByUrl = {};
+    
+    diaries.forEach(diary => {
+      let emotion = diary.emotion ? diary.emotion.toLowerCase() : 'joy';
+      let urls = flowerUrlsMap[emotion];
+      if (!urls || urls.length === 0) {
+        urls = flowerUrlsMap['joy']; // fallback
       }
+      // Stable random using diary.id
+      let urlIndex = diary.id % urls.length;
+      let url = urls[urlIndex];
+      
+      if (!diariesByUrl[url]) {
+        diariesByUrl[url] = [];
+      }
+      diariesByUrl[url].push(diary);
+    });
 
-      // Reset baseFlower transform before baking and bounding box calculation
-      baseFlower.position.set(0, 0, 0);
-      baseFlower.rotation.set(0, 0, 0);
-      baseFlower.scale.set(1, 1, 1);
-      baseFlower.updateMatrixWorld(true);
-
-      // 1. Calculate original BoundingBox to know the bottom offset
-      const baseBox = new THREE.Box3().setFromObject(baseFlower);
-      const baseMinY = baseBox.min.y;
-      const flowerScale = 0.2;
-
-      // 2. Create InstancedMesh for every mesh found in the GLB
-      const instancedMeshes = [];
-      baseFlower.traverse((child) => {
-        if (child.isMesh) {
-          const material = child.material ? child.material.clone() : new THREE.MeshStandardMaterial();
-          
-          // Bake local transforms (relative to baseFlower) into geometry to preserve multi-mesh layout
-          const geometry = child.geometry.clone();
-          geometry.applyMatrix4(child.matrixWorld);
-
-          const imesh = new THREE.InstancedMesh(geometry, material, numFlowers);
-          imesh.castShadow = true;
-          imesh.receiveShadow = true;
-          imesh.userData = { isFlower: true };
-          instancedMeshes.push(imesh);
-          scene.add(imesh);
-        }
+    let uniqueUrls = Object.keys(diariesByUrl);
+    
+    // Load all required flowers in parallel
+    let loadPromises = uniqueUrls.map(url => {
+      return new Promise((resolve, reject) => {
+        loader.load(url, (fgltf) => {
+           resolve({ url: url, gltf: fgltf });
+        }, undefined, (error) => {
+           console.error("Error loading flower: " + url, error);
+           reject(error);
+        });
       });
+    });
 
-      // Clear data arrays
+    Promise.all(loadPromises).then(results => {
+      document.getElementById('loading').style.display = 'none';
+      
       flowerData = [];
-      flowerMeshes = instancedMeshes;
-
+      flowerMeshes = []; // array of InstancedMeshes
+      
+      const flowerScale = 0.2;
       const dummy = new THREE.Object3D();
 
-      for (let i = 0; i < numFlowers; i++) {
-        const diary = diaries[i];
+      results.forEach(result => {
+        const url = result.url;
+        const baseFlower = result.gltf.scene;
+        const assignedDiaries = diariesByUrl[url];
+        const numInstances = assignedDiaries.length;
 
-        // Random placement on the ground
-        const angle = Math.random() * Math.PI * 2;
-        const r = 10 + Math.random() * 20;
+        baseFlower.position.set(0, 0, 0);
+        baseFlower.rotation.set(0, 0, 0);
+        baseFlower.scale.set(1, 1, 1);
+        baseFlower.updateMatrixWorld(true);
 
-        dummy.position.x = Math.cos(angle) * r;
-        dummy.position.z = Math.sin(angle) * r;
-        
-        // Scale and align bottom to y=0
-        dummy.scale.set(flowerScale, flowerScale, flowerScale);
-        dummy.position.y = -(baseMinY * flowerScale);
-        
-        // Face the tree
-        dummy.lookAt(origin);
-        dummy.updateMatrix();
+        const baseBox = new THREE.Box3().setFromObject(baseFlower);
+        const baseMinY = baseBox.min.y;
 
-        // Inject matrix into all instanced meshes
-        instancedMeshes.forEach(imesh => {
-          imesh.setMatrixAt(i, dummy.matrix);
+        const typeInstancedMeshes = [];
+        baseFlower.traverse((child) => {
+          if (child.isMesh) {
+            const material = child.material ? child.material.clone() : new THREE.MeshStandardMaterial();
+            const geometry = child.geometry.clone();
+            geometry.applyMatrix4(child.matrixWorld);
+
+            const imesh = new THREE.InstancedMesh(geometry, material, numInstances);
+            imesh.castShadow = true;
+            imesh.receiveShadow = true;
+            imesh.userData = { isFlower: true, diaryIds: [] };
+            
+            // Add instance id to diary id mapping inside userData if we needed specific raycasting index mapping
+            // But raycasting logic uses instanceId, so flowerData array mapping must align with instanceId
+            typeInstancedMeshes.push(imesh);
+            flowerMeshes.push(imesh);
+            scene.add(imesh);
+          }
         });
 
-        // Store metadata for raycasting
-        flowerData.push({
-          diaryId: diary.id,
-          position: dummy.position.clone()
-        });
-      }
+        for (let i = 0; i < numInstances; i++) {
+          const diary = assignedDiaries[i];
+          const angle = Math.random() * Math.PI * 2;
+          const r = 10 + Math.random() * 20;
 
-      // Notify Three.js to update instances
-      instancedMeshes.forEach(imesh => {
-        imesh.instanceMatrix.needsUpdate = true;
+          dummy.position.x = Math.cos(angle) * r;
+          dummy.position.z = Math.sin(angle) * r;
+          dummy.scale.set(flowerScale, flowerScale, flowerScale);
+          dummy.position.y = -(baseMinY * flowerScale);
+          dummy.lookAt(origin);
+          dummy.updateMatrix();
+
+          typeInstancedMeshes.forEach(imesh => {
+            imesh.setMatrixAt(i, dummy.matrix);
+            // Since raycaster hits a specific InstancedMesh, we need to map imesh + instanceId -> diary.
+            // Currently flowerData is a flat array, but raycaster uses instanceId (0 to numInstances-1).
+            // To fix raycasting with multiple InstancedMeshes, we must store a mapping per imesh!
+            if (!imesh.userData.diaryMapping) imesh.userData.diaryMapping = [];
+            imesh.userData.diaryMapping[i] = { diaryId: diary.id, position: dummy.position.clone() };
+          });
+        }
+
+        typeInstancedMeshes.forEach(imesh => {
+          imesh.instanceMatrix.needsUpdate = true;
+        });
       });
-    }, undefined, function (error) {
-      if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_FLOWER: ' + error.message);
+    }).catch(error => {
+      if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_FLOWER_BATCH: ' + error.message);
       document.getElementById('loading').style.display = 'none';
     });
+
   }, undefined, function (error) {
     if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_TREE: ' + error.message);
     document.getElementById('loading').style.display = 'none';
@@ -267,12 +296,14 @@ function onClick(event) {
     if (object.userData && object.userData.isFlower) {
       const instanceId = intersects[i].instanceId;
       if (instanceId !== undefined) {
-        const data = flowerData[instanceId];
-        if (String(data.diaryId).startsWith('dummy')) {
-          break; // Ignore dummy clicks
+        const data = object.userData.diaryMapping ? object.userData.diaryMapping[instanceId] : undefined;
+        if (data) {
+          if (String(data.diaryId).startsWith('dummy')) {
+            break; // Ignore dummy clicks
+          }
+          focusOnFlower(data);
+          break; // Stop raycast loop
         }
-        focusOnFlower(data);
-        break; // Stop raycast loop
       }
     }
 
@@ -438,11 +469,21 @@ setTimeout(() => {
   if (!window.FlutterChannel) {
     console.log("Running in local simulator. Initializing with mid flower...");
     const dummyDiaries = JSON.stringify([
-      { id: "1" }, { id: "2" }, { id: "3" }, { id: "4" }, { id: "5" }
+      { id: "1", emotion: "joy" }, 
+      { id: "2", emotion: "guilt" }, 
+      { id: "3", emotion: "anger" }, 
+      { id: "4", emotion: "sadness" }, 
+      { id: "5", emotion: "guilt" }
     ]);
+    const dummyMap = JSON.stringify({
+      "joy": ["../images/flower/Affection_lisian_low.glb"],
+      "guilt": ["../images/flower/Guilt_Canna.glb", "../images/flower/Guilt_Clematis.glb"],
+      "anger": ["../images/flower/Anger_Phlox.glb"],
+      "sadness": ["../images/flower/Sadness_ebw.glb"]
+    });
     window.initGarden(
       '../images/worldtree.glb',
-      '../images/flower/Affection_lisian_mid.glb',
+      dummyMap,
       dummyDiaries
     );
   }

@@ -106,13 +106,23 @@ class _GardenScreenState extends State<GardenScreen> {
     final diariesJson = jsonEncode(diaries.map((e) => {'id': e.id, 'emotion': e.flowerType.emotionId.name}).toList());
     final ts = DateTime.now().millisecondsSinceEpoch;
     final treeUrl = 'http://localhost:8080/images/worldtree.glb?v=$ts';
-    final flowerUrl = 'http://localhost:8080/images/flower/Affection_lisian_mid.glb?v=$ts';
+    final Map<String, List<String>> emotionToFlowers = {
+      'anger': ['http://localhost:8080/images/flower/Anger_Phlox.glb?v=$ts'],
+      'guilt': [
+        'http://localhost:8080/images/flower/Guilt_Canna.glb?v=$ts',
+        'http://localhost:8080/images/flower/Guilt_Clematis.glb?v=$ts',
+      ],
+      'sadness': ['http://localhost:8080/images/flower/Sadness_ebw.glb?v=$ts'],
+      'joy': ['http://localhost:8080/images/flower/Affection_lisian_low.glb?v=$ts'],
+      'calm': ['http://localhost:8080/images/flower/Affection_lisian_low.glb?v=$ts'],
+    };
+    final flowerUrlsMapJson = jsonEncode(emotionToFlowers);
     
     _webViewController.runJavaScript('''
       function tryInitGarden() {
         if (typeof window.initGarden === 'function') {
           if (typeof window.disposeGarden === 'function') window.disposeGarden();
-          window.initGarden('$treeUrl', '$flowerUrl', '$diariesJson');
+          window.initGarden('$treeUrl', '$flowerUrlsMapJson', '$diariesJson');
         } else {
           setTimeout(tryInitGarden, 100);
         }

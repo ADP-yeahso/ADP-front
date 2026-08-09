@@ -10,71 +10,204 @@ class EmotionAnalysisResult {
 }
 
 final Map<Emotion, List<String>> _keywords = {
-  EmotionValues.sadness: ['슬프', '눈물', '힘들', '지치', '외롭', '그립', '울었', '속상', '눈물이'],
-  EmotionValues.anger: ['화나', '화가', '짜증', '답답', '분노', '억울', '열받', '화났'],
-  EmotionValues.guilt: ['미안', '죄책감', '후회', '자책', '잘못한', '미안해서'],
-  EmotionValues.joy: ['고맙', '행복', '웃', '기쁘', '다행', '감사', '좋았', '웃었'],
-  EmotionValues.calm: ['편안', '안정', '괜찮', '차분', '평온'],
+  // 분노 / 답답함
+  EmotionValues.anger: [
+    '화나',
+    '화가',
+    '짜증',
+    '답답',
+    '분노',
+    '억울',
+    '열받',
+    '화났',
+    '참기 힘들',
+    '미치겠',
+  ],
+
+  // 불안 / 초조
+  EmotionValues.anxiety: [
+    '불안',
+    '걱정',
+    '초조',
+    '두렵',
+    '무섭',
+    '긴장',
+    '조마조마',
+    '어떡하지',
+    '신경 쓰',
+    '마음이 놓이지',
+  ],
+
+  // 슬픔 / 소진
+  EmotionValues.sadness: [
+    '슬프',
+    '눈물',
+    '힘들',
+    '지치',
+    '외롭',
+    '그립',
+    '울었',
+    '속상',
+    '눈물이',
+    '버겁',
+    '기운이 없',
+    '지쳤',
+  ],
+
+  // 죄책감 / 자책
+  EmotionValues.guilt: [
+    '미안',
+    '죄책감',
+    '후회',
+    '자책',
+    '잘못한',
+    '미안해서',
+    '내 탓',
+    '더 잘할걸',
+    '내가 잘못',
+  ],
+
+  // 감사 / 안도
+  EmotionValues.gratitude: [
+    '고맙',
+    '감사',
+    '다행',
+    '안도',
+    '안심',
+    '마음이 놓',
+    '행복',
+    '기쁘',
+    '좋았',
+    '웃었',
+  ],
+
+  // 애틋함 / 수용
+  EmotionValues.affection: [
+    '사랑',
+    '소중',
+    '애틋',
+    '그립',
+    '함께',
+    '추억',
+    '보고 싶',
+    '곁에',
+    '받아들이',
+    '이해하게',
+    '안아주',
+  ],
+
+  // 중립
+  EmotionValues.neutral: [
+    '평범',
+    '그냥',
+    '보통',
+    '괜찮',
+    '무난',
+    '평소',
+    '특별한 일 없',
+    '별일 없',
+    '일상',
+  ],
 };
 
 final Map<Emotion, Recommendation> _recommendations = {
-  EmotionValues.joy: Recommendation(
-    quote: '오늘의 웃음이 내일을 버티는 힘이 되어줄 거예요.',
-    musicTitle: '햇살 좋은 날의 어쿠스틱 플레이리스트',
-    activity: '오늘의 기쁜 순간을 사진으로 남겨 보세요.',
-  ),
-  EmotionValues.calm: Recommendation(
-    quote: '지금처럼만 하셔도 이미 충분히 잘하고 계세요.',
-    musicTitle: '숲속 새소리 백색소음',
-    activity: '가벼운 스트레칭으로 하루를 정리해 보세요.',
-  ),
-  EmotionValues.sadness: Recommendation(
-    quote: '슬퍼도 괜찮아요. 그 마음, 잠시 내려놓아도 돼요.',
-    musicTitle: '위로가 되는 잔잔한 피아노 선율',
-    activity: '따뜻한 차 한 잔과 함께 5분만 쉬어가세요.',
-  ),
   EmotionValues.anger: Recommendation(
-    quote: '화가 나는 건 그만큼 애쓰고 있다는 증거예요.',
+    quote: '잠시 멈추고 마음의 속도를 늦춰도 괜찮아요.',
     musicTitle: '마음을 가라앉히는 자연의 소리',
-    activity: '4초 들이쉬고 7초 참았다가 8초 내쉬는 호흡을 세 번 반복해 보세요.',
+    activity: '잠시 자리를 벗어나 천천히 세 번 호흡해 보세요.',
   ),
+
+  EmotionValues.anxiety: Recommendation(
+    quote: '지금 모든 일을 한 번에 해결하지 않아도 괜찮아요.',
+    musicTitle: '긴장을 풀어주는 잔잔한 음악',
+    activity: '지금 가장 걱정되는 일을 한 문장으로 적어 보세요.',
+  ),
+
+  EmotionValues.sadness: Recommendation(
+    quote: '지친 마음도 돌봄이 필요한 마음이에요.',
+    musicTitle: '위로가 되는 잔잔한 피아노 선율',
+    activity: '따뜻한 차 한 잔과 함께 잠시 쉬어가세요.',
+  ),
+
   EmotionValues.guilt: Recommendation(
-    quote: '당신은 이미 최선을 다하고 있어요. 스스로를 탓하지 마세요.',
-    musicTitle: '마음을 다독이는 잔잔한 목소리',
-    activity: '5분만 밖으로 나가 걸으며 스스로에게 다정한 말을 건네보세요.',
+    quote: '완벽한 돌봄보다 지속할 수 있는 돌봄이 더 중요해요.',
+    musicTitle: '마음을 다독이는 잔잔한 음악',
+    activity: '오늘 내가 해낸 일을 한 가지 떠올려 보세요.',
+  ),
+
+  EmotionValues.gratitude: Recommendation(
+    quote: '작은 안도와 감사도 오늘을 버티게 해주는 힘이에요.',
+    musicTitle: '따뜻하고 편안한 어쿠스틱 음악',
+    activity: '오늘 고마웠던 순간을 짧게 기록해 보세요.',
+  ),
+
+  EmotionValues.affection: Recommendation(
+    quote: '함께한 기억은 오래도록 마음에 남아 있어요.',
+    musicTitle: '따뜻한 추억을 떠올리는 잔잔한 음악',
+    activity: '오늘 떠오른 소중한 기억 하나를 기록해 보세요.',
+  ),
+
+  EmotionValues.neutral: Recommendation(
+    quote: '특별하지 않은 하루도 충분히 소중한 기록이에요.',
+    musicTitle: '편안하게 들을 수 있는 잔잔한 음악',
+    activity: '오늘 하루를 한 문장으로 정리해 보세요.',
   ),
 };
 
 EmotionAnalysisResult analyzeEmotion(String text) {
-  final counts = <Emotion, int>{for (final e in EmotionValues.values) e: 0};
+  final counts = <Emotion, int>{
+    for (final emotion in EmotionValues.values) emotion: 0,
+  };
 
   for (final entry in _keywords.entries) {
-    for (final kw in entry.value) {
-      if (text.contains(kw)) {
+    for (final keyword in entry.value) {
+      if (text.contains(keyword)) {
         counts[entry.key] = counts[entry.key]! + 1;
       }
     }
   }
 
-  final total = counts.values.fold<int>(0, (a, b) => a + b);
+  final total = counts.values.fold<int>(
+    0,
+    (sum, value) => sum + value,
+  );
+
   Map<Emotion, double> scores;
   Emotion primary;
 
   if (total == 0) {
+    // 감정 키워드를 찾지 못했을 때는 중립으로 처리
     scores = {
-      EmotionValues.calm: 0.6,
-      EmotionValues.joy: 0.1,
-      EmotionValues.sadness: 0.1,
-      EmotionValues.anger: 0.1,
-      EmotionValues.guilt: 0.1,
+      EmotionValues.anger: 0.0,
+      EmotionValues.anxiety: 0.0,
+      EmotionValues.sadness: 0.0,
+      EmotionValues.guilt: 0.0,
+      EmotionValues.gratitude: 0.0,
+      EmotionValues.affection: 0.0,
+      EmotionValues.neutral: 1.0,
     };
-    primary = EmotionValues.calm;
+
+    primary = EmotionValues.neutral;
   } else {
-    scores = counts.map((k, v) => MapEntry(k, v / total));
-    primary = counts.entries.reduce((a, b) => b.value > a.value ? b : a).key;
+    scores = counts.map(
+      (emotion, count) => MapEntry(
+        emotion,
+        count / total,
+      ),
+    );
+
+    primary = counts.entries.reduce(
+      (current, next) =>
+          next.value > current.value ? next : current,
+    ).key;
   }
 
-  return EmotionAnalysisResult(primary, scores);
+  return EmotionAnalysisResult(
+    primary,
+    scores,
+  );
 }
 
-Recommendation recommendationFor(Emotion emotion) => _recommendations[emotion]!;
+Recommendation recommendationFor(Emotion emotion) {
+  return _recommendations[emotion]!;
+}

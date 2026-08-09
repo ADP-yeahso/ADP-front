@@ -472,25 +472,7 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
   }
 
   Color _emotionColor(Emotion emotion) {
-    switch (emotion.name.toLowerCase()) {
-      case 'calm':
-        return const Color(0xFF6FBF8B); // 초록
-
-      case 'joy':
-        return const Color(0xFFF5C34D); // 노랑
-
-      case 'sadness':
-        return const Color(0xFF8B7CC6); // 보라
-
-      case 'anger':
-        return const Color(0xFFEF6464); // 빨강
-
-      case 'guilt':
-        return const Color(0xFF6B93D1); // 파랑
-
-      default:
-        return const Color(0xFF9E9E9E);
-    }
+    return emotion.color;
   }
 
   @override
@@ -811,8 +793,12 @@ class _EmotionDistributionPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final emotionEntries = distribution.percentages.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final emotionEntries = EmotionValues.values
+        .map(
+          (emotion) =>
+              MapEntry(emotion, distribution.percentages[emotion] ?? 0),
+        )
+        .toList();
 
     final chartEntries = emotionEntries
         .where((entry) => entry.value > 0)
@@ -1018,6 +1004,12 @@ class _EmotionLegendGrid extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: emotionColor(entry.key),
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: emotionColor(entry.key).computeLuminance() > 0.9
+                            ? Colors.black12
+                            : Colors.transparent,
+                        width: 1,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),

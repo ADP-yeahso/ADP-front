@@ -416,7 +416,7 @@ class AppData extends ChangeNotifier {
 
     addDiary(
       date: daysAgo(3),
-      content: '가족이 도와줘서 고맙고 다행이라는 생각이 들었다.',
+      content: '오늘은 불안하고 걱정되고 초조했다. 마음이 놓이지 않았다.',
       isPublic: false,
     );
 

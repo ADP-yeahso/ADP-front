@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
-import '../../data/garden_nav_controller.dart';
+import 'day_record_detail_view.dart';
 import '../../data/garden_range.dart';
 
 const _weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
@@ -25,6 +25,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late final DateTime _anchor;
   late int _year;
   DateTime? _drilldownMonth;
+  DateTime? _selectedDay;
 
   @override
   void initState() {
@@ -45,44 +46,117 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void _selectDay(DateTime day) {
-    context.read<GardenNavController>().requestDate(day);
+    setState(() {
+     _selectedDay = day;
+    });
   }
+
+  void _goBack() {
+    if (_selectedDay != null) {
+     setState(() {
+        _selectedDay = null;
+      });
+      return;
+    }
+
+    if (_drilldownMonth != null) {
+      setState(() {
+        _drilldownMonth = null;
+      });
+    }
+  }
+
+  String _formatDay(DateTime day) {
+    final month = day.month.toString().padLeft(2, '0');
+    final date = day.day.toString().padLeft(2, '0');
+
+    return '${day.year}. $month. $date';
+  }
+
+  String get _screenTitle {
+    // 날짜 상세 화면
+    if (_selectedDay != null) {
+     return _formatDay(_selectedDay!);
+    }
+
+    // 월 달력 화면
+    if (_drilldownMonth != null) {
+     return '${_drilldownMonth!.year}년 ${_drilldownMonth!.month}월';
+    }
+
+    // 연도 화면
+    return '$_year년 전체보기';
+  }
+
+  Widget _buildContent() {
+  // 날짜를 선택한 경우 날짜 상세 기록 화면을 보여준다.
+  if (_selectedDay != null) {
+    return DayRecordDetailView(
+      key: ValueKey(_selectedDay!),
+      day: _selectedDay!,
+    );
+  }
+
+  if (_drilldownMonth == null) {
+    return _YearGrid(
+      year: _year,
+      isNavigable: _isNavigable,
+      onYearChange: (delta) {
+        setState(() {
+          _year += delta;
+        });
+      },
+      onSelectMonth: (month) {
+        if (!_isNavigable(month)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('아직 이동할 수 없는 달이에요.'),
+            ),
+          );
+
+          return;
+        }
+
+        setState(() {
+          _drilldownMonth = month;
+        });
+      },
+    );
+  }
+
+  return _DayGrid(
+    month: _drilldownMonth!,
+    onSelectDay: _selectDay,
+  );
+}
 
   @override
   Widget build(BuildContext context) {
+    final showBack =
+        _selectedDay != null || _drilldownMonth != null;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: _bgGradient),
+        decoration: const BoxDecoration(
+          gradient: _bgGradient,
+        ),
         child: SafeArea(
           child: Column(
             children: [
               _TopBar(
-                showBack: _drilldownMonth != null,
-                onBack: () => setState(() => _drilldownMonth = null),
-                title: _drilldownMonth == null
-                    ? '$_year년 전체보기'
-                    : '${_drilldownMonth!.year}년 ${_drilldownMonth!.month}월',
-                onShare: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('정원 공유는 준비 중이에요 (목업)')),
-                ),
+                showBack: showBack,
+                onBack: _goBack,
+                title: _screenTitle,
+                onShare: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('정원 공유는 준비 중이에요 (목업)'),
+                    ),
+                  );
+                },
               ),
               Expanded(
-                child: _drilldownMonth == null
-                    ? _YearGrid(
-                        year: _year,
-                        isNavigable: _isNavigable,
-                        onYearChange: (delta) => setState(() => _year += delta),
-                        onSelectMonth: (m) {
-                          if (!_isNavigable(m)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('아직 이동할 수 없는 달이에요.')),
-                            );
-                            return;
-                          }
-                          setState(() => _drilldownMonth = m);
-                        },
-                      )
-                    : _DayGrid(month: _drilldownMonth!, onSelectDay: _selectDay),
+                child: _buildContent(),
               ),
             ],
           ),

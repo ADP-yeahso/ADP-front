@@ -14,7 +14,7 @@ class LoginScreen extends StatelessWidget {
     final double hScale = size.height / 727;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF5),
+      backgroundColor: const Color(0xFFFFFBF0), // 배경색 (디자이너 지정 컬러)
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const ClampingScrollPhysics(), // 콘텐츠가 화면에 다 들어올 때는 스크롤(바운스) 방지
@@ -27,7 +27,7 @@ class LoginScreen extends StatelessWidget {
               
               // 2. 로고 (회원님이 만족하셨던 이전 높이 140 기준으로 롤백)
               // Width 고정을 풀어서, 새 로고의 비율이 변했더라도 찌그러지지 않고 자연스럽게 축소되도록 조치했습니다.
-              SvgPicture.asset('assets/auth/login/logo.svg', height: 140 * wScale),
+              SvgPicture.asset('assets/auth/login/logo.svg', height: 105 * wScale),
               // 로고와 부제 사이 간격 (시안 비례 계산: 약 16px)
               SizedBox(height: 25 * hScale),
               

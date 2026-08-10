@@ -89,7 +89,7 @@ void showMemoryDetailSheet(BuildContext context, Memory memory) {
               Text(memory.contextText ?? '', style: const TextStyle(fontSize: 15, height: 1.5)),
               const SizedBox(height: 20),
               _AuthorAndVisibility(
-                nickname: author.nickname,
+                nickname: author.name,
                 isPublic: memory.isPublic,
                 isOwner: isOwner,
                 onToggle: () => appData.toggleMemoryPublic(memory.id),
@@ -131,7 +131,7 @@ Future<void> showDiaryDetailSheet(BuildContext context, Diary diary) {
               RecommendationCard(emotion: emotion, recommendation: recommendation),
               const SizedBox(height: 18),
               _AuthorAndVisibility(
-                nickname: author.nickname,
+                nickname: author.name,
                 isPublic: isPublic,
                 isOwner: isOwner,
                 onToggle: () => appData.toggleDiaryPublic(diary.id),

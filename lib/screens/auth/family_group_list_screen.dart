@@ -126,16 +126,16 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                         child: SvgPicture.asset('assets/auth/family_group/group_box_1.svg', fit: BoxFit.fill),
                       ),
                       Positioned(
-                        right: 16 * wScale,
+                        right: 20 * wScale,
                         child: GestureDetector(
                           onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
                           },
                           child: Image.asset(
                             'assets/auth/family_group/enter_text.png', 
-                            width: 84 * wScale, 
-                            height: 35 * wScale,
-                            fit: BoxFit.fill,
+                            width: 79 * wScale, 
+                            height: 79 * (112 / 292) * wScale, // 실제 PNG 비율(292x112)에 맞춰 높이 자동 계산 (약 32.2)
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),

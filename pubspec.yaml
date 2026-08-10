@@ -72,6 +72,7 @@ flutter:
     - assets/www/
     - assets/auth/login/
     - assets/auth/family_group/
+    - assets/auth/create_family/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

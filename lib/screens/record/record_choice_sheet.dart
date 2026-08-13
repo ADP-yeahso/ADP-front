@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'diary_write_screen.dart';
+import 'write/diary_start_screen.dart';
 import 'patient_info_screen.dart';
 
 class RecordChoiceSheet extends StatelessWidget {
@@ -65,7 +65,7 @@ class RecordChoiceSheet extends StatelessWidget {
                   subtitle: '나의 돌봄 경험과 감정을 꽃으로 남겨요',
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const DiaryWriteScreen()));
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const DiaryStartScreen()));
                   },
                 ),
               ],

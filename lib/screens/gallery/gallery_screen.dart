@@ -1,4 +1,3 @@
-import 'package:file_selector/file_selector.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -164,45 +163,42 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   // 음성 선택
   Future<void> _pickAudio() async {
+    final List<Media> selectedMedia = [];
+
     try {
-      const XTypeGroup audioGroup = XTypeGroup(
-        label: 'audio',
-        extensions: <String>['mp3', 'm4a', 'aac', 'wav', 'flac'],
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        allowMultiple: true,
       );
 
-      final List<XFile> files = await openFiles(
-        acceptedTypeGroups: <XTypeGroup>[audioGroup],
-      );
-
-      if (files.isEmpty) return;
-
-      final List<Media> selectedMedia = [];
-
-      for (final file in files) {
-        selectedMedia.add(
-          Media(
-            id: DateTime.now().microsecondsSinceEpoch + selectedMedia.length,
-            memoryId: null,
-            diaryId: null,
-            fileUrl: file.path,
-            fileType: 'audio',
-            duration: 0,
-            sortOrder: selectedMedia.length + 1,
-            createdAt: DateTime.now(),
-          ),
-        );
+      if (result != null && result.files.isNotEmpty) {
+        for (final file in result.files) {
+          if (file.path != null) {
+            selectedMedia.add(
+              Media(
+                id:
+                    DateTime.now().microsecondsSinceEpoch +
+                    selectedMedia.length,
+                memoryId: null,
+                diaryId: null,
+                fileUrl: file.path!,
+                fileType: 'audio',
+                duration: 0,
+                sortOrder: selectedMedia.length + 1,
+                createdAt: DateTime.now(),
+              ),
+            );
+          }
+        }
       }
+    } catch (e, stackTrace) {
+      debugPrint('===== 음성 초기화 실패 =====');
 
-      _saveSelectedMedia(selectedMedia, '음성');
-    } catch (e) {
-      debugPrint('음성 파일 선택 오류: $e');
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('음성 파일을 불러오지 못했습니다: $e')));
+      debugPrint('오류: $e');
+      debugPrint('스택: $stackTrace');
     }
+
+    _saveSelectedMedia(selectedMedia, '음성');
   }
 
   // 미디어 추가 바텀시트 표시
@@ -462,6 +458,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
                         final date = _getMediaDate(item, appData);
 
                         return GalleryMediaTile(item: item, resolvedDate: date);
+                        return GalleryMediaTile(
+                          key: ValueKey(item.id),
+                          item: item,
+                          resolvedDate: date,
+                        );
                       },
                     ),
                   ),

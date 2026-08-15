@@ -1,9 +1,8 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:video_player/video_player.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import '../../models/media.dart';
 
@@ -37,9 +36,10 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
 
     if (widget.item.fileType == 'video') {
       _initializeVideo();
-    } else if (widget.item.fileType == 'audio') {
-      _initializeAudio();
     }
+
+    // audio는 여기서 초기화하지 않음.
+    // 사용자가 재생 버튼을 눌렀을 때만 초기화.
   }
 
   Future<void> _initializeVideo() async {
@@ -72,15 +72,52 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
 
   Future<void> _initializeAudio() async {
     try {
-      _audioPlayer = AudioPlayer();
+      debugPrint('===== 음성 초기화 시작 =====');
+      debugPrint('파일 경로: ${widget.item.fileUrl}');
 
-      if (widget.item.fileUrl.startsWith('http')) {
-        await _audioPlayer!.setUrl(widget.item.fileUrl);
-      } else {
-        await _audioPlayer!.setFilePath(widget.item.fileUrl);
+      final file = File(widget.item.fileUrl);
+
+      debugPrint('파일 존재 여부: ${file.existsSync()}');
+      debugPrint('파일 크기: ${file.existsSync() ? file.lengthSync() : -1}');
+
+      if (!file.existsSync()) {
+        debugPrint('음성 파일이 존재하지 않음');
+        return;
       }
 
-      final duration = _audioPlayer!.duration;
+      _audioPlayer ??= AudioPlayer();
+
+      // 재생 위치
+      _audioPlayer!.onPositionChanged.listen((position) {
+        if (!mounted) return;
+
+        setState(() {
+          _audioPosition = position;
+        });
+      });
+
+      // 전체 길이
+      _audioPlayer!.onDurationChanged.listen((duration) {
+        if (!mounted) return;
+
+        setState(() {
+          _audioDuration = duration;
+        });
+      });
+
+      // 재생 완료
+      _audioPlayer!.onPlayerComplete.listen((_) {
+        if (!mounted) return;
+
+        setState(() {
+          _audioPosition = Duration.zero;
+        });
+      });
+
+      // 파일을 실제로 재생하기 전에 source 설정
+      await _audioPlayer!.setSource(DeviceFileSource(widget.item.fileUrl));
+
+      final duration = await _audioPlayer!.getDuration();
 
       if (!mounted) return;
 
@@ -89,23 +126,14 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
         _audioDuration = duration ?? Duration.zero;
       });
 
-      _audioPlayer!.positionStream.listen((position) {
-        if (!mounted) return;
+      debugPrint('===== 음성 초기화 성공 =====');
+      debugPrint('duration: $_audioDuration');
+    } catch (e, stackTrace) {
+      debugPrint('===== 음성 초기화 오류 =====');
+      debugPrint('오류: $e');
+      debugPrint('스택: $stackTrace');
 
-        setState(() {
-          _audioPosition = position;
-        });
-      });
-
-      _audioPlayer!.durationStream.listen((duration) {
-        if (!mounted || duration == null) return;
-
-        setState(() {
-          _audioDuration = duration;
-        });
-      });
-    } catch (e) {
-      debugPrint('음성 초기화 오류: $e');
+      _audioInitialized = false;
     }
   }
 
@@ -139,20 +167,41 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
   }
 
   Future<void> _toggleAudio() async {
-    if (_audioPlayer == null || !_audioInitialized) return;
+    debugPrint('===== 음성 재생 버튼 클릭 =====');
+    debugPrint('파일 경로: ${widget.item.fileUrl}');
 
-    if (_audioPlayer!.playing) {
-      await _audioPlayer!.pause();
-    } else {
-      if (_audioPosition >= _audioDuration && _audioDuration != Duration.zero) {
-        await _audioPlayer!.seek(Duration.zero);
+    try {
+      if (_audioPlayer == null || !_audioInitialized) {
+        debugPrint('플레이어 미초기화 → 초기화 시작');
+
+        await _initializeAudio();
+
+        if (_audioPlayer == null || !_audioInitialized) {
+          debugPrint('음성 초기화 실패 → 재생 중단');
+          return;
+        }
       }
 
-      await _audioPlayer!.play();
-    }
+      final state = _audioPlayer!.state;
 
-    if (mounted) {
-      setState(() {});
+      if (state == PlayerState.playing) {
+        await _audioPlayer!.pause();
+      } else {
+        if (_audioDuration != Duration.zero &&
+            _audioPosition >= _audioDuration) {
+          await _audioPlayer!.seek(Duration.zero);
+        }
+
+        await _audioPlayer!.resume();
+      }
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e, stackTrace) {
+      debugPrint('===== 음성 재생 오류 =====');
+      debugPrint('오류: $e');
+      debugPrint('스택: $stackTrace');
     }
   }
 
@@ -318,7 +367,7 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
   }
 
   Widget _buildAudioPlayer() {
-    final isPlaying = _audioPlayer?.playing ?? false;
+    final isPlaying = _audioPlayer?.state == PlayerState.playing;
 
     final maxMilliseconds = _audioDuration.inMilliseconds > 0
         ? _audioDuration.inMilliseconds.toDouble()

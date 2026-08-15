@@ -57,6 +57,8 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
                     member: member,
                     emotion: appData.latestEmotionFor(member.id),
                     selected: _filterMemberId == member.id,
+                    isMe: appData.isCurrentUser(member.id),
+                    relation: appData.userRelationOf(member.id),
                     onTap: () => setState(() {
                       _filterMemberId = _filterMemberId == member.id ? null : member.id;
                     }),
@@ -72,7 +74,7 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text(
-              _filterMemberId == null ? '전체 공유 기록' : '${appData.userById(_filterMemberId!).nickname}의 공유 기록',
+              _filterMemberId == null ? '전체 공유 기록' : '${appData.userById(_filterMemberId!).name}의 공유 기록',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
           ),
@@ -106,12 +108,16 @@ class _MemberAvatar extends StatelessWidget {
   final User member;
   final Emotion? emotion;
   final bool selected;
+  final bool isMe;
+  final String relation;
   final VoidCallback onTap;
 
   const _MemberAvatar({
     required this.member,
     required this.emotion,
     required this.selected,
+    required this.isMe,
+    required this.relation,
     required this.onTap,
   });
 
@@ -156,11 +162,11 @@ class _MemberAvatar extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              member.isMe ? '나' : member.nickname,
+              isMe ? '나' : member.name,
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
               overflow: TextOverflow.ellipsis,
             ),
-            Text(member.relation, style: const TextStyle(fontSize: 10, color: Colors.black45)),
+            Text(relation, style: const TextStyle(fontSize: 10, color: Colors.black45)),
           ],
         ),
       ),
@@ -221,7 +227,7 @@ class _FeedCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(author.nickname, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text(author.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         const SizedBox(width: 6),
                         Text('· ${item.date.month}월 ${item.date.day}일', style: const TextStyle(fontSize: 11, color: Colors.black38)),
                         const Spacer(),

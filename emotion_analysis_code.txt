@@ -1,0 +1,1024 @@
+
+==================================================
+FILE: lib/main.dart
+==================================================
+
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'data/app_data.dart';
+import 'data/garden_nav_controller.dart';
+import 'screens/auth/login_screen.dart';
+import 'theme/app_theme.dart';
+
+void main() {
+  runApp(const CareGardenApp());
+}
+
+class CareGardenApp extends StatelessWidget {
+  const CareGardenApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppData()),
+        ChangeNotifierProvider(create: (_) => GardenNavController()),
+      ],
+      child: MaterialApp(
+        title: '마음정원',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        home: const LoginScreen(),
+      ),
+    );
+  }
+}
+
+==================================================
+FILE: lib/screens/profile/profile_screen.dart
+==================================================
+
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../data/app_data.dart';
+import 'family_management_screen.dart';
+import 'help_screen.dart';
+import 'profile_edit_screen.dart';
+import 'patient_info_screen.dart';
+import 'app_settings_screen.dart';
+import '../auth/login_screen.dart';
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('로그아웃'),
+        content: const Text('정말 로그아웃 하시겠어요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('로그아웃'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appData = context.watch<AppData>();
+    final me = appData.me;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Setting'),
+        automaticallyImplyLeading: false,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F5EE),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: me.color.withValues(alpha: 0.2),
+                  child: Icon(Icons.person, size: 28, color: me.color),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        me.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${appData.patient.patientName} 님의 보호자',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ProfileEditScreen(),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('프로필 편집', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          _StatRow(appData: appData),
+          const SizedBox(height: 20),
+          const Text(
+            '설정',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Colors.black45,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _SettingsTile(
+            icon: Icons.medical_information_outlined,
+            label: '환자 정보 보기',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PatientInfoScreen()),
+              );
+            },
+          ),
+          _SettingsTile(
+            icon: Icons.groups_outlined,
+            label: '그룹 정보 보기',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const FamilyManagementScreen(),
+                ),
+              );
+            },
+          ),
+          _SettingsTile(
+            icon: Icons.tune_outlined,
+            label: '앱 설정',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AppSettingsScreen()),
+              );
+            },
+          ),
+          _SettingsTile(
+            icon: Icons.help_outline,
+            label: '도움말',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HelpScreen()),
+              );
+            },
+          ),
+          _SettingsTile(
+            icon: Icons.logout,
+            label: '로그아웃',
+            onTap: () => _confirmLogout(context),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatRow extends StatelessWidget {
+  final AppData appData;
+  const _StatRow({required this.appData});
+
+  @override
+  Widget build(BuildContext context) {
+    final myDiaries = appData.diaries
+        .where((d) => d.userId == appData.me.id)
+        .length;
+    final myLeaves = appData.memories
+        .where((l) => l.userId == appData.me.id)
+        .length;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            label: '작성한 일기',
+            value: '$myDiaries개',
+            icon: Icons.local_florist_outlined,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            label: '나무 기록',
+            value: '$myLeaves개',
+            icon: Icons.park_outlined,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: const Color(0xFF5C9271)),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _SettingsTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        leading: Icon(icon, color: Colors.black54),
+        title: Text(
+          label,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        trailing: const Icon(Icons.chevron_right, color: Colors.black26),
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+==================================================
+FILE: lib/data/app_data.dart
+==================================================
+
+import 'package:flutter/material.dart';
+
+import '../models/diary.dart';
+import '../models/emotions.dart';
+import '../models/flower.dart';
+import '../models/groups.dart';
+import '../models/media.dart';
+import '../models/memory.dart';
+import '../models/patients.dart';
+import '../models/users.dart';
+import '../models/users_groups.dart';
+import 'emotion_analyzer.dart';
+
+bool isSameMonth(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month;
+bool isSameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+extension UserUIInfo on User {
+  Color get color {
+    if (id == 1) return const Color(0xFF6B93D1);
+    if (id == 2) return const Color(0xFF6FBF8B);
+    return const Color(0xFF9B7FC7);
+  }
+}
+
+class AppData extends ChangeNotifier {
+  AppData() {
+    _seed();
+  }
+
+  /// 현재 로그인한 유저 ID (데모: 실서버 연결 시 교체)
+  final int currentUserId = 1;
+
+  // ── 새 모델 더미 데이터 ─────────────────────────────
+  Patient _patient = Patient(
+    id: 1,
+    groupId: 1,
+    patientName: '고강민',
+    patientBirthDate: 20060515,
+    createdAt: DateTime(2024, 1, 1),
+  );
+
+  Patient get patient => _patient;
+
+  final Group group = Group(
+    id: 1,
+    inviteCode: 'ABCD12',
+    groupName: '고강민 가족',
+    members: 3,
+    createdAt: DateTime(2024, 1, 1),
+  );
+
+  final List<UserGroup> userGroups = [
+    UserGroup(
+      id: 1,
+      userId: 1,
+      groupId: 1,
+      patientsNickname: '아버지',
+      joinedAt: DateTime(2024, 1, 1),
+    ),
+    UserGroup(
+      id: 2,
+      userId: 2,
+      groupId: 1,
+      patientsNickname: '아버지',
+      joinedAt: DateTime(2024, 1, 1),
+    ),
+    UserGroup(
+      id: 3,
+      userId: 3,
+      groupId: 1,
+      patientsNickname: '시아버지',
+      joinedAt: DateTime(2024, 1, 1),
+    ),
+  ];
+
+  /// 현재 유저가 환자를 부르는 호칭 (UserGroup.patientsNickname 기반)
+  String get patientRelationLabel {
+    try {
+      return userGroups
+          .firstWhere((ug) => ug.userId == currentUserId)
+          .patientsNickname;
+    } catch (_) {
+      return '환자';
+    }
+  }
+
+  /// userId가 현재 로그인 유저인지 확인
+  bool isCurrentUser(int userId) => userId == currentUserId;
+
+  /// userId에 해당하는 구성원이 환자를 부르는 호칭
+  String userRelationOf(int userId) {
+    try {
+      return userGroups
+          .firstWhere((ug) => ug.userId == userId)
+          .patientsNickname;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  final List<User> users = [
+    User(
+      id: 1,
+      email: 'me@example.com',
+      password: '',
+      name: '강성윤',
+      phoneNumber: '',
+      profileImageUrl: null,
+      createdAt: DateTime.now(),
+    ),
+    User(
+      id: 2,
+      email: 'son@example.com',
+      password: '',
+      name: '강지민',
+      phoneNumber: '',
+      profileImageUrl: null,
+      createdAt: DateTime.now(),
+    ),
+    User(
+      id: 3,
+      email: 'inlaw@example.com',
+      password: '',
+      name: '정인선',
+      phoneNumber: '',
+      profileImageUrl: null,
+      createdAt: DateTime.now(),
+    ),
+  ];
+
+  User get me => users.firstWhere((u) => u.id == currentUserId);
+
+  User userById(int id) =>
+      users.firstWhere((u) => u.id == id, orElse: () => me);
+  void updateCurrentUserProfile({
+    required String name,
+    required String password,
+    required String phoneNumber,
+  }) {
+    final index = users.indexWhere((user) => user.id == currentUserId);
+
+    if (index == -1) {
+      return;
+    }
+
+    final currentUser = users[index];
+
+    users[index] = User(
+      id: currentUser.id,
+      email: currentUser.email,
+      password: password,
+      name: name,
+      phoneNumber: phoneNumber,
+      profileImageUrl: currentUser.profileImageUrl,
+      createdAt: currentUser.createdAt,
+    );
+
+    notifyListeners();
+  }
+
+  void updatePatientInfo({
+    required String patientName,
+    required int patientBirthDate,
+    required String patientsNickname,
+  }) {
+    _patient = Patient(
+      id: _patient.id,
+      groupId: _patient.groupId,
+      patientName: patientName,
+      patientBirthDate: patientBirthDate,
+      createdAt: _patient.createdAt,
+    );
+
+    final relationIndex = userGroups.indexWhere(
+      (userGroup) =>
+          userGroup.userId == currentUserId &&
+          userGroup.groupId == _patient.groupId,
+    );
+
+    if (relationIndex != -1) {
+      final currentRelation = userGroups[relationIndex];
+
+      userGroups[relationIndex] = UserGroup(
+        id: currentRelation.id,
+        userId: currentRelation.userId,
+        groupId: currentRelation.groupId,
+        patientsNickname: patientsNickname,
+        joinedAt: currentRelation.joinedAt,
+      );
+    }
+
+    notifyListeners();
+  }
+
+  String get patientBirthDateLabel {
+    final value = patient.patientBirthDate.toString().padLeft(8, '0');
+
+    final year = value.substring(0, 4);
+    final month = value.substring(4, 6);
+    final day = value.substring(6, 8);
+
+    return '$year.$month.$day';
+  }
+
+  final List<Memory> memories = [];
+  final List<Diary> diaries = [];
+
+  // To keep track of public states since Diary doesn't have isPublic
+  final Set<int> _publicDiaryIds = {};
+
+  int _idCounter = 1000;
+  int _nextId() => _idCounter++;
+
+  void addMemory({
+    required DateTime date,
+    required String title, // Used as mock UI title if needed
+    required String content,
+    bool hasPhoto = false,
+    bool isPublic = true,
+  }) {
+    List<Media> media = [];
+    if (hasPhoto) {
+      media.add(
+        Media(
+          id: _nextId(),
+          memoryId: _idCounter,
+          diaryId: null,
+          fileUrl: 'dummy.jpg',
+          fileType: 'image',
+          duration: 0,
+          sortOrder: 1,
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
+    memories.add(
+      Memory(
+        id: _nextId(),
+        patientId: 1,
+        userId: me.id,
+        contextText: content,
+        mediaList: media,
+        isPublic: isPublic,
+        recordDate: date,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+    notifyListeners();
+  }
+
+  Diary addDiary({
+    required DateTime date,
+    required String content,
+    bool isPublic = true,
+  }) {
+    final analysis = analyzeEmotion(content);
+    final flower = Flower(
+      id: analysis.primary.id,
+      emotionId: analysis.primary,
+      flowerName: 'Mock Flower',
+      colorCode: '#000000',
+      sentence: 'Mock sentence',
+    );
+
+    final entry = Diary(
+      id: _nextId(),
+      userId: me.id,
+      context: content,
+      flowerType: flower,
+      mediaList: [],
+      recordDate: date,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    diaries.add(entry);
+    if (isPublic) {
+      _publicDiaryIds.add(entry.id);
+    }
+    notifyListeners();
+    return entry;
+  }
+
+  Diary? diaryById(int id) {
+    try {
+      return diaries.firstWhere((d) => d.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool isDiaryPublic(int id) => _publicDiaryIds.contains(id);
+
+  void toggleMemoryPublic(int id) {
+    final idx = memories.indexWhere((m) => m.id == id);
+    if (idx != -1) {
+      final old = memories[idx];
+      memories[idx] = Memory(
+        id: old.id,
+        patientId: old.patientId,
+        userId: old.userId,
+        contextText: old.contextText,
+        mediaList: old.mediaList,
+        isPublic: !old.isPublic,
+        recordDate: old.recordDate,
+        createdAt: old.createdAt,
+        updatedAt: DateTime.now(),
+      );
+      notifyListeners();
+    }
+  }
+
+  void toggleDiaryPublic(int id) {
+    if (_publicDiaryIds.contains(id)) {
+      _publicDiaryIds.remove(id);
+    } else {
+      _publicDiaryIds.add(id);
+    }
+    notifyListeners();
+  }
+
+  List<Memory> memoriesForMonth(DateTime month) =>
+      memories.where((m) => isSameMonth(m.recordDate, month)).toList()
+        ..sort((a, b) => a.recordDate.compareTo(b.recordDate));
+
+  List<Diary> diariesForMonth(DateTime month) =>
+      diaries.where((d) => isSameMonth(d.recordDate, month)).toList()
+        ..sort((a, b) => a.recordDate.compareTo(b.recordDate));
+
+  List<DateTime> entryDatesForMonth(DateTime month) => {
+    ...memoriesForMonth(month).map((m) => m.recordDate),
+    ...diariesForMonth(month).map((d) => d.recordDate),
+  }.toList();
+
+  List<Diary> get sharedDiaries =>
+      diaries.where((d) => _publicDiaryIds.contains(d.id)).toList()
+        ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
+
+  List<Memory> get sharedMemories =>
+      memories.where((m) => m.isPublic).toList()
+        ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
+
+  Emotion? latestEmotionFor(int userId) {
+    final entries = diaries.where((d) => d.userId == userId).toList()
+      ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
+    if (entries.isEmpty) return null;
+    return entries.first.flowerType.emotionId;
+  }
+
+  void _seed() {
+    final today = DateTime.now();
+    DateTime d(int monthsAgo, int day) =>
+        DateTime(today.year, today.month - monthsAgo, day);
+
+    addMemory(
+      date: d(2, 6),
+      title: '함께 본 옛날 사진',
+      content: '$patientRelationLabel과 함께 젊은 시절 사진을 꺼내 보았다. 잠시 웃으셨다.',
+      hasPhoto: true,
+    );
+    addMemory(
+      date: d(1, 12),
+      title: '병원 정기 검진',
+      content: '정기 검진을 다녀왔다. 컨디션은 평소와 비슷하다는 소견을 들었다.',
+    );
+    addMemory(
+      date: d(0, 3),
+      title: '산책',
+      content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
+      hasPhoto: true,
+    );
+
+    addDiary(date: d(2, 8), content: '오늘은 유난히 지치고 눈물이 났다. 혼자 감당하기 힘든 하루였다.');
+    addDiary(
+      date: d(1, 15),
+      content: '$patientRelationLabel이 나를 못 알아봐서 속상하고 화가 났다.',
+    );
+    addDiary(
+      date: d(1, 22),
+      content: '$patientRelationLabel이 옛날 이야기를 하며 웃어서 오늘은 참 고맙고 행복했다.',
+    );
+    addDiary(
+      date: d(0, 2),
+      content: '어제 짜증을 낸 것 같아 미안하고 후회된다. 더 잘해드리고 싶다.',
+      isPublic: false,
+    );
+    addDiary(date: d(0, 5), content: '오늘은 그냥 편안하고 괜찮은 하루였다.');
+  }
+}
+
+==================================================
+FILE: lib/data/emotion_analyzer.dart
+==================================================
+
+import '../models/emotions.dart';
+import '../models/legacy/recommendation.dart';
+import '../utils/emotion_utils.dart';
+
+class EmotionAnalysisResult {
+  final Emotion primary;
+  final Map<Emotion, double> scores;
+
+  const EmotionAnalysisResult(this.primary, this.scores);
+}
+
+final Map<Emotion, List<String>> _keywords = {
+  EmotionValues.sadness: ['슬프', '눈물', '힘들', '지치', '외롭', '그립', '울었', '속상', '눈물이'],
+  EmotionValues.anger: ['화나', '화가', '짜증', '답답', '분노', '억울', '열받', '화났'],
+  EmotionValues.guilt: ['미안', '죄책감', '후회', '자책', '잘못한', '미안해서'],
+  EmotionValues.joy: ['고맙', '행복', '웃', '기쁘', '다행', '감사', '좋았', '웃었'],
+  EmotionValues.calm: ['편안', '안정', '괜찮', '차분', '평온'],
+};
+
+final Map<Emotion, Recommendation> _recommendations = {
+  EmotionValues.joy: Recommendation(
+    quote: '오늘의 웃음이 내일을 버티는 힘이 되어줄 거예요.',
+    musicTitle: '햇살 좋은 날의 어쿠스틱 플레이리스트',
+    activity: '오늘의 기쁜 순간을 사진으로 남겨 보세요.',
+  ),
+  EmotionValues.calm: Recommendation(
+    quote: '지금처럼만 하셔도 이미 충분히 잘하고 계세요.',
+    musicTitle: '숲속 새소리 백색소음',
+    activity: '가벼운 스트레칭으로 하루를 정리해 보세요.',
+  ),
+  EmotionValues.sadness: Recommendation(
+    quote: '슬퍼도 괜찮아요. 그 마음, 잠시 내려놓아도 돼요.',
+    musicTitle: '위로가 되는 잔잔한 피아노 선율',
+    activity: '따뜻한 차 한 잔과 함께 5분만 쉬어가세요.',
+  ),
+  EmotionValues.anger: Recommendation(
+    quote: '화가 나는 건 그만큼 애쓰고 있다는 증거예요.',
+    musicTitle: '마음을 가라앉히는 자연의 소리',
+    activity: '4초 들이쉬고 7초 참았다가 8초 내쉬는 호흡을 세 번 반복해 보세요.',
+  ),
+  EmotionValues.guilt: Recommendation(
+    quote: '당신은 이미 최선을 다하고 있어요. 스스로를 탓하지 마세요.',
+    musicTitle: '마음을 다독이는 잔잔한 목소리',
+    activity: '5분만 밖으로 나가 걸으며 스스로에게 다정한 말을 건네보세요.',
+  ),
+};
+
+EmotionAnalysisResult analyzeEmotion(String text) {
+  final counts = <Emotion, int>{for (final e in EmotionValues.values) e: 0};
+
+  for (final entry in _keywords.entries) {
+    for (final kw in entry.value) {
+      if (text.contains(kw)) {
+        counts[entry.key] = counts[entry.key]! + 1;
+      }
+    }
+  }
+
+  final total = counts.values.fold<int>(0, (a, b) => a + b);
+  Map<Emotion, double> scores;
+  Emotion primary;
+
+  if (total == 0) {
+    scores = {
+      EmotionValues.calm: 0.6,
+      EmotionValues.joy: 0.1,
+      EmotionValues.sadness: 0.1,
+      EmotionValues.anger: 0.1,
+      EmotionValues.guilt: 0.1,
+    };
+    primary = EmotionValues.calm;
+  } else {
+    scores = counts.map((k, v) => MapEntry(k, v / total));
+    primary = counts.entries.reduce((a, b) => b.value > a.value ? b : a).key;
+  }
+
+  return EmotionAnalysisResult(primary, scores);
+}
+
+Recommendation recommendationFor(Emotion emotion) => _recommendations[emotion]!;
+
+==================================================
+FILE: lib/models/diary.dart
+==================================================
+
+import 'flower.dart';
+import 'media.dart';
+
+class Diary {
+  final int id;
+  final int userId;
+  final String context;
+  final Flower flowerType;
+  final List<Media> mediaList;
+  final DateTime recordDate;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+
+  Diary({
+    required this.id,
+    required this.userId,
+    required this.context,
+    required this.flowerType,
+    required this.mediaList,
+    required this.recordDate,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+}
+
+==================================================
+FILE: lib/models/emotions.dart
+==================================================
+
+class Emotion {
+  final int id;
+  final String name;
+  final String displayName;
+
+  Emotion({
+    required this.id,
+    required this.name,
+    required this.displayName,
+  });
+}
+
+==================================================
+FILE: lib/models/legacy/emotion.dart
+==================================================
+
+import 'package:flutter/material.dart';
+
+enum Emotion { joy, calm, sadness, anger, guilt }
+
+extension EmotionInfo on Emotion {
+  String get label => switch (this) {
+        Emotion.joy => '기쁨',
+        Emotion.calm => '평온',
+        Emotion.sadness => '슬픔',
+        Emotion.anger => '분노',
+        Emotion.guilt => '죄책감',
+      };
+
+  Color get color => switch (this) {
+        Emotion.joy => const Color(0xFFF6B93B),
+        Emotion.calm => const Color(0xFF6FBF8B),
+        Emotion.sadness => const Color(0xFF6B93D1),
+        Emotion.anger => const Color(0xFFE1613B),
+        Emotion.guilt => const Color(0xFF9B7FC7),
+      };
+
+  IconData get flowerIcon => switch (this) {
+        Emotion.joy => Icons.local_florist,
+        Emotion.calm => Icons.spa,
+        Emotion.sadness => Icons.water_drop,
+        Emotion.anger => Icons.whatshot,
+        Emotion.guilt => Icons.dark_mode,
+      };
+}
+
+==================================================
+FILE: lib/models/legacy/diary_entry.dart
+==================================================
+
+import 'emotion.dart';
+import 'recommendation.dart';
+
+class DiaryEntry {
+  final String id;
+  final DateTime date;
+  final String content;
+  final String authorId;
+  final Emotion emotion;
+  final Map<Emotion, double> emotionScores;
+  final Recommendation recommendation;
+  bool isPublic;
+
+  DiaryEntry({
+    required this.id,
+    required this.date,
+    required this.content,
+    required this.authorId,
+    required this.emotion,
+    required this.emotionScores,
+    required this.recommendation,
+    this.isPublic = true,
+  });
+}
+
+==================================================
+FILE: pubspec.yaml
+==================================================
+
+name: care_garden
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+  intl: ^0.20.2
+  shelf: ^1.4.2
+  webview_flutter: ^4.14.1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/www/
+
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+  #   - family: Trajan Pro
+  #     fonts:
+  #       - asset: fonts/TrajanPro.ttf
+  #       - asset: fonts/TrajanPro_Bold.ttf
+  #         weight: 700
+  #
+  # For details regarding fonts from package dependencies,
+  # see https://flutter.dev/to/font-from-package

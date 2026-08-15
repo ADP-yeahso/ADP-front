@@ -2,11 +2,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-
+import 'package:audioplayers/audioplayers.dart';
 import '../../data/app_data.dart';
 import '../../models/media.dart';
 import 'gallery_filter_panel.dart';
 import 'gallery_media_tile.dart';
+import 'dart:io';
+import 'package:video_player/video_player.dart';
+import 'package:fc_native_video_thumbnail/fc_native_video_thumbnail.dart';
 
 class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
@@ -120,12 +123,71 @@ class _GalleryScreenState extends State<GalleryScreen> {
     _saveSelectedMedia(selectedMedia, '사진');
   }
 
+  Future<int> _getVideoDuration(String filePath) async {
+    VideoPlayerController? controller;
+
+    try {
+      if (filePath.startsWith('http')) {
+        controller = VideoPlayerController.networkUrl(Uri.parse(filePath));
+      } else {
+        controller = VideoPlayerController.file(File(filePath));
+      }
+
+      await controller.initialize();
+
+      final duration = controller.value.duration;
+
+      debugPrint('동영상 길이 확인 성공: ${duration.inSeconds}초');
+
+      return duration.inSeconds;
+    } catch (e) {
+      debugPrint('동영상 길이 확인 실패: $e');
+      return 0;
+    } finally {
+      await controller?.dispose();
+    }
+  }
+
+  Future<String?> _generateVideoThumbnail(String videoPath) async {
+    try {
+      final tempDirectory = Directory.systemTemp;
+
+      final thumbnailPath =
+          '${tempDirectory.path}/video_thumb_${DateTime.now().microsecondsSinceEpoch}.jpg';
+
+      final plugin = FcNativeVideoThumbnail();
+
+      final generated = await plugin.saveThumbnailToFile(
+        srcFile: videoPath,
+        destFile: thumbnailPath,
+        width: 400,
+        height: 400,
+        quality: 85,
+      );
+
+      if (!generated) {
+        debugPrint('동영상 썸네일 생성 실패');
+        return null;
+      }
+
+      debugPrint('동영상 썸네일 생성 성공: $thumbnailPath');
+
+      return thumbnailPath;
+    } catch (e) {
+      debugPrint('동영상 썸네일 오류: $e');
+      return null;
+    }
+  }
+
   // 동영상 선택
   Future<void> _pickVideo() async {
     final List<Media> selectedMedia = [];
     try {
       final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
       if (video != null) {
+        final durationSeconds = await _getVideoDuration(video.path);
+        final thumbnailPath = await _generateVideoThumbnail(video.path);
+
         selectedMedia.add(
           Media(
             id: DateTime.now().microsecondsSinceEpoch,
@@ -133,7 +195,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
             diaryId: null,
             fileUrl: video.path,
             fileType: 'video',
-            duration: 0,
+            duration: durationSeconds,
+            thumbnailPath: thumbnailPath,
             sortOrder: 1,
             createdAt: DateTime.now(),
           ),
@@ -144,14 +207,20 @@ class _GalleryScreenState extends State<GalleryScreen> {
       if (result != null &&
           result.files.isNotEmpty &&
           result.files.single.path != null) {
+        final videoPath = result.files.single.path!;
+
+        final durationSeconds = await _getVideoDuration(videoPath);
+        final thumbnailPath = await _generateVideoThumbnail(videoPath);
+
         selectedMedia.add(
           Media(
             id: DateTime.now().microsecondsSinceEpoch,
             memoryId: null,
             diaryId: null,
-            fileUrl: result.files.single.path!,
+            fileUrl: videoPath,
             fileType: 'video',
-            duration: 0,
+            duration: durationSeconds,
+            thumbnailPath: thumbnailPath,
             sortOrder: 1,
             createdAt: DateTime.now(),
           ),
@@ -159,6 +228,33 @@ class _GalleryScreenState extends State<GalleryScreen> {
       }
     }
     _saveSelectedMedia(selectedMedia, '동영상');
+  }
+
+  Future<int> _getAudioDuration(String filePath) async {
+    final player = AudioPlayer();
+
+    try {
+      await player.setVolume(0);
+
+      final durationFuture = player.onDurationChanged
+          .firstWhere((duration) => duration > Duration.zero)
+          .timeout(const Duration(seconds: 8));
+
+      await player.play(DeviceFileSource(filePath));
+
+      final duration = await durationFuture;
+
+      await player.stop();
+
+      debugPrint('음성 길이 확인 성공: ${duration.inSeconds}초');
+
+      return duration.inSeconds;
+    } catch (e) {
+      debugPrint('음성 길이 확인 실패: $e');
+      return 0;
+    } finally {
+      await player.dispose();
+    }
   }
 
   // 음성 선택
@@ -174,6 +270,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
       if (result != null && result.files.isNotEmpty) {
         for (final file in result.files) {
           if (file.path != null) {
+            final durationSeconds = await _getAudioDuration(file.path!);
+            debugPrint('최종 저장할 음성 길이: $durationSeconds초');
             selectedMedia.add(
               Media(
                 id:
@@ -183,7 +281,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 diaryId: null,
                 fileUrl: file.path!,
                 fileType: 'audio',
-                duration: 0,
+                duration: durationSeconds,
                 sortOrder: selectedMedia.length + 1,
                 createdAt: DateTime.now(),
               ),
@@ -457,7 +555,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
                         final date = _getMediaDate(item, appData);
 
-                        return GalleryMediaTile(item: item, resolvedDate: date);
                         return GalleryMediaTile(
                           key: ValueKey(item.id),
                           item: item,

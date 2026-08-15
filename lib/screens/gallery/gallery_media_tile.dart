@@ -20,127 +20,245 @@ class GalleryMediaTile extends StatefulWidget {
   State<GalleryMediaTile> createState() => _GalleryMediaTileState();
 }
 
-class _GalleryMediaTileState extends State<GalleryMediaTile> {
-  VideoPlayerController? _videoController;
-  AudioPlayer? _audioPlayer;
+class _AudioPlayerDialog extends StatefulWidget {
+  final String filePath;
+  final DateTime date;
+  final int durationSeconds;
 
-  bool _videoInitialized = false;
-  bool _audioInitialized = false;
+  const _AudioPlayerDialog({
+    required this.filePath,
+    required this.date,
+    required this.durationSeconds,
+  });
 
-  Duration _audioPosition = Duration.zero;
-  Duration _audioDuration = Duration.zero;
+  @override
+  State<_AudioPlayerDialog> createState() => _AudioPlayerDialogState();
+}
+
+class _AudioPlayerDialogState extends State<_AudioPlayerDialog> {
+  late final AudioPlayer _player;
+
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+
+  PlayerState _playerState = PlayerState.stopped;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
 
-    if (widget.item.fileType == 'video') {
-      _initializeVideo();
-    }
+    _player = AudioPlayer();
+    _player.positionUpdater = TimerPositionUpdater(
+      getPosition: _player.getCurrentPosition,
+      interval: const Duration(milliseconds: 100),
+    );
+    _duration = Duration(seconds: widget.durationSeconds);
 
-    // audio는 여기서 초기화하지 않음.
-    // 사용자가 재생 버튼을 눌렀을 때만 초기화.
-  }
-
-  Future<void> _initializeVideo() async {
-    try {
-      final fileUrl = widget.item.fileUrl;
-
-      if (fileUrl.startsWith('http')) {
-        _videoController = VideoPlayerController.networkUrl(Uri.parse(fileUrl));
-      } else {
-        _videoController = VideoPlayerController.file(File(fileUrl));
-      }
-
-      await _videoController!.initialize();
-
+    _player.onDurationChanged.listen((duration) {
       if (!mounted) return;
 
       setState(() {
-        _videoInitialized = true;
+        _duration = duration;
       });
+    });
 
-      _videoController!.addListener(() {
-        if (mounted) {
-          setState(() {});
-        }
-      });
-    } catch (e) {
-      debugPrint('영상 초기화 오류: $e');
-    }
-  }
-
-  Future<void> _initializeAudio() async {
-    try {
-      debugPrint('===== 음성 초기화 시작 =====');
-      debugPrint('파일 경로: ${widget.item.fileUrl}');
-
-      final file = File(widget.item.fileUrl);
-
-      debugPrint('파일 존재 여부: ${file.existsSync()}');
-      debugPrint('파일 크기: ${file.existsSync() ? file.lengthSync() : -1}');
-
-      if (!file.existsSync()) {
-        debugPrint('음성 파일이 존재하지 않음');
-        return;
-      }
-
-      _audioPlayer ??= AudioPlayer();
-
-      // 재생 위치
-      _audioPlayer!.onPositionChanged.listen((position) {
-        if (!mounted) return;
-
-        setState(() {
-          _audioPosition = position;
-        });
-      });
-
-      // 전체 길이
-      _audioPlayer!.onDurationChanged.listen((duration) {
-        if (!mounted) return;
-
-        setState(() {
-          _audioDuration = duration;
-        });
-      });
-
-      // 재생 완료
-      _audioPlayer!.onPlayerComplete.listen((_) {
-        if (!mounted) return;
-
-        setState(() {
-          _audioPosition = Duration.zero;
-        });
-      });
-
-      // 파일을 실제로 재생하기 전에 source 설정
-      await _audioPlayer!.setSource(DeviceFileSource(widget.item.fileUrl));
-
-      final duration = await _audioPlayer!.getDuration();
-
+    _player.onPositionChanged.listen((position) {
       if (!mounted) return;
 
       setState(() {
-        _audioInitialized = true;
-        _audioDuration = duration ?? Duration.zero;
+        _position = position;
       });
+    });
 
-      debugPrint('===== 음성 초기화 성공 =====');
-      debugPrint('duration: $_audioDuration');
-    } catch (e, stackTrace) {
-      debugPrint('===== 음성 초기화 오류 =====');
-      debugPrint('오류: $e');
-      debugPrint('스택: $stackTrace');
+    _player.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
 
-      _audioInitialized = false;
-    }
+      setState(() {
+        _playerState = state;
+      });
+    });
+
+    _player.onPlayerComplete.listen((_) {
+      if (!mounted) return;
+
+      setState(() {
+        _position = Duration.zero;
+      });
+    });
   }
 
   @override
   void dispose() {
-    _videoController?.dispose();
-    _audioPlayer?.dispose();
+    _player.dispose();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _togglePlay() async {
+    if (_isLoading) return;
+
+    try {
+      if (_playerState == PlayerState.playing) {
+        await _player.pause();
+        return;
+      }
+
+      if (_playerState == PlayerState.paused) {
+        await _player.resume();
+        return;
+      }
+
+      setState(() {
+        _isLoading = true;
+      });
+
+      await _player.play(
+        DeviceFileSource(widget.filePath),
+        position: _position,
+      );
+    } catch (e) {
+      debugPrint('음성 재생 오류: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('음성을 재생하지 못했습니다.')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _seek(double value) async {
+    if (_duration == Duration.zero) return;
+
+    final newPosition = Duration(milliseconds: value.round());
+
+    setState(() {
+      _position = newPosition;
+    });
+
+    await _player.seek(newPosition);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPlaying = _playerState == PlayerState.playing;
+
+    final maxValue = _duration.inMilliseconds > 0
+        ? _duration.inMilliseconds.toDouble()
+        : 1.0;
+
+    final positionValue = _position.inMilliseconds
+        .clamp(0, _duration.inMilliseconds > 0 ? _duration.inMilliseconds : 0)
+        .toDouble();
+
+    return Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    '음성 재생',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+
+                IconButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            if (_isLoading)
+              const SizedBox(
+                width: 64,
+                height: 64,
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                ),
+              )
+            else
+              IconButton(
+                onPressed: _togglePlay,
+                iconSize: 64,
+                padding: EdgeInsets.zero,
+                icon: Icon(
+                  isPlaying
+                      ? Icons.pause_circle_filled
+                      : Icons.play_circle_fill,
+                  color: const Color(0xFF5C9271),
+                ),
+              ),
+
+            const SizedBox(height: 18),
+
+            Slider(
+              value: positionValue,
+              max: maxValue,
+              onChanged: _duration == Duration.zero ? null : _seek,
+            ),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatDuration(_position),
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+                Text(
+                  _formatDuration(_duration),
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            Text(
+              DateFormat('yyyy.M.d').format(widget.date),
+              style: const TextStyle(fontSize: 13, color: Colors.black45),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GalleryMediaTileState extends State<GalleryMediaTile> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
     super.dispose();
   }
 
@@ -152,66 +270,13 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
     return '$min:${sec.toString().padLeft(2, '0')}';
   }
 
-  Future<void> _toggleVideo() async {
-    if (_videoController == null || !_videoInitialized) return;
-
-    if (_videoController!.value.isPlaying) {
-      await _videoController!.pause();
-    } else {
-      await _videoController!.play();
-    }
-
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  Future<void> _toggleAudio() async {
-    debugPrint('===== 음성 재생 버튼 클릭 =====');
-    debugPrint('파일 경로: ${widget.item.fileUrl}');
-
-    try {
-      if (_audioPlayer == null || !_audioInitialized) {
-        debugPrint('플레이어 미초기화 → 초기화 시작');
-
-        await _initializeAudio();
-
-        if (_audioPlayer == null || !_audioInitialized) {
-          debugPrint('음성 초기화 실패 → 재생 중단');
-          return;
-        }
-      }
-
-      final state = _audioPlayer!.state;
-
-      if (state == PlayerState.playing) {
-        await _audioPlayer!.pause();
-      } else {
-        if (_audioDuration != Duration.zero &&
-            _audioPosition >= _audioDuration) {
-          await _audioPlayer!.seek(Duration.zero);
-        }
-
-        await _audioPlayer!.resume();
-      }
-
-      if (mounted) {
-        setState(() {});
-      }
-    } catch (e, stackTrace) {
-      debugPrint('===== 음성 재생 오류 =====');
-      debugPrint('오류: $e');
-      debugPrint('스택: $stackTrace');
-    }
-  }
-
   void _handleTap() {
     if (widget.item.fileType == 'image') {
       _showImageViewer(context);
     } else if (widget.item.fileType == 'video') {
-      _toggleVideo();
+      _showVideoViewer(context);
     } else if (widget.item.fileType == 'audio') {
-      _toggleAudio();
+      _showAudioViewer(context);
     }
   }
 
@@ -272,9 +337,9 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
                       ),
                     ),
 
-                    if (item.fileType == 'video' && _videoInitialized)
+                    if (item.fileType == 'video')
                       Text(
-                        _formatDuration(_videoController!.value.duration),
+                        _formatDuration(Duration(seconds: item.duration ?? 0)),
                         style: const TextStyle(
                           fontSize: 10,
                           color: Colors.black45,
@@ -283,7 +348,7 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
 
                     if (item.fileType == 'audio')
                       Text(
-                        _formatDuration(_audioDuration),
+                        _formatDuration(Duration(seconds: item.duration ?? 0)),
                         style: const TextStyle(
                           fontSize: 10,
                           color: Colors.black45,
@@ -314,119 +379,64 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
   }
 
   Widget _buildVideoPlayer() {
-    if (!_videoInitialized || _videoController == null) {
-      return Container(
-        color: Colors.grey[200],
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
-    }
-
-    final controller = _videoController!;
+    final thumbnailPath = widget.item.thumbnailPath;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        Container(
-          color: Colors.black,
-          child: Center(
-            child: AspectRatio(
-              aspectRatio: controller.value.aspectRatio,
-              child: VideoPlayer(controller),
-            ),
-          ),
-        ),
-
-        Center(
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.black45,
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              onPressed: _toggleVideo,
-              icon: Icon(
-                controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
-                color: Colors.white,
+        if (thumbnailPath != null && File(thumbnailPath).existsSync())
+          Image.file(File(thumbnailPath), fit: BoxFit.cover)
+        else
+          Container(
+            color: Colors.grey[200],
+            child: const Center(
+              child: Icon(
+                Icons.videocam_outlined,
+                color: Colors.grey,
+                size: 36,
               ),
             ),
           ),
-        ),
 
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: VideoProgressIndicator(
-            controller,
-            allowScrubbing: true,
-            padding: EdgeInsets.zero,
-          ),
+        Container(color: Colors.black.withValues(alpha: 0.12)),
+
+        const Center(
+          child: Icon(Icons.play_circle_fill, color: Colors.white, size: 44),
         ),
       ],
     );
   }
 
   Widget _buildAudioPlayer() {
-    final isPlaying = _audioPlayer?.state == PlayerState.playing;
-
-    final maxMilliseconds = _audioDuration.inMilliseconds > 0
-        ? _audioDuration.inMilliseconds.toDouble()
-        : 1.0;
-
-    final positionMilliseconds = _audioPosition.inMilliseconds
-        .clamp(
-          0,
-          _audioDuration.inMilliseconds > 0 ? _audioDuration.inMilliseconds : 0,
-        )
-        .toDouble();
-
     return Container(
       color: const Color(0xFFF3F1E9),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      child: Row(
-        children: [
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-            onPressed: _audioInitialized ? _toggleAudio : null,
-            icon: Icon(
-              isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
-              color: const Color(0xFF5C9271),
-              size: 32,
-            ),
-          ),
-
-          const SizedBox(width: 4),
-
-          Expanded(
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 2,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-              ),
-              child: Slider(
-                value: positionMilliseconds,
-                max: maxMilliseconds,
-                onChanged: !_audioInitialized
-                    ? null
-                    : (value) {
-                        _audioPlayer?.seek(
-                          Duration(milliseconds: value.round()),
-                        );
-                      },
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 4),
-
-          Text(
-            _formatDuration(_audioDuration),
-            style: const TextStyle(fontSize: 9, color: Colors.black54),
-          ),
-        ],
+      child: const Center(
+        child: Icon(Icons.play_circle_fill, color: Color(0xFF5C9271), size: 38),
       ),
+    );
+  }
+
+  void _showVideoViewer(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.92),
+      builder: (dialogContext) {
+        return _VideoPlayerDialog(filePath: widget.item.fileUrl);
+      },
+    );
+  }
+
+  void _showAudioViewer(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.45),
+      builder: (dialogContext) {
+        return _AudioPlayerDialog(
+          filePath: widget.item.fileUrl,
+          date: widget.resolvedDate,
+          durationSeconds: widget.item.duration ?? 0,
+        );
+      },
     );
   }
 
@@ -542,6 +552,239 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
           color: Colors.grey,
         );
       },
+    );
+  }
+}
+
+class _VideoPlayerDialog extends StatefulWidget {
+  final String filePath;
+
+  const _VideoPlayerDialog({required this.filePath});
+
+  @override
+  State<_VideoPlayerDialog> createState() => _VideoPlayerDialogState();
+}
+
+class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
+  VideoPlayerController? _controller;
+
+  bool _initialized = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideo();
+  }
+
+  Future<void> _initializeVideo() async {
+    try {
+      if (widget.filePath.startsWith('http')) {
+        _controller = VideoPlayerController.networkUrl(
+          Uri.parse(widget.filePath),
+        );
+      } else {
+        _controller = VideoPlayerController.file(File(widget.filePath));
+      }
+
+      await _controller!.initialize();
+
+      _controller!.addListener(() {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+
+      if (!mounted) return;
+
+      setState(() {
+        _initialized = true;
+      });
+    } catch (e) {
+      debugPrint('동영상 초기화 오류: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        _hasError = true;
+      });
+    }
+  }
+
+  Future<void> _togglePlay() async {
+    if (_controller == null || !_initialized) return;
+
+    if (_controller!.value.isPlaying) {
+      await _controller!.pause();
+    } else {
+      await _controller!.play();
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _controller?.pause();
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasError) {
+      return Dialog(
+        backgroundColor: Colors.black,
+        child: SizedBox(
+          height: 420,
+          child: Stack(
+            children: [
+              const Center(
+                child: Text(
+                  '동영상을 재생하지 못했습니다.',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.close, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!_initialized || _controller == null) {
+      return Dialog(
+        backgroundColor: Colors.black,
+        child: SizedBox(
+          height: 420,
+          child: Stack(
+            children: [
+              const Center(child: CircularProgressIndicator()),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.close, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final controller = _controller!;
+    final duration = controller.value.duration;
+    final position = controller.value.position;
+
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 36),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: AspectRatio(
+          aspectRatio: controller.value.aspectRatio,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              VideoPlayer(controller),
+
+              Center(
+                child: IconButton(
+                  onPressed: _togglePlay,
+                  iconSize: 72,
+                  icon: Icon(
+                    controller.value.isPlaying
+                        ? Icons.pause_circle_filled
+                        : Icons.play_circle_fill,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 14,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    VideoProgressIndicator(
+                      controller,
+                      allowScrubbing: true,
+                      colors: const VideoProgressColors(
+                        playedColor: Colors.white,
+                        bufferedColor: Colors.white38,
+                        backgroundColor: Colors.white24,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _formatDuration(position),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          _formatDuration(duration),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.black45,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

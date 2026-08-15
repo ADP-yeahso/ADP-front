@@ -8,7 +8,8 @@ import '../models/memory.dart';
 import '../models/users.dart';
 import 'emotion_analyzer.dart';
 
-bool isSameMonth(DateTime a, DateTime b) => a.year == b.year && a.month == b.month;
+bool isSameMonth(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month;
 bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
@@ -20,6 +21,7 @@ extension UserUIInfo on User {
     if (id == 2) return '아들';
     return '며느리';
   }
+
   Color get color {
     if (id == 1) return const Color(0xFF6B93D1);
     if (id == 2) return const Color(0xFF6FBF8B);
@@ -66,11 +68,12 @@ class AppData extends ChangeNotifier {
 
   User get me => users.firstWhere((u) => u.isMe);
 
-  User userById(int id) => users.firstWhere((u) => u.id == id, orElse: () => me);
+  User userById(int id) =>
+      users.firstWhere((u) => u.id == id, orElse: () => me);
 
   final List<Memory> memories = [];
   final List<Diary> diaries = [];
-  
+
   // To keep track of public states since Diary doesn't have isPublic
   final Set<int> _publicDiaryIds = {};
 
@@ -86,28 +89,35 @@ class AppData extends ChangeNotifier {
   }) {
     // 메모리 저장 시 각 미디어의 연관 ID 세팅
     final memoryId = _nextId();
-    final updatedMedia = mediaList.map((m) => Media(
-      id: m.id,
-      memoryId: memoryId,
-      diaryId: null,
-      fileUrl: m.fileUrl,
-      fileType: m.fileType,
-      duration: m.duration,
-      sortOrder: m.sortOrder,
-      createdAt: m.createdAt,
-    )).toList();
+    final updatedMedia = mediaList
+        .map(
+          (m) => Media(
+            id: m.id,
+            memoryId: memoryId,
+            diaryId: null,
+            fileUrl: m.fileUrl,
+            fileType: m.fileType,
+            duration: m.duration,
+            thumbnailPath: m.thumbnailPath,
+            sortOrder: m.sortOrder,
+            createdAt: m.createdAt,
+          ),
+        )
+        .toList();
 
-    memories.add(Memory(
-      id: memoryId,
-      patientId: 1,
-      userId: me.id,
-      contextText: content,
-      mediaList: updatedMedia,
-      isPublic: isPublic,
-      recordDate: date,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ));
+    memories.add(
+      Memory(
+        id: memoryId,
+        patientId: 1,
+        userId: me.id,
+        contextText: content,
+        mediaList: updatedMedia,
+        isPublic: isPublic,
+        recordDate: date,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
     notifyListeners();
   }
 
@@ -125,19 +135,23 @@ class AppData extends ChangeNotifier {
       colorCode: '#000000',
       sentence: 'Mock sentence',
     );
-    
+
     final diaryId = _nextId();
-    final updatedMedia = mediaList.map((m) => Media(
-      id: m.id,
-      memoryId: null,
-      diaryId: diaryId,
-      fileUrl: m.fileUrl,
-      fileType: m.fileType,
-      duration: m.duration,
-      sortOrder: m.sortOrder,
-      createdAt: m.createdAt,
-    )).toList();
-    
+    final updatedMedia = mediaList
+        .map(
+          (m) => Media(
+            id: m.id,
+            memoryId: null,
+            diaryId: diaryId,
+            fileUrl: m.fileUrl,
+            fileType: m.fileType,
+            duration: m.duration,
+            sortOrder: m.sortOrder,
+            createdAt: m.createdAt,
+          ),
+        )
+        .toList();
+
     final entry = Diary(
       id: diaryId,
       userId: me.id,
@@ -148,7 +162,7 @@ class AppData extends ChangeNotifier {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-    
+
     diaries.add(entry);
     if (isPublic) {
       _publicDiaryIds.add(entry.id);
@@ -164,7 +178,7 @@ class AppData extends ChangeNotifier {
       return null;
     }
   }
-  
+
   bool isDiaryPublic(int id) => _publicDiaryIds.contains(id);
 
   void toggleMemoryPublic(int id) {
@@ -204,9 +218,9 @@ class AppData extends ChangeNotifier {
         ..sort((a, b) => a.recordDate.compareTo(b.recordDate));
 
   List<DateTime> entryDatesForMonth(DateTime month) => {
-        ...memoriesForMonth(month).map((m) => m.recordDate),
-        ...diariesForMonth(month).map((d) => d.recordDate),
-      }.toList();
+    ...memoriesForMonth(month).map((m) => m.recordDate),
+    ...diariesForMonth(month).map((d) => d.recordDate),
+  }.toList();
 
   List<Diary> get sharedDiaries =>
       diaries.where((d) => _publicDiaryIds.contains(d.id)).toList()
@@ -233,7 +247,16 @@ class AppData extends ChangeNotifier {
       title: '함께 본 옛날 사진',
       content: '$patientRelationLabel과 함께 젊은 시절 사진을 꺼내 보았다. 잠시 웃으셨다.',
       mediaList: [
-        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+        Media(
+          id: 0,
+          memoryId: null,
+          diaryId: null,
+          fileUrl: 'dummy.jpg',
+          fileType: 'image',
+          duration: 0,
+          sortOrder: 1,
+          createdAt: DateTime.now(),
+        ),
       ],
     );
     addMemory(
@@ -246,12 +269,24 @@ class AppData extends ChangeNotifier {
       title: '산책',
       content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
       mediaList: [
-        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+        Media(
+          id: 0,
+          memoryId: null,
+          diaryId: null,
+          fileUrl: 'dummy.jpg',
+          fileType: 'image',
+          duration: 0,
+          sortOrder: 1,
+          createdAt: DateTime.now(),
+        ),
       ],
     );
 
     addDiary(date: d(2, 8), content: '오늘은 유난히 지치고 눈물이 났다. 혼자 감당하기 힘든 하루였다.');
-    addDiary(date: d(1, 15), content: '$patientRelationLabel이 나를 못 알아봐서 속상하고 화가 났다.');
+    addDiary(
+      date: d(1, 15),
+      content: '$patientRelationLabel이 나를 못 알아봐서 속상하고 화가 났다.',
+    );
     addDiary(
       date: d(1, 22),
       content: '$patientRelationLabel이 옛날 이야기를 하며 웃어서 오늘은 참 고맙고 행복했다.',

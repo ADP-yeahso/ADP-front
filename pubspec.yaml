@@ -43,6 +43,7 @@ dependencies:
   just_audio: ^0.10.6
   file_picker: 10.3.10
   audioplayers: ^6.8.1
+  fc_native_video_thumbnail: ^3.0.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -47,6 +47,7 @@ dependencies:
   file_picker: ^10.3.10
 
   fl_chart: ^1.2.0
+  flutter_svg: ^2.3.0
 
 
 dev_dependencies:
@@ -74,6 +75,7 @@ flutter:
   assets:
     - assets/images/
     - assets/www/
+    - assets/gallery/screen4/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

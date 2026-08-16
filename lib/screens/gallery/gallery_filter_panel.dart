@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class GalleryFilterPanel extends StatelessWidget {
   // 선택된 기록 구분 목록
@@ -12,12 +13,10 @@ class GalleryFilterPanel extends StatelessWidget {
   final String sortBy;
 
   // 기록 구분 선택/해제 콜백
-  final void Function(String type, bool isSelected)
-      onRecordTypeChanged;
+  final void Function(String type, bool isSelected) onRecordTypeChanged;
 
   // 파일 유형 선택/해제 콜백
-  final void Function(String type, bool isSelected)
-      onFileTypeChanged;
+  final void Function(String type, bool isSelected) onFileTypeChanged;
 
   // 정렬 기준 변경 콜백
   final ValueChanged<String> onSortByChanged;
@@ -35,298 +34,200 @@ class GalleryFilterPanel extends StatelessWidget {
     required this.onSortByChanged,
     required this.onReset,
   });
+  Widget _svgButton({required String assetPath, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SvgPicture.asset(assetPath, fit: BoxFit.contain),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 8,
-      ),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey.withOpacity(0.2),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '조건검색',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
+    const basePath = 'assets/gallery/screen4/';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: AspectRatio(
+        aspectRatio: 317 / 166,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 조건 검색 박스
+            SvgPicture.asset(
+              '${basePath}4_condition_search_box.svg',
+              fit: BoxFit.fill,
             ),
-          ),
 
-          const SizedBox(height: 8),
-
-          // 1. 기록 구분 필터
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(
-                width: 70,
-                child: Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text(
-                    '기록 구분',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
-
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: const [
-                    {
-                      'label': '환자',
-                      'value': 'patient',
-                    },
-                    {
-                      'label': '감정',
-                      'value': 'emotion',
-                    },
-                    {
-                      'label': '직접 추가',
-                      'value': 'custom',
-                    },
-                  ].map((type) {
-                    final String value = type['value']!;
-                    final String label = type['label']!;
-
-                    final bool isSelected =
-                        selectedRecordTypes.contains(value);
-
-                    return FilterChip(
-                      label: Text(label),
-                      selected: isSelected,
-                      showCheckmark: true,
-                      onSelected: (selected) {
-                        onRecordTypeChanged(
-                          value,
-                          selected,
-                        );
-                      },
-                      selectedColor: Theme.of(context)
-                          .primaryColor
-                          .withOpacity(0.2),
-                      checkmarkColor:
-                          Theme.of(context).primaryColor,
-                      side: BorderSide(
-                        color: isSelected
-                            ? Theme.of(context).primaryColor
-                            : Colors.grey.shade300,
-                      ),
-                      labelStyle: TextStyle(
-                        color: isSelected
-                            ? Theme.of(context).primaryColor
-                            : Colors.black87,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        fontSize: 12,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // 2. 파일 유형 필터
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(
-                width: 70,
-                child: Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text(
-                    '파일 유형',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
-
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    {
-                      'label': '사진',
-                      'value': 'image',
-                    },
-                    {
-                      'label': '동영상',
-                      'value': 'video',
-                    },
-                    {
-                      'label': '음성',
-                      'value': 'audio',
-                    },
-                  ].map((type) {
-                    final String value = type['value']!;
-                    final String label = type['label']!;
+                    // 조건검색 제목
+                    SvgPicture.asset(
+                      '${basePath}4_condition_search.svg',
+                      width: 72,
+                      fit: BoxFit.contain,
+                    ),
 
-                    final bool isSelected =
-                        selectedFileTypes.contains(value);
+                    const SizedBox(height: 8),
 
-                    return FilterChip(
-                      label: Text(label),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        onFileTypeChanged(
-                          value,
-                          selected,
-                        );
-                      },
-                      selectedColor: Theme.of(context)
-                          .primaryColor
-                          .withOpacity(0.2),
-                      checkmarkColor:
-                          Theme.of(context).primaryColor,
-                      side: BorderSide(
-                        color: isSelected
-                            ? Theme.of(context).primaryColor
-                            : Colors.grey.shade300,
-                      ),
-                      labelStyle: TextStyle(
-                        color: isSelected
-                            ? Theme.of(context).primaryColor
-                            : Colors.black87,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        fontSize: 12,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // 3. 정렬 및 검색 초기화
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Row(
-                  children: [
-                    const SizedBox(
-                      width: 70,
-                      child: Text(
-                        '정렬',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 13,
+                    // 기록 구분
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 58,
+                          child: SvgPicture.asset(
+                            '${basePath}4_condition_search_record_classification.svg',
+                            width: 45,
+                            alignment: Alignment.centerLeft,
+                          ),
                         ),
-                      ),
+
+                        _svgButton(
+                          assetPath:
+                              '${basePath}${selectedRecordTypes.contains('patient') ? '4_after_click_record_classification_patient.svg' : '4_before_click_record_classification_patient.svg'}',
+                          onTap: () {
+                            onRecordTypeChanged(
+                              'patient',
+                              !selectedRecordTypes.contains('patient'),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        _svgButton(
+                          assetPath:
+                              '${basePath}${selectedRecordTypes.contains('emotion') ? '4_after_click_record_classification_emotion.svg' : '4_before_click_record_classification_emotion.svg'}',
+                          onTap: () {
+                            onRecordTypeChanged(
+                              'emotion',
+                              !selectedRecordTypes.contains('emotion'),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        _svgButton(
+                          assetPath:
+                              '${basePath}${selectedRecordTypes.contains('custom') ? '4_after_click_record_classification_direct_add.svg' : '4_before_click_record_classification_direct_add.svg'}',
+                          onTap: () {
+                            onRecordTypeChanged(
+                              'custom',
+                              !selectedRecordTypes.contains('custom'),
+                            );
+                          },
+                        ),
+                      ],
                     ),
 
-                    ChoiceChip(
-                      label: const Text('최신순'),
-                      selected: sortBy == 'latest',
-                      onSelected: (selected) {
-                        if (selected) {
-                          onSortByChanged('latest');
-                        }
-                      },
-                      selectedColor: Theme.of(context)
-                          .primaryColor
-                          .withOpacity(0.2),
-                      side: BorderSide(
-                        color: sortBy == 'latest'
-                            ? Theme.of(context).primaryColor
-                            : Colors.grey.shade300,
-                      ),
-                      labelStyle: TextStyle(
-                        fontSize: 12,
-                        color: sortBy == 'latest'
-                            ? Theme.of(context).primaryColor
-                            : Colors.black87,
-                        fontWeight: sortBy == 'latest'
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
+                    const SizedBox(height: 6),
+
+                    // 파일 유형
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 58,
+                          child: SvgPicture.asset(
+                            '${basePath}4_condition_search_file_type.svg',
+                            width: 45,
+                            alignment: Alignment.centerLeft,
+                          ),
+                        ),
+
+                        _svgButton(
+                          assetPath:
+                              '${basePath}${selectedFileTypes.contains('image') ? '4_after_click_file_type_photo.svg' : '4_before_click_file_type_photo.svg'}',
+                          onTap: () {
+                            onFileTypeChanged(
+                              'image',
+                              !selectedFileTypes.contains('image'),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        _svgButton(
+                          assetPath:
+                              '${basePath}${selectedFileTypes.contains('video') ? '4_after_click_file_type_video.svg' : '4_before_click_file_type_video.svg'}',
+                          onTap: () {
+                            onFileTypeChanged(
+                              'video',
+                              !selectedFileTypes.contains('video'),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        _svgButton(
+                          assetPath:
+                              '${basePath}${selectedFileTypes.contains('audio') ? '4_after_click_file_type_audio.svg' : '4_before_click_file_type_audio.svg'}',
+                          onTap: () {
+                            onFileTypeChanged(
+                              'audio',
+                              !selectedFileTypes.contains('audio'),
+                            );
+                          },
+                        ),
+                      ],
                     ),
 
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 6),
 
-                    ChoiceChip(
-                      label: const Text('오래된순'),
-                      selected: sortBy == 'oldest',
-                      onSelected: (selected) {
-                        if (selected) {
-                          onSortByChanged('oldest');
-                        }
-                      },
-                      selectedColor: Theme.of(context)
-                          .primaryColor
-                          .withOpacity(0.2),
-                      side: BorderSide(
-                        color: sortBy == 'oldest'
-                            ? Theme.of(context).primaryColor
-                            : Colors.grey.shade300,
-                      ),
-                      labelStyle: TextStyle(
-                        fontSize: 12,
-                        color: sortBy == 'oldest'
-                            ? Theme.of(context).primaryColor
-                            : Colors.black87,
-                        fontWeight: sortBy == 'oldest'
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
+                    // 정렬
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 58,
+                          child: SvgPicture.asset(
+                            '${basePath}4_condition_search_sort.svg',
+                            width: 24,
+                            alignment: Alignment.centerLeft,
+                          ),
+                        ),
+
+                        _svgButton(
+                          assetPath:
+                              '${basePath}${sortBy == 'latest' ? '4_after_click_sort_latest.svg' : '4_before_click_sort_latest.svg'}',
+                          onTap: () {
+                            onSortByChanged('latest');
+                          },
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        _svgButton(
+                          assetPath:
+                              '${basePath}${sortBy == 'oldest' ? '4_after_click_sort_oldest.svg' : '4_before_click_sort_oldest.svg'}',
+                          onTap: () {
+                            onSortByChanged('oldest');
+                          },
+                        ),
+
+                        const Spacer(),
+
+                        GestureDetector(
+                          onTap: onReset,
+                          behavior: HitTestBehavior.opaque,
+                          child: SvgPicture.asset(
+                            '${basePath}4_search_reset.svg',
+                            width: 65,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-
-              TextButton.icon(
-                onPressed: onReset,
-                icon: const Icon(
-                  Icons.refresh,
-                  size: 16,
-                ),
-                label: const Text(
-                  '검색 초기화',
-                  style: TextStyle(fontSize: 12),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.redAccent,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

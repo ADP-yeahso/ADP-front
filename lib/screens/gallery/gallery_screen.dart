@@ -10,6 +10,7 @@ import 'gallery_media_tile.dart';
 import 'dart:io';
 import 'package:video_player/video_player.dart';
 import 'package:fc_native_video_thumbnail/fc_native_video_thumbnail.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
@@ -30,6 +31,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   // latest: 최신순, oldest: 오래된순
   String _sortBy = 'latest';
+
+  bool _isFilterExpanded = false;
 
   // 사용자가 갤러리에서 직접 추가한 미디어
   final List<Media> _customMediaList = [];
@@ -447,72 +450,109 @@ class _GalleryScreenState extends State<GalleryScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF9F3),
       appBar: AppBar(
-        title: const Text(
-          '< 기억 갤러리 >',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
+        title: SvgPicture.asset(
+          'assets/gallery/screen4/4_gallery_title.svg',
+          height: 28,
+          fit: BoxFit.contain,
         ),
         centerTitle: true,
         automaticallyImplyLeading: false,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: TextButton.icon(
-              onPressed: _showAddMediaDialog,
-              icon: const Icon(Icons.add_photo_alternate_outlined, size: 26),
-              label: const Text(
-                '추가',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).primaryColor,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 조건 검색 영역
-          GalleryFilterPanel(
-            selectedRecordTypes: _selectedRecordTypes,
-            selectedFileTypes: _selectedFileTypes,
-            sortBy: _sortBy,
-            onRecordTypeChanged: (type, isSelected) {
-              setState(() {
-                if (isSelected) {
-                  _selectedRecordTypes.add(type);
-                } else {
-                  _selectedRecordTypes.remove(type);
-                }
-              });
-            },
-            onFileTypeChanged: (type, isSelected) {
-              setState(() {
-                if (isSelected) {
-                  if (!_selectedFileTypes.contains(type)) {
-                    _selectedFileTypes.add(type);
-                  }
-                } else {
-                  _selectedFileTypes.remove(type);
-                }
-              });
-            },
-            onSortByChanged: (sortValue) {
-              setState(() {
-                _sortBy = sortValue;
-              });
-            },
-            onReset: _resetFilters,
-          ),
+          // 조건 검색 버튼
+          // 조건 검색 영역
+          if (!_isFilterExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isFilterExpanded = true;
+                      });
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: SvgPicture.asset(
+                      'assets/gallery/screen4/4_condition_search.svg',
+                      width: 72,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+
+                  GestureDetector(
+                    onTap: _showAddMediaDialog,
+                    behavior: HitTestBehavior.opaque,
+                    child: SvgPicture.asset(
+                      'assets/gallery/screen4/4_file_add.svg',
+                      width: 38,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isFilterExpanded = false;
+                });
+              },
+              behavior: HitTestBehavior.opaque,
+              child: GalleryFilterPanel(
+                selectedRecordTypes: _selectedRecordTypes,
+                selectedFileTypes: _selectedFileTypes,
+                sortBy: _sortBy,
+                onRecordTypeChanged: (type, isSelected) {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedRecordTypes.add(type);
+                    } else {
+                      _selectedRecordTypes.remove(type);
+                    }
+                  });
+                },
+                onFileTypeChanged: (type, isSelected) {
+                  setState(() {
+                    if (isSelected) {
+                      if (!_selectedFileTypes.contains(type)) {
+                        _selectedFileTypes.add(type);
+                      }
+                    } else {
+                      _selectedFileTypes.remove(type);
+                    }
+                  });
+                },
+                onSortByChanged: (sortValue) {
+                  setState(() {
+                    _sortBy = sortValue;
+                  });
+                },
+                onReset: _resetFilters,
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.only(right: 24, top: 0, bottom: 4),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: _showAddMediaDialog,
+                  behavior: HitTestBehavior.opaque,
+                  child: SvgPicture.asset(
+                    'assets/gallery/screen4/4_file_add.svg',
+                    width: 38,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+          ],
 
           // 미디어 그리드 영역
           Expanded(
@@ -541,13 +581,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     child: GridView.builder(
                       controller: _galleryScrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 8, 20, 24),
+                      padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
-                            crossAxisSpacing: 10,
+                            crossAxisSpacing: 8,
                             mainAxisSpacing: 10,
-                            childAspectRatio: 1.0,
+                            childAspectRatio: 0.92,
                           ),
                       itemCount: filteredMedia.length,
                       itemBuilder: (context, index) {

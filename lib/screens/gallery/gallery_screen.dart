@@ -306,39 +306,144 @@ class _GalleryScreenState extends State<GalleryScreen> {
   void _showAddMediaDialog() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: const Color(0xFFFCFBF7),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (bottomSheetContext) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('사진 추가'),
-                onTap: () {
-                  Navigator.pop(bottomSheetContext);
-                  _pickImages();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.video_library_outlined),
-                title: const Text('동영상 추가'),
-                onTap: () {
-                  Navigator.pop(bottomSheetContext);
-                  _pickVideo();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.audiotrack_outlined),
-                title: const Text('음성 추가'),
-                onTap: () {
-                  Navigator.pop(bottomSheetContext);
-                  _pickAudio();
-                },
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: SvgPicture.asset(
+                    'assets/gallery/screen4/4-1_scroll.svg',
+                    height: 4,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => Navigator.pop(bottomSheetContext),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: SvgPicture.asset(
+                      'assets/gallery/screen4/4-1_x.svg',
+                      height: 20,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    _pickImages();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    child: Row(
+                      children: [
+                        SvgPicture.asset(
+                          'assets/gallery/screen4/4-1_photo_add.svg',
+                          height: 22,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(width: 14),
+                        const Text(
+                          '사진 추가',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF182F0D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 6,
+                    child: SvgPicture.asset(
+                      'assets/gallery/screen4/4-1_line1.svg',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    _pickVideo();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    child: Row(
+                      children: [
+                        SvgPicture.asset(
+                          'assets/gallery/screen4/4-1_video_add.svg',
+                          height: 22,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(width: 14),
+                        const Text(
+                          '동영상 추가',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF182F0D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 6,
+                    child: SvgPicture.asset(
+                      'assets/gallery/screen4/4-1_line2.svg',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    _pickAudio();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    child: Row(
+                      children: [
+                        SvgPicture.asset(
+                          'assets/gallery/screen4/4-1_audio_add.svg',
+                          height: 22,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(width: 14),
+                        const Text(
+                          '음성 추가',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF182F0D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -450,9 +555,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF9F3),
       appBar: AppBar(
+        backgroundColor: const Color(0xFFFBF9F3),
+        elevation: 0,
+        scrolledUnderElevation: 0,
         title: SvgPicture.asset(
           'assets/gallery/screen4/4_gallery_title.svg',
-          height: 28,
+          height: 32,
           fit: BoxFit.contain,
         ),
         centerTitle: true,
@@ -462,11 +570,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 조건 검색 영역
-          // 조건 검색 버튼
-          // 조건 검색 영역
           if (!_isFilterExpanded)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -479,7 +585,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     behavior: HitTestBehavior.opaque,
                     child: SvgPicture.asset(
                       'assets/gallery/screen4/4_condition_search.svg',
-                      width: 72,
+                      height: 18,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -489,7 +595,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     behavior: HitTestBehavior.opaque,
                     child: SvgPicture.asset(
                       'assets/gallery/screen4/4_file_add.svg',
-                      width: 38,
+                      height: 18,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -538,7 +644,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
             ),
 
             Padding(
-              padding: const EdgeInsets.only(right: 24, top: 0, bottom: 4),
+              padding: const EdgeInsets.only(right: 20, top: 4, bottom: 4),
               child: Align(
                 alignment: Alignment.centerRight,
                 child: GestureDetector(
@@ -546,7 +652,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: SvgPicture.asset(
                     'assets/gallery/screen4/4_file_add.svg',
-                    width: 38,
+                    height: 18,
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -558,20 +664,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
           Expanded(
             child: filteredMedia.isEmpty
                 ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.photo_library_outlined,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          '조건에 맞는 미디어가 없습니다.',
-                          style: TextStyle(color: Colors.black54),
-                        ),
-                      ],
+                    child: SvgPicture.asset(
+                      'assets/gallery/screen4/4_illustration_text.svg',
+                      fit: BoxFit.contain,
                     ),
                   )
                 : Scrollbar(
@@ -581,13 +676,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     child: GridView.builder(
                       controller: _galleryScrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 0.92,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.98,
                           ),
                       itemCount: filteredMedia.length,
                       itemBuilder: (context, index) {

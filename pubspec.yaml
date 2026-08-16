@@ -76,6 +76,7 @@ flutter:
     - assets/images/
     - assets/www/
     - assets/gallery/screen4/
+    - assets/gallery/screen4_png/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

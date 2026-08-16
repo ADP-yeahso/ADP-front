@@ -17,7 +17,6 @@ bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
 extension UserUIInfo on User {
-
   bool get isMe => id == 1;
   String get nickname => name;
   String get relation {
@@ -25,7 +24,6 @@ extension UserUIInfo on User {
     if (id == 2) return '아들';
     return '며느리';
   }
-
 
   Color get color {
     if (id == 1) return const Color(0xFF6B93D1);
@@ -145,76 +143,75 @@ class AppData extends ChangeNotifier {
   User userById(int id) =>
       users.firstWhere((u) => u.id == id, orElse: () => me);
 
-void updateCurrentUserProfile({
-  required String name,
-  required String password,
-  required String phoneNumber,
-}) {
-  final index = users.indexWhere((user) => user.id == currentUserId);
+  void updateCurrentUserProfile({
+    required String name,
+    required String password,
+    required String phoneNumber,
+  }) {
+    final index = users.indexWhere((user) => user.id == currentUserId);
 
-  if (index == -1) {
-    return;
-  }
+    if (index == -1) {
+      return;
+    }
 
-  final currentUser = users[index];
+    final currentUser = users[index];
 
-  users[index] = User(
-    id: currentUser.id,
-    email: currentUser.email,
-    password: password,
-    name: name,
-    phoneNumber: phoneNumber,
-    profileImageUrl: currentUser.profileImageUrl,
-    createdAt: currentUser.createdAt,
-  );
-
-  notifyListeners();
-}
-
-void updatePatientInfo({
-  required String patientName,
-  required int patientBirthDate,
-  required String patientsNickname,
-}) {
-  _patient = Patient(
-    id: _patient.id,
-    groupId: _patient.groupId,
-    patientName: patientName,
-    patientBirthDate: patientBirthDate,
-    createdAt: _patient.createdAt,
-  );
-
-  final relationIndex = userGroups.indexWhere(
-    (userGroup) =>
-        userGroup.userId == currentUserId &&
-        userGroup.groupId == _patient.groupId,
-  );
-
-  if (relationIndex != -1) {
-    final currentRelation = userGroups[relationIndex];
-
-    userGroups[relationIndex] = UserGroup(
-      id: currentRelation.id,
-      userId: currentRelation.userId,
-      groupId: currentRelation.groupId,
-      patientsNickname: patientsNickname,
-      joinedAt: currentRelation.joinedAt,
+    users[index] = User(
+      id: currentUser.id,
+      email: currentUser.email,
+      password: password,
+      name: name,
+      phoneNumber: phoneNumber,
+      profileImageUrl: currentUser.profileImageUrl,
+      createdAt: currentUser.createdAt,
     );
+
+    notifyListeners();
   }
 
-  notifyListeners();
-}
+  void updatePatientInfo({
+    required String patientName,
+    required int patientBirthDate,
+    required String patientsNickname,
+  }) {
+    _patient = Patient(
+      id: _patient.id,
+      groupId: _patient.groupId,
+      patientName: patientName,
+      patientBirthDate: patientBirthDate,
+      createdAt: _patient.createdAt,
+    );
 
-String get patientBirthDateLabel {
-  final value = patient.patientBirthDate.toString().padLeft(8, '0');
+    final relationIndex = userGroups.indexWhere(
+      (userGroup) =>
+          userGroup.userId == currentUserId &&
+          userGroup.groupId == _patient.groupId,
+    );
 
-  final year = value.substring(0, 4);
-  final month = value.substring(4, 6);
-  final day = value.substring(6, 8);
+    if (relationIndex != -1) {
+      final currentRelation = userGroups[relationIndex];
 
-  return '$year.$month.$day';
-}
+      userGroups[relationIndex] = UserGroup(
+        id: currentRelation.id,
+        userId: currentRelation.userId,
+        groupId: currentRelation.groupId,
+        patientsNickname: patientsNickname,
+        joinedAt: currentRelation.joinedAt,
+      );
+    }
 
+    notifyListeners();
+  }
+
+  String get patientBirthDateLabel {
+    final value = patient.patientBirthDate.toString().padLeft(8, '0');
+
+    final year = value.substring(0, 4);
+    final month = value.substring(4, 6);
+    final day = value.substring(6, 8);
+
+    return '$year.$month.$day';
+  }
 
   final List<Memory> memories = [];
   final List<Diary> diaries = [];
@@ -250,7 +247,6 @@ String get patientBirthDateLabel {
           ),
         )
         .toList();
-
 
     memories.add(
       Memory(
@@ -581,18 +577,7 @@ String get patientBirthDateLabel {
       date: d(2, 6),
       title: '함께 본 옛날 사진',
       content: '$patientRelationLabel과 함께 젊은 시절 사진을 꺼내 보았다. 잠시 웃으셨다.',
-      mediaList: [
-        Media(
-          id: 0,
-          memoryId: null,
-          diaryId: null,
-          fileUrl: 'dummy.jpg',
-          fileType: 'image',
-          duration: 0,
-          sortOrder: 1,
-          createdAt: DateTime.now(),
-        ),
-      ],
+      mediaList: [],
     );
     addMemory(
       date: d(1, 12),
@@ -603,18 +588,7 @@ String get patientBirthDateLabel {
       date: d(0, 3),
       title: '산책',
       content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
-      mediaList: [
-        Media(
-          id: 0,
-          memoryId: null,
-          diaryId: null,
-          fileUrl: 'dummy.jpg',
-          fileType: 'image',
-          duration: 0,
-          sortOrder: 1,
-          createdAt: DateTime.now(),
-        ),
-      ],
+      mediaList: [],
     );
 
     addDiary(date: d(2, 8), content: '오늘은 유난히 지치고 눈물이 났다. 혼자 감당하기 힘든 하루였다.');

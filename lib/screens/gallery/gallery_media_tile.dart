@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:video_player/video_player.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../models/media.dart';
 
@@ -208,11 +209,12 @@ class _AudioPlayerDialogState extends State<_AudioPlayerDialog> {
                 onPressed: _togglePlay,
                 iconSize: 64,
                 padding: EdgeInsets.zero,
-                icon: Icon(
+                icon: SvgPicture.asset(
                   isPlaying
-                      ? Icons.pause_circle_filled
-                      : Icons.play_circle_fill,
-                  color: const Color(0xFF5C9271),
+                      ? 'assets/gallery/screen4/4_audio_stop_button.svg'
+                      : 'assets/gallery/screen4/4_audio_play_button.svg',
+                  width: 64,
+                  height: 64,
                 ),
               ),
 
@@ -282,83 +284,52 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
 
   @override
   Widget build(BuildContext context) {
-    final item = widget.item;
-    final dateStr = DateFormat('yyyy.M.d').format(widget.resolvedDate);
+    final dateStr = DateFormat('yyyy.MM.dd').format(widget.resolvedDate);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: _handleTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 21),
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(11),
-                    topRight: Radius.circular(11),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(10),
                   ),
                   child: _buildMediaArea(),
                 ),
               ),
+            ),
 
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(11),
-                    bottomRight: Radius.circular(11),
+            Positioned.fill(
+              child: SvgPicture.asset(
+                'assets/gallery/screen4/4_photo_video_frame.svg',
+                fit: BoxFit.fill,
+              ),
+            ),
+
+            Positioned(
+              left: 4,
+              right: 4,
+              bottom: 4,
+              height: 18,
+              child: Center(
+                child: Text(
+                  dateStr,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      dateStr,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-
-                    if (item.fileType == 'video')
-                      Text(
-                        _formatDuration(Duration(seconds: item.duration ?? 0)),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.black45,
-                        ),
-                      ),
-
-                    if (item.fileType == 'audio')
-                      Text(
-                        _formatDuration(Duration(seconds: item.duration ?? 0)),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.black45,
-                        ),
-                      ),
-                  ],
-                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -381,37 +352,62 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
   Widget _buildVideoPlayer() {
     final thumbnailPath = widget.item.thumbnailPath;
 
+    Widget videoContent;
+    if (thumbnailPath != null && File(thumbnailPath).existsSync()) {
+      videoContent = Image.file(File(thumbnailPath), fit: BoxFit.cover);
+    } else if (widget.item.fileUrl.startsWith('http')) {
+      videoContent = Image.network(
+        widget.item.fileUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildFallbackImage(),
+      );
+    } else if (File(widget.item.fileUrl).existsSync()) {
+      videoContent = Image.file(
+        File(widget.item.fileUrl),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildFallbackImage(),
+      );
+    } else {
+      videoContent = _buildFallbackImage();
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (thumbnailPath != null && File(thumbnailPath).existsSync())
-          Image.file(File(thumbnailPath), fit: BoxFit.cover)
-        else
-          Container(
-            color: Colors.grey[200],
-            child: const Center(
-              child: Icon(
-                Icons.videocam_outlined,
-                color: Colors.grey,
-                size: 36,
-              ),
-            ),
+        videoContent,
+        Container(color: Colors.black.withOpacity(0.08)),
+        Center(
+          child: SvgPicture.asset(
+            'assets/gallery/screen4/4_video_play_button.svg',
+            width: 32,
+            height: 32,
           ),
-
-        Container(color: Colors.black.withValues(alpha: 0.12)),
-
-        const Center(
-          child: Icon(Icons.play_circle_fill, color: Colors.white, size: 44),
         ),
       ],
     );
   }
 
+  Widget _buildFallbackImage() {
+    return Image.asset(
+      'assets/images/flower.png',
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(color: Colors.grey[200]);
+      },
+    );
+  }
+
   Widget _buildAudioPlayer() {
     return Container(
-      color: const Color(0xFFF3F1E9),
-      child: const Center(
-        child: Icon(Icons.play_circle_fill, color: Color(0xFF5C9271), size: 38),
+      color: const Color(0xFFFBF9F3),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: SvgPicture.asset(
+            'assets/gallery/screen4/4_illustration.svg',
+            fit: BoxFit.contain,
+          ),
+        ),
       ),
     );
   }

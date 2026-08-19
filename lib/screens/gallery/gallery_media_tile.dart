@@ -306,8 +306,8 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
             ),
 
             Positioned.fill(
-              child: SvgPicture.asset(
-                'assets/gallery/screen4/4_photo_video_frame.svg',
+              child: Image.asset(
+                'assets/gallery/screen4_png/4_photo_video_frame.png',
                 fit: BoxFit.fill,
               ),
             ),

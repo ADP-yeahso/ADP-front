@@ -306,7 +306,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
   void _showAddMediaDialog() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFFFCFBF7),
+      backgroundColor: const Color(0xFFFFFBF0),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -333,7 +333,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     padding: const EdgeInsets.all(4.0),
                     child: SvgPicture.asset(
                       'assets/gallery/screen4/4-1_x.svg',
-                      height: 20,
+                      width: 28,
+                      height: 28,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -344,25 +345,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     Navigator.pop(bottomSheetContext);
                     _pickImages();
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                    child: Row(
-                      children: [
-                        SvgPicture.asset(
-                          'assets/gallery/screen4/4-1_photo_add.svg',
-                          height: 22,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(width: 14),
-                        const Text(
-                          '사진 추가',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF182F0D),
-                          ),
-                        ),
-                      ],
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: SvgPicture.asset(
+                      'assets/gallery/screen4/4-1_photo_add.svg',
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
                     ),
                   ),
                 ),
@@ -382,25 +371,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     Navigator.pop(bottomSheetContext);
                     _pickVideo();
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                    child: Row(
-                      children: [
-                        SvgPicture.asset(
-                          'assets/gallery/screen4/4-1_video_add.svg',
-                          height: 22,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(width: 14),
-                        const Text(
-                          '동영상 추가',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF182F0D),
-                          ),
-                        ),
-                      ],
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: SvgPicture.asset(
+                      'assets/gallery/screen4/4-1_video_add.svg',
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
                     ),
                   ),
                 ),
@@ -420,25 +397,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     Navigator.pop(bottomSheetContext);
                     _pickAudio();
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                    child: Row(
-                      children: [
-                        SvgPicture.asset(
-                          'assets/gallery/screen4/4-1_audio_add.svg',
-                          height: 22,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(width: 14),
-                        const Text(
-                          '음성 추가',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF182F0D),
-                          ),
-                        ),
-                      ],
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: SvgPicture.asset(
+                      'assets/gallery/screen4/4-1_audio_add.svg',
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
                     ),
                   ),
                 ),
@@ -553,18 +518,45 @@ class _GalleryScreenState extends State<GalleryScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF9F3),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFBF9F3),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: SvgPicture.asset(
-          'assets/gallery/screen4/4_gallery_title.svg',
-          height: 32,
-          fit: BoxFit.contain,
+      backgroundColor: const Color(0xFFFFFBF0),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Safe area spacing
+            SizedBox(height: MediaQuery.of(context).padding.top),
+            // Title
+            Expanded(
+              child: Center(
+                child: SvgPicture.asset(
+                  'assets/gallery/screen4/4_gallery_title.svg',
+                  width: 155,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            // Bottom line/shadow
+            // Bottom line/shadow
+            // Bottom line/shadow
+            SizedBox(
+              width: double.infinity,
+              height: 14,
+              child: ClipRect(
+                child: OverflowBox(
+                  minHeight: 0,
+                  maxHeight: double.infinity,
+                  alignment: Alignment.bottomCenter,
+                  child: Image.asset(
+                    'assets/gallery/screen4_png/4_top_bar.png',
+                    width: double.infinity,
+                    fit: BoxFit.fitWidth,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -595,7 +587,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     behavior: HitTestBehavior.opaque,
                     child: SvgPicture.asset(
                       'assets/gallery/screen4/4_file_add.svg',
-                      height: 18,
+                      height: 28,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -652,7 +644,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: SvgPicture.asset(
                     'assets/gallery/screen4/4_file_add.svg',
-                    height: 18,
+                    height: 28,
                     fit: BoxFit.contain,
                   ),
                 ),

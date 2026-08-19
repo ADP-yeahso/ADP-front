@@ -34,200 +34,261 @@ class GalleryFilterPanel extends StatelessWidget {
     required this.onSortByChanged,
     required this.onReset,
   });
-  Widget _svgButton({required String assetPath, required VoidCallback onTap}) {
+  Widget _pngButton({required String assetPath, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: SvgPicture.asset(assetPath, fit: BoxFit.contain),
+      child: SizedBox(
+        width: 77,
+        height: 29,
+        child: Image.asset(assetPath, fit: BoxFit.contain),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    const basePath = 'assets/gallery/screen4/';
+    const basePathSvg = 'assets/gallery/screen4/';
+    const basePathPng = 'assets/gallery/screen4_png/';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      child: AspectRatio(
-        aspectRatio: 317 / 166,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // 조건 검색 박스
-            SvgPicture.asset(
-              '${basePath}4_condition_search_box.svg',
-              fit: BoxFit.fill,
-            ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final panelWidth = constraints.maxWidth;
+          final panelHeight = panelWidth * (166 / 317);
 
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 12, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          return SizedBox(
+            width: panelWidth,
+            height: panelHeight,
+            child: FittedBox(
+              fit: BoxFit.contain,
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 317,
+                height: 166,
+                child: Stack(
                   children: [
+                    // 조건검색 흰 박스
+                    Positioned.fill(
+                      child: Image.asset(
+                        '${basePathPng}4_condition_search_box.png',
+                        fit: BoxFit.fill,
+                      ),
+                    ),
+
                     // 조건검색 제목
-                    SvgPicture.asset(
-                      '${basePath}4_condition_search.svg',
-                      width: 72,
-                      fit: BoxFit.contain,
+                    Positioned(
+                      left: 12,
+                      top: 10,
+                      child: SvgPicture.asset(
+                        '${basePathSvg}4_condition_search.svg',
+                        width: 80,
+                        height: 19,
+                        fit: BoxFit.contain,
+                      ),
                     ),
 
-                    const SizedBox(height: 8),
-
+                    // ─────────────────────
                     // 기록 구분
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 58,
-                          child: SvgPicture.asset(
-                            '${basePath}4_condition_search_record_classification.svg',
-                            width: 45,
-                            alignment: Alignment.centerLeft,
-                          ),
+                    // ─────────────────────
+                    Positioned(
+                      left: 12,
+                      top: 38,
+                      child: SizedBox(
+                        width: 293,
+                        height: 29,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 58,
+                              height: 29,
+                              child: Align(
+                                alignment: Alignment.center,
+                                child: SvgPicture.asset(
+                                  '${basePathSvg}4_condition_search_record_classification.svg',
+                                  width: 43,
+                                  height: 11,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+
+                            _pngButton(
+                              assetPath:
+                                  '${basePathPng}${selectedRecordTypes.contains('patient') ? '4_after_click_record_classification_patient.png' : '4_before_click_record_classification_patient.png'}',
+                              onTap: () {
+                                onRecordTypeChanged(
+                                  'patient',
+                                  !selectedRecordTypes.contains('patient'),
+                                );
+                              },
+                            ),
+
+                            const SizedBox(width: 2),
+
+                            _pngButton(
+                              assetPath:
+                                  '${basePathPng}${selectedRecordTypes.contains('emotion') ? '4_after_click_record_classification_emotion.png' : '4_before_click_record_classification_emotion.png'}',
+                              onTap: () {
+                                onRecordTypeChanged(
+                                  'emotion',
+                                  !selectedRecordTypes.contains('emotion'),
+                                );
+                              },
+                            ),
+
+                            const SizedBox(width: 2),
+
+                            _pngButton(
+                              assetPath:
+                                  '${basePathPng}${selectedRecordTypes.contains('custom') ? '4_after_click_record_classification_direct_add.png' : '4_before_click_record_classification_direct_add.png'}',
+                              onTap: () {
+                                onRecordTypeChanged(
+                                  'custom',
+                                  !selectedRecordTypes.contains('custom'),
+                                );
+                              },
+                            ),
+                          ],
                         ),
-
-                        _svgButton(
-                          assetPath:
-                              '${basePath}${selectedRecordTypes.contains('patient') ? '4_after_click_record_classification_patient.svg' : '4_before_click_record_classification_patient.svg'}',
-                          onTap: () {
-                            onRecordTypeChanged(
-                              'patient',
-                              !selectedRecordTypes.contains('patient'),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(width: 4),
-
-                        _svgButton(
-                          assetPath:
-                              '${basePath}${selectedRecordTypes.contains('emotion') ? '4_after_click_record_classification_emotion.svg' : '4_before_click_record_classification_emotion.svg'}',
-                          onTap: () {
-                            onRecordTypeChanged(
-                              'emotion',
-                              !selectedRecordTypes.contains('emotion'),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(width: 4),
-
-                        _svgButton(
-                          assetPath:
-                              '${basePath}${selectedRecordTypes.contains('custom') ? '4_after_click_record_classification_direct_add.svg' : '4_before_click_record_classification_direct_add.svg'}',
-                          onTap: () {
-                            onRecordTypeChanged(
-                              'custom',
-                              !selectedRecordTypes.contains('custom'),
-                            );
-                          },
-                        ),
-                      ],
+                      ),
                     ),
 
-                    const SizedBox(height: 6),
-
+                    // ─────────────────────
                     // 파일 유형
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 58,
-                          child: SvgPicture.asset(
-                            '${basePath}4_condition_search_file_type.svg',
-                            width: 45,
-                            alignment: Alignment.centerLeft,
-                          ),
+                    // ─────────────────────
+                    Positioned(
+                      left: 12,
+                      top: 69,
+                      child: SizedBox(
+                        width: 293,
+                        height: 29,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 58,
+                              height: 29,
+                              child: Align(
+                                alignment: Alignment.center,
+                                child: SvgPicture.asset(
+                                  '${basePathSvg}4_condition_search_file_type.svg',
+                                  width: 42,
+                                  height: 11,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+
+                            _pngButton(
+                              assetPath:
+                                  '${basePathPng}${selectedFileTypes.contains('image') ? '4_after_click_file_type_photo.png' : '4_before_click_file_type_photo.png'}',
+                              onTap: () {
+                                onFileTypeChanged(
+                                  'image',
+                                  !selectedFileTypes.contains('image'),
+                                );
+                              },
+                            ),
+
+                            const SizedBox(width: 2),
+
+                            _pngButton(
+                              assetPath:
+                                  '${basePathPng}${selectedFileTypes.contains('video') ? '4_after_click_file_type_video.png' : '4_before_click_file_type_video.png'}',
+                              onTap: () {
+                                onFileTypeChanged(
+                                  'video',
+                                  !selectedFileTypes.contains('video'),
+                                );
+                              },
+                            ),
+
+                            const SizedBox(width: 2),
+
+                            _pngButton(
+                              assetPath:
+                                  '${basePathPng}${selectedFileTypes.contains('audio') ? '4_after_click_file_type_audio.png' : '4_before_click_file_type_audio.png'}',
+                              onTap: () {
+                                onFileTypeChanged(
+                                  'audio',
+                                  !selectedFileTypes.contains('audio'),
+                                );
+                              },
+                            ),
+                          ],
                         ),
-
-                        _svgButton(
-                          assetPath:
-                              '${basePath}${selectedFileTypes.contains('image') ? '4_after_click_file_type_photo.svg' : '4_before_click_file_type_photo.svg'}',
-                          onTap: () {
-                            onFileTypeChanged(
-                              'image',
-                              !selectedFileTypes.contains('image'),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(width: 4),
-
-                        _svgButton(
-                          assetPath:
-                              '${basePath}${selectedFileTypes.contains('video') ? '4_after_click_file_type_video.svg' : '4_before_click_file_type_video.svg'}',
-                          onTap: () {
-                            onFileTypeChanged(
-                              'video',
-                              !selectedFileTypes.contains('video'),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(width: 4),
-
-                        _svgButton(
-                          assetPath:
-                              '${basePath}${selectedFileTypes.contains('audio') ? '4_after_click_file_type_audio.svg' : '4_before_click_file_type_audio.svg'}',
-                          onTap: () {
-                            onFileTypeChanged(
-                              'audio',
-                              !selectedFileTypes.contains('audio'),
-                            );
-                          },
-                        ),
-                      ],
+                      ),
                     ),
 
-                    const SizedBox(height: 6),
-
+                    // ─────────────────────
                     // 정렬
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 58,
-                          child: SvgPicture.asset(
-                            '${basePath}4_condition_search_sort.svg',
-                            width: 24,
-                            alignment: Alignment.centerLeft,
-                          ),
+                    // ─────────────────────
+                    Positioned(
+                      left: 12,
+                      top: 100,
+                      child: SizedBox(
+                        width: 216,
+                        height: 29,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 58,
+                              height: 29,
+                              child: Align(
+                                alignment: Alignment.center,
+                                child: SvgPicture.asset(
+                                  '${basePathSvg}4_condition_search_sort.svg',
+                                  width: 20,
+                                  height: 11,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+
+                            _pngButton(
+                              assetPath:
+                                  '${basePathPng}${sortBy == 'latest' ? '4_after_click_sort_latest.png' : '4_before_click_sort_latest.png'}',
+                              onTap: () {
+                                onSortByChanged('latest');
+                              },
+                            ),
+
+                            const SizedBox(width: 2),
+
+                            _pngButton(
+                              assetPath:
+                                  '${basePathPng}${sortBy == 'oldest' ? '4_after_click_sort_oldest.png' : '4_before_click_sort_oldest.png'}',
+                              onTap: () {
+                                onSortByChanged('oldest');
+                              },
+                            ),
+                          ],
                         ),
+                      ),
+                    ),
 
-                        _svgButton(
-                          assetPath:
-                              '${basePath}${sortBy == 'latest' ? '4_after_click_sort_latest.svg' : '4_before_click_sort_latest.svg'}',
-                          onTap: () {
-                            onSortByChanged('latest');
-                          },
+                    // 검색 초기화
+                    Positioned(
+                      right: 10,
+                      bottom: 10,
+                      child: GestureDetector(
+                        onTap: onReset,
+                        behavior: HitTestBehavior.opaque,
+                        child: SvgPicture.asset(
+                          '${basePathSvg}4_search_reset.svg',
+                          width: 71,
+                          height: 20,
+                          fit: BoxFit.contain,
                         ),
-
-                        const SizedBox(width: 4),
-
-                        _svgButton(
-                          assetPath:
-                              '${basePath}${sortBy == 'oldest' ? '4_after_click_sort_oldest.svg' : '4_before_click_sort_oldest.svg'}',
-                          onTap: () {
-                            onSortByChanged('oldest');
-                          },
-                        ),
-
-                        const Spacer(),
-
-                        GestureDetector(
-                          onTap: onReset,
-                          behavior: HitTestBehavior.opaque,
-                          child: SvgPicture.asset(
-                            '${basePath}4_search_reset.svg',
-                            width: 65,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

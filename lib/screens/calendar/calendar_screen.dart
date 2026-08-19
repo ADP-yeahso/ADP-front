@@ -5,8 +5,25 @@ import '../../data/app_data.dart';
 import 'day_record_detail_view.dart';
 import '../../data/garden_range.dart';
 
+import '../../models/diary.dart';
+import '../../models/emotions.dart';
+import '../../utils/emotion_utils.dart';
+
 const _weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
-const _monthLabels = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+const _monthLabels = [
+  '1월',
+  '2월',
+  '3월',
+  '4월',
+  '5월',
+  '6월',
+  '7월',
+  '8월',
+  '9월',
+  '10월',
+  '11월',
+  '12월',
+];
 
 const _bgGradient = LinearGradient(
   begin: Alignment.topCenter,
@@ -39,21 +56,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   bool _isNavigable(DateTime month) {
     final afterMin =
-        month.year > _minMonth.year || (month.year == _minMonth.year && month.month >= _minMonth.month);
+        month.year > _minMonth.year ||
+        (month.year == _minMonth.year && month.month >= _minMonth.month);
     final beforeMax =
-        month.year < _maxMonth.year || (month.year == _maxMonth.year && month.month <= _maxMonth.month);
+        month.year < _maxMonth.year ||
+        (month.year == _maxMonth.year && month.month <= _maxMonth.month);
     return afterMin && beforeMax;
   }
 
   void _selectDay(DateTime day) {
     setState(() {
-     _selectedDay = day;
+      _selectedDay = day;
     });
   }
 
   void _goBack() {
     if (_selectedDay != null) {
-     setState(() {
+      setState(() {
         _selectedDay = null;
       });
       return;
@@ -76,12 +95,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   String get _screenTitle {
     // 날짜 상세 화면
     if (_selectedDay != null) {
-     return _formatDay(_selectedDay!);
+      return _formatDay(_selectedDay!);
     }
 
     // 월 달력 화면
     if (_drilldownMonth != null) {
-     return '${_drilldownMonth!.year}년 ${_drilldownMonth!.month}월';
+      return '${_drilldownMonth!.year}년 ${_drilldownMonth!.month}월';
     }
 
     // 연도 화면
@@ -89,57 +108,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildContent() {
-  // 날짜를 선택한 경우 날짜 상세 기록 화면을 보여준다.
-  if (_selectedDay != null) {
-    return DayRecordDetailView(
-      key: ValueKey(_selectedDay!),
-      day: _selectedDay!,
-    );
+    // 날짜를 선택한 경우 날짜 상세 기록 화면을 보여준다.
+    if (_selectedDay != null) {
+      return DayRecordDetailView(
+        key: ValueKey(_selectedDay!),
+        day: _selectedDay!,
+      );
+    }
+
+    if (_drilldownMonth == null) {
+      return _YearGrid(
+        year: _year,
+        isNavigable: _isNavigable,
+        onYearChange: (delta) {
+          setState(() {
+            _year += delta;
+          });
+        },
+        onSelectMonth: (month) {
+          if (!_isNavigable(month)) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('아직 이동할 수 없는 달이에요.')));
+
+            return;
+          }
+
+          setState(() {
+            _drilldownMonth = month;
+          });
+        },
+      );
+    }
+
+    return _DayGrid(month: _drilldownMonth!, onSelectDay: _selectDay);
   }
-
-  if (_drilldownMonth == null) {
-    return _YearGrid(
-      year: _year,
-      isNavigable: _isNavigable,
-      onYearChange: (delta) {
-        setState(() {
-          _year += delta;
-        });
-      },
-      onSelectMonth: (month) {
-        if (!_isNavigable(month)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('아직 이동할 수 없는 달이에요.'),
-            ),
-          );
-
-          return;
-        }
-
-        setState(() {
-          _drilldownMonth = month;
-        });
-      },
-    );
-  }
-
-  return _DayGrid(
-    month: _drilldownMonth!,
-    onSelectDay: _selectDay,
-  );
-}
 
   @override
   Widget build(BuildContext context) {
-    final showBack =
-        _selectedDay != null || _drilldownMonth != null;
+    final showBack = _selectedDay != null || _drilldownMonth != null;
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: _bgGradient,
-        ),
+        decoration: const BoxDecoration(gradient: _bgGradient),
         child: SafeArea(
           child: Column(
             children: [
@@ -149,15 +160,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 title: _screenTitle,
                 onShare: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('정원 공유는 준비 중이에요 (목업)'),
-                    ),
+                    const SnackBar(content: Text('정원 공유는 준비 중이에요 (목업)')),
                   );
                 },
               ),
-              Expanded(
-                child: _buildContent(),
-              ),
+              Expanded(child: _buildContent()),
             ],
           ),
         ),
@@ -197,19 +204,32 @@ class _TopBar extends StatelessWidget {
           Expanded(
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ),
           SizedBox(
             width: 48,
             child: IconButton(
-              icon: const Icon(Icons.ios_share, color: Colors.white70, size: 20),
+              icon: const Icon(
+                Icons.ios_share,
+                color: Colors.white70,
+                size: 20,
+              ),
               onPressed: onShare,
             ),
           ),
@@ -247,7 +267,14 @@ class _YearGrid extends StatelessWidget {
               icon: const Icon(Icons.chevron_left, color: Colors.white70),
               onPressed: () => onYearChange(-1),
             ),
-            Text('$year', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(
+              '$year',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.chevron_right, color: Colors.white70),
               onPressed: () => onYearChange(1),
@@ -270,7 +297,8 @@ class _YearGrid extends StatelessWidget {
             final leafCount = appData.memoriesForMonth(month).length;
             final diaryCount = appData.diariesForMonth(month).length;
             final active = isNavigable(month);
-            final isCurrent = month.year == today.year && month.month == today.month;
+            final isCurrent =
+                month.year == today.year && month.month == today.month;
             return _MonthTile(
               label: _monthLabels[i],
               leafCount: leafCount,
@@ -306,7 +334,9 @@ class _MonthTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasEntries = leafCount + diaryCount > 0;
-    final glowColor = hasEntries ? const Color(0xFF7CE3B8) : const Color(0xFF3E6B58);
+    final glowColor = hasEntries
+        ? const Color(0xFF7CE3B8)
+        : const Color(0xFF3E6B58);
 
     return Opacity(
       opacity: active ? 1 : 0.35,
@@ -318,7 +348,9 @@ class _MonthTile extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: isCurrent ? const Color(0xFF7CE3B8) : Colors.white.withValues(alpha: 0.08),
+              color: isCurrent
+                  ? const Color(0xFF7CE3B8)
+                  : Colors.white.withValues(alpha: 0.08),
               width: isCurrent ? 1.4 : 1,
             ),
           ),
@@ -333,7 +365,13 @@ class _MonthTile extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: glowColor.withValues(alpha: hasEntries ? 0.28 : 0.12),
                   boxShadow: hasEntries
-                      ? [BoxShadow(color: glowColor.withValues(alpha: 0.5), blurRadius: 12, spreadRadius: 1)]
+                      ? [
+                          BoxShadow(
+                            color: glowColor.withValues(alpha: 0.5),
+                            blurRadius: 12,
+                            spreadRadius: 1,
+                          ),
+                        ]
                       : null,
                 ),
                 alignment: Alignment.center,
@@ -344,11 +382,21 @@ class _MonthTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 2),
               Text(
                 hasEntries ? '잎 $leafCount · 꽃 $diaryCount' : '기록 없음',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 10,
+                ),
               ),
             ],
           ),
@@ -368,7 +416,25 @@ class _DayGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
     final today = DateTime.now();
-    final entryDays = appData.entryDatesForMonth(month).map((d) => d.day).toSet();
+
+    final memoryDays = appData
+        .memoriesForMonth(month)
+        .where((memory) => memory.deletedAt == null)
+        .map((memory) => memory.recordDate.day)
+        .toSet();
+
+    final latestDiaryByDay = <int, Diary>{};
+
+    for (final diary in appData.diariesForMonth(month)) {
+      if (diary.deletedAt != null) continue;
+
+      final day = diary.recordDate.day;
+      final current = latestDiaryByDay[day];
+
+      if (current == null || diary.createdAt.isAfter(current.createdAt)) {
+        latestDiaryByDay[day] = diary;
+      }
+    }
 
     final firstDay = DateTime(month.year, month.month, 1);
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
@@ -379,26 +445,40 @@ class _DayGrid extends StatelessWidget {
       children: [
         Row(
           children: _weekdayLabels
-              .map((w) => Expanded(
-                    child: Center(
-                      child: Text(w, style: const TextStyle(fontSize: 12, color: Colors.white54)),
+              .map(
+                (w) => Expanded(
+                  child: Center(
+                    child: Text(
+                      w,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white54,
+                      ),
                     ),
-                  ))
+                  ),
+                ),
+              )
               .toList(),
         ),
         const SizedBox(height: 6),
         GridView.count(
           crossAxisCount: 7,
+          childAspectRatio: 0.82,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
             for (int i = 0; i < leadingBlanks; i++) const SizedBox.shrink(),
             for (int day = 1; day <= daysInMonth; day++)
               _DayCell(
-                day: day,
-                isToday: isSameDay(DateTime(month.year, month.month, day), today),
-                hasEntry: entryDays.contains(day),
-                onTap: () => onSelectDay(DateTime(month.year, month.month, day)),
+                date: DateTime(month.year, month.month, day),
+                isToday: isSameDay(
+                  DateTime(month.year, month.month, day),
+                  today,
+                ),
+                hasMemory: memoryDays.contains(day),
+                flowerEmotion: latestDiaryByDay[day]?.flowerType.emotionId,
+                onTap: () =>
+                    onSelectDay(DateTime(month.year, month.month, day)),
               ),
           ],
         ),
@@ -407,21 +487,74 @@ class _DayGrid extends StatelessWidget {
   }
 }
 
+const _calendarLeafColor = Color(0xFF7FA36B);
+
 class _DayCell extends StatelessWidget {
-  final int day;
+  final DateTime date;
   final bool isToday;
-  final bool hasEntry;
+  final bool hasMemory;
+  final Emotion? flowerEmotion;
   final VoidCallback onTap;
 
   const _DayCell({
-    required this.day,
+    required this.date,
     required this.isToday,
-    required this.hasEntry,
+    required this.hasMemory,
+    required this.flowerEmotion,
     required this.onTap,
   });
 
+  Widget _buildRecordMarker() {
+    if (!hasMemory && flowerEmotion == null) {
+      return const SizedBox(height: 17);
+    }
+
+    final leaf = const Icon(
+      Icons.eco_rounded,
+      size: 13,
+      color: _calendarLeafColor,
+    );
+
+    final flower = flowerEmotion == null
+        ? null
+        : ColorFiltered(
+            colorFilter: ColorFilter.mode(
+              flowerEmotion!.color,
+              BlendMode.srcIn,
+            ),
+            child: Image.asset(
+              'assets/images/flower.png',
+              width: 15,
+              height: 15,
+              fit: BoxFit.contain,
+            ),
+          );
+
+    if (hasMemory && flower != null) {
+      return SizedBox(
+        width: 22,
+        height: 17,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(left: 1, top: 0, child: flower),
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Transform.rotate(angle: -0.55, child: leaf),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(height: 17, child: Center(child: flower ?? leaf));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hasRecord = hasMemory || flowerEmotion != null;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -435,12 +568,17 @@ class _DayCell extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isToday ? const Color(0xFF7CE3B8) : Colors.transparent,
-              boxShadow: hasEntry && !isToday
-                  ? [BoxShadow(color: const Color(0xFF7CE3B8).withValues(alpha: 0.4), blurRadius: 8)]
+              boxShadow: hasRecord && !isToday
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF7CE3B8).withValues(alpha: 0.4),
+                        blurRadius: 8,
+                      ),
+                    ]
                   : null,
             ),
             child: Text(
-              '$day',
+              '${date.day}',
               style: TextStyle(
                 color: isToday ? const Color(0xFF12281F) : Colors.white,
                 fontWeight: isToday ? FontWeight.w700 : FontWeight.normal,
@@ -448,14 +586,7 @@ class _DayCell extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 3),
-          Container(
-            width: 5,
-            height: 5,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: hasEntry ? const Color(0xFF7CE3B8) : Colors.transparent,
-            ),
-          ),
+          _buildRecordMarker(),
         ],
       ),
     );

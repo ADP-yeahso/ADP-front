@@ -308,38 +308,38 @@ class _GalleryScreenState extends State<GalleryScreen> {
       context: context,
       backgroundColor: const Color(0xFFFFFBF0),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (bottomSheetContext) {
         return SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: SvgPicture.asset(
-                    'assets/gallery/screen4/4-1_scroll.svg',
-                    height: 4,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(height: 8),
+                // 닫기 버튼
                 GestureDetector(
                   onTap: () => Navigator.pop(bottomSheetContext),
                   behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: SvgPicture.asset(
-                      'assets/gallery/screen4/4-1_x.svg',
-                      width: 28,
-                      height: 28,
-                      fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: SvgPicture.asset(
+                        'assets/gallery/screen4/4-1_x.svg',
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+
+                const SizedBox(height: 20),
+
+                // 사진 추가
                 InkWell(
                   onTap: () {
                     Navigator.pop(bottomSheetContext);
@@ -347,7 +347,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   },
                   child: SizedBox(
                     width: double.infinity,
-                    height: 60,
+                    height: 70,
                     child: SvgPicture.asset(
                       'assets/gallery/screen4/4-1_photo_add.svg',
                       fit: BoxFit.contain,
@@ -355,17 +355,21 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     ),
                   ),
                 ),
+
+                // 구분선 1
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: 7),
                   child: SizedBox(
                     width: double.infinity,
-                    height: 6,
+                    height: 2,
                     child: SvgPicture.asset(
                       'assets/gallery/screen4/4-1_line1.svg',
-                      fit: BoxFit.contain,
+                      fit: BoxFit.fill,
                     ),
                   ),
                 ),
+
+                // 동영상 추가
                 InkWell(
                   onTap: () {
                     Navigator.pop(bottomSheetContext);
@@ -373,7 +377,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   },
                   child: SizedBox(
                     width: double.infinity,
-                    height: 60,
+                    height: 70,
                     child: SvgPicture.asset(
                       'assets/gallery/screen4/4-1_video_add.svg',
                       fit: BoxFit.contain,
@@ -381,17 +385,21 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     ),
                   ),
                 ),
+
+                // 구분선 2
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: 7),
                   child: SizedBox(
                     width: double.infinity,
-                    height: 6,
+                    height: 2,
                     child: SvgPicture.asset(
                       'assets/gallery/screen4/4-1_line2.svg',
-                      fit: BoxFit.contain,
+                      fit: BoxFit.fill,
                     ),
                   ),
                 ),
+
+                // 음성 추가
                 InkWell(
                   onTap: () {
                     Navigator.pop(bottomSheetContext);
@@ -399,7 +407,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   },
                   child: SizedBox(
                     width: double.infinity,
-                    height: 60,
+                    height: 70,
                     child: SvgPicture.asset(
                       'assets/gallery/screen4/4-1_audio_add.svg',
                       fit: BoxFit.contain,
@@ -407,6 +415,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     ),
                   ),
                 ),
+
+                const SizedBox(height: 6),
               ],
             ),
           ),

@@ -80,11 +80,11 @@ class GalleryFilterPanel extends StatelessWidget {
                     // 조건검색 제목
                     Positioned(
                       left: 12,
-                      top: 10,
+                      top: 9,
                       child: SvgPicture.asset(
                         '${basePathSvg}4_condition_search.svg',
-                        width: 80,
-                        height: 19,
+                        width: 88,
+                        height: 21,
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -92,193 +92,195 @@ class GalleryFilterPanel extends StatelessWidget {
                     // ─────────────────────
                     // 기록 구분
                     // ─────────────────────
+
+                    // 기록 구분 글자
                     Positioned(
                       left: 12,
                       top: 38,
-                      child: SizedBox(
-                        width: 293,
-                        height: 29,
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 58,
-                              height: 29,
-                              child: Align(
-                                alignment: Alignment.center,
-                                child: SvgPicture.asset(
-                                  '${basePathSvg}4_condition_search_record_classification.svg',
-                                  width: 43,
-                                  height: 11,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                            ),
-
-                            _pngButton(
-                              assetPath:
-                                  '${basePathPng}${selectedRecordTypes.contains('patient') ? '4_after_click_record_classification_patient.png' : '4_before_click_record_classification_patient.png'}',
-                              onTap: () {
-                                onRecordTypeChanged(
-                                  'patient',
-                                  !selectedRecordTypes.contains('patient'),
-                                );
-                              },
-                            ),
-
-                            const SizedBox(width: 2),
-
-                            _pngButton(
-                              assetPath:
-                                  '${basePathPng}${selectedRecordTypes.contains('emotion') ? '4_after_click_record_classification_emotion.png' : '4_before_click_record_classification_emotion.png'}',
-                              onTap: () {
-                                onRecordTypeChanged(
-                                  'emotion',
-                                  !selectedRecordTypes.contains('emotion'),
-                                );
-                              },
-                            ),
-
-                            const SizedBox(width: 2),
-
-                            _pngButton(
-                              assetPath:
-                                  '${basePathPng}${selectedRecordTypes.contains('custom') ? '4_after_click_record_classification_direct_add.png' : '4_before_click_record_classification_direct_add.png'}',
-                              onTap: () {
-                                onRecordTypeChanged(
-                                  'custom',
-                                  !selectedRecordTypes.contains('custom'),
-                                );
-                              },
-                            ),
-                          ],
+                      width: 58,
+                      height: 29,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          '${basePathSvg}4_condition_search_record_classification.svg',
+                          width: 43,
+                          height: 11,
+                          fit: BoxFit.contain,
                         ),
+                      ),
+                    ),
+
+                    // 환자
+                    Positioned(
+                      left: 70,
+                      top: 38,
+                      child: _pngButton(
+                        assetPath:
+                            '${basePathPng}${selectedRecordTypes.contains('patient') ? '4_after_click_record_classification_patient.png' : '4_before_click_record_classification_patient.png'}',
+                        onTap: () {
+                          onRecordTypeChanged(
+                            'patient',
+                            !selectedRecordTypes.contains('patient'),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // 감정
+                    Positioned(
+                      left: 149,
+                      top: 38,
+                      child: _pngButton(
+                        assetPath:
+                            '${basePathPng}${selectedRecordTypes.contains('emotion') ? '4_after_click_record_classification_emotion.png' : '4_before_click_record_classification_emotion.png'}',
+                        onTap: () {
+                          onRecordTypeChanged(
+                            'emotion',
+                            !selectedRecordTypes.contains('emotion'),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // 직접추가
+                    Positioned(
+                      left: 228,
+                      top: 38,
+                      child: _pngButton(
+                        assetPath:
+                            '${basePathPng}${selectedRecordTypes.contains('custom') ? '4_after_click_record_classification_direct_add.png' : '4_before_click_record_classification_direct_add.png'}',
+                        onTap: () {
+                          onRecordTypeChanged(
+                            'custom',
+                            !selectedRecordTypes.contains('custom'),
+                          );
+                        },
                       ),
                     ),
 
                     // ─────────────────────
                     // 파일 유형
                     // ─────────────────────
+
+                    // 파일 유형 글자
                     Positioned(
                       left: 12,
                       top: 69,
-                      child: SizedBox(
-                        width: 293,
-                        height: 29,
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 58,
-                              height: 29,
-                              child: Align(
-                                alignment: Alignment.center,
-                                child: SvgPicture.asset(
-                                  '${basePathSvg}4_condition_search_file_type.svg',
-                                  width: 42,
-                                  height: 11,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                            ),
-
-                            _pngButton(
-                              assetPath:
-                                  '${basePathPng}${selectedFileTypes.contains('image') ? '4_after_click_file_type_photo.png' : '4_before_click_file_type_photo.png'}',
-                              onTap: () {
-                                onFileTypeChanged(
-                                  'image',
-                                  !selectedFileTypes.contains('image'),
-                                );
-                              },
-                            ),
-
-                            const SizedBox(width: 2),
-
-                            _pngButton(
-                              assetPath:
-                                  '${basePathPng}${selectedFileTypes.contains('video') ? '4_after_click_file_type_video.png' : '4_before_click_file_type_video.png'}',
-                              onTap: () {
-                                onFileTypeChanged(
-                                  'video',
-                                  !selectedFileTypes.contains('video'),
-                                );
-                              },
-                            ),
-
-                            const SizedBox(width: 2),
-
-                            _pngButton(
-                              assetPath:
-                                  '${basePathPng}${selectedFileTypes.contains('audio') ? '4_after_click_file_type_audio.png' : '4_before_click_file_type_audio.png'}',
-                              onTap: () {
-                                onFileTypeChanged(
-                                  'audio',
-                                  !selectedFileTypes.contains('audio'),
-                                );
-                              },
-                            ),
-                          ],
+                      width: 58,
+                      height: 29,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          '${basePathSvg}4_condition_search_file_type.svg',
+                          width: 42,
+                          height: 11,
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
 
+                    // 사진
+                    Positioned(
+                      left: 70,
+                      top: 69,
+                      child: _pngButton(
+                        assetPath:
+                            '${basePathPng}${selectedFileTypes.contains('image') ? '4_after_click_file_type_photo.png' : '4_before_click_file_type_photo.png'}',
+                        onTap: () {
+                          onFileTypeChanged(
+                            'image',
+                            !selectedFileTypes.contains('image'),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // 동영상
+                    Positioned(
+                      left: 149,
+                      top: 69,
+                      child: _pngButton(
+                        assetPath:
+                            '${basePathPng}${selectedFileTypes.contains('video') ? '4_after_click_file_type_video.png' : '4_before_click_file_type_video.png'}',
+                        onTap: () {
+                          onFileTypeChanged(
+                            'video',
+                            !selectedFileTypes.contains('video'),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // 음성
+                    Positioned(
+                      left: 228,
+                      top: 69,
+                      child: _pngButton(
+                        assetPath:
+                            '${basePathPng}${selectedFileTypes.contains('audio') ? '4_after_click_file_type_audio.png' : '4_before_click_file_type_audio.png'}',
+                        onTap: () {
+                          onFileTypeChanged(
+                            'audio',
+                            !selectedFileTypes.contains('audio'),
+                          );
+                        },
+                      ),
+                    ),
                     // ─────────────────────
                     // 정렬
                     // ─────────────────────
+
+                    // 정렬 글자
                     Positioned(
                       left: 12,
                       top: 100,
-                      child: SizedBox(
-                        width: 216,
-                        height: 29,
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 58,
-                              height: 29,
-                              child: Align(
-                                alignment: Alignment.center,
-                                child: SvgPicture.asset(
-                                  '${basePathSvg}4_condition_search_sort.svg',
-                                  width: 20,
-                                  height: 11,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                            ),
-
-                            _pngButton(
-                              assetPath:
-                                  '${basePathPng}${sortBy == 'latest' ? '4_after_click_sort_latest.png' : '4_before_click_sort_latest.png'}',
-                              onTap: () {
-                                onSortByChanged('latest');
-                              },
-                            ),
-
-                            const SizedBox(width: 2),
-
-                            _pngButton(
-                              assetPath:
-                                  '${basePathPng}${sortBy == 'oldest' ? '4_after_click_sort_oldest.png' : '4_before_click_sort_oldest.png'}',
-                              onTap: () {
-                                onSortByChanged('oldest');
-                              },
-                            ),
-                          ],
+                      width: 58,
+                      height: 29,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          '${basePathSvg}4_condition_search_sort.svg',
+                          width: 20,
+                          height: 11,
+                          fit: BoxFit.contain,
                         ),
+                      ),
+                    ),
+
+                    // 최신순
+                    Positioned(
+                      left: 70,
+                      top: 100,
+                      child: _pngButton(
+                        assetPath:
+                            '${basePathPng}${sortBy == 'latest' ? '4_after_click_sort_latest.png' : '4_before_click_sort_latest.png'}',
+                        onTap: () {
+                          onSortByChanged('latest');
+                        },
+                      ),
+                    ),
+
+                    // 오래된 순
+                    Positioned(
+                      left: 149,
+                      top: 100,
+                      child: _pngButton(
+                        assetPath:
+                            '${basePathPng}${sortBy == 'oldest' ? '4_after_click_sort_oldest.png' : '4_before_click_sort_oldest.png'}',
+                        onTap: () {
+                          onSortByChanged('oldest');
+                        },
                       ),
                     ),
 
                     // 검색 초기화
                     Positioned(
-                      right: 10,
-                      bottom: 10,
+                      right: 14,
+                      bottom: 12,
                       child: GestureDetector(
                         onTap: onReset,
                         behavior: HitTestBehavior.opaque,
                         child: SvgPicture.asset(
                           '${basePathSvg}4_search_reset.svg',
-                          width: 71,
-                          height: 20,
+                          width: 86,
+                          height: 24,
                           fit: BoxFit.contain,
                         ),
                       ),

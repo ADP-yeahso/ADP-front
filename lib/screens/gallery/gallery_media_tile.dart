@@ -315,16 +315,21 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
             Positioned(
               left: 4,
               right: 4,
-              bottom: 4,
-              height: 18,
+              bottom: 3,
+              height: 24,
               child: Center(
-                child: Text(
-                  dateStr,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.2,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 1),
+                  child: Text(
+                    dateStr,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                      height: 1.0,
+                    ),
                   ),
                 ),
               ),
@@ -399,15 +404,28 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
 
   Widget _buildAudioPlayer() {
     return Container(
-      color: const Color(0xFFFBF9F3),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(4.0),
-          child: SvgPicture.asset(
-            'assets/gallery/screen4/4_illustration.svg',
-            fit: BoxFit.contain,
+      color: const Color(0xFFFFFBF0),
+      child: Stack(
+        fit: StackFit.expand,
+        alignment: Alignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(4.0),
+            child: SvgPicture.asset(
+              'assets/gallery/screen4/4_illustration.svg',
+              fit: BoxFit.contain,
+            ),
           ),
-        ),
+
+          Center(
+            child: SvgPicture.asset(
+              'assets/gallery/screen4/4_audio_icon.svg',
+              width: 44,
+              height: 44,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
       ),
     );
   }

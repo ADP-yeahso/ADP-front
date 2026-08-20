@@ -61,7 +61,11 @@ class _RootShellState extends State<RootShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _index, children: _screens),
+      body: Navigator(
+        onGenerateRoute: (settings) => MaterialPageRoute(
+          builder: (context) => IndexedStack(index: _index, children: _screens),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openRecordChoice,
         elevation: 2,

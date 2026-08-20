@@ -11,6 +11,7 @@ import '../../data/garden_range.dart';
 
 import '../../utils/local_asset_server.dart';
 import 'entry_detail_sheet.dart';
+import '../mailbox/family_mailbox_screen.dart';
 
 /// 기억의 정원 – Three.js + WebView 하이브리드 아키텍처
 class GardenScreen extends StatefulWidget {
@@ -127,8 +128,30 @@ class _GardenScreenState extends State<GardenScreen> {
     final diariesCount = appData.diariesForMonth(month).length;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFE8F4F8),
       body: Stack(
         children: [
+          // ── 3D Three.js 뷰어 (WebView - 전체 화면 배경) ──
+          if (_isServerStarted)
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: _isFocusing,
+                child: WebViewWidget(controller: _webViewController),
+              ),
+            ),
+
+          // ── Blur Overlay (포커싱 시 뒤쪽 배경 흐림 처리) ──
+          if (_isFocusing)
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.2),
+                ),
+              ),
+            ),
+
+          // ── 상단 컨트롤 및 UI 레이어 ──
           SafeArea(
             child: Column(
               children: [
@@ -136,26 +159,6 @@ class _GardenScreenState extends State<GardenScreen> {
                 Expanded(
                   child: Stack(
                     children: [
-                      // ── 3D Three.js 뷰어 (WebView) ──
-                      if (_isServerStarted)
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            ignoring: _isFocusing,
-                            child: WebViewWidget(controller: _webViewController),
-                          ),
-                        ),
-
-                      // ── Blur Overlay (포커싱 시 뒤쪽 배경 흐림 처리) ──
-                      if (_isFocusing)
-                        Positioned.fill(
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-                            child: Container(
-                              color: Colors.black.withValues(alpha: 0.2),
-                            ),
-                          ),
-                        ),
-
                       // ── 양옆 달 변경 화살표 ──
                       if (!_isFocusing) ...[
                         Positioned(
@@ -267,37 +270,117 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Widget _buildHeader(DateTime month) {
+    final hasUnreadMail = context.watch<AppData>().hasUnreadMail;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
       child: Column(
         children: [
-          const Text(
-            '기억의 정원',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              shadows: [
-                Shadow(
-                    color: Colors.black45,
-                    blurRadius: 4,
-                    offset: Offset(0, 1))
-              ],
-            ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            '우리의 소중한 시간',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
-              shadows: [
-                Shadow(
-                    color: Colors.black45,
-                    blurRadius: 4,
-                    offset: Offset(0, 1))
-              ],
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    '기억의 정원',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1E293B),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    '우리의 소중한 시간',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+              // 우측 상단 편지함 버튼
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FamilyMailboxScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(
+                              hasUnreadMail
+                                  ? Icons.mark_email_unread_outlined
+                                  : Icons.mail_outline_rounded,
+                              color: const Color(0xFF2C3E50),
+                              size: 20,
+                            ),
+                            if (hasUnreadMail)
+                              Positioned(
+                                top: -2,
+                                right: -2,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF4D4F),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          '편지함',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF2C3E50),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Align(

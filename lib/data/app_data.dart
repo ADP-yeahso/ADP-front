@@ -4,6 +4,7 @@ import '../models/diary.dart';
 import '../models/emotions.dart';
 import '../models/flower.dart';
 import '../models/groups.dart';
+import '../models/mail_letter.dart';
 import '../models/media.dart';
 import '../models/memory.dart';
 import '../models/patients.dart';
@@ -620,5 +621,66 @@ class AppData extends ChangeNotifier {
     );
     addDiary(date: d(0, 5), content: '오늘은 그냥 편안하고 괜찮은 하루였다.');
     _seedEmotionAnalysisTestData();
+  }
+
+  // ── 편지함 (Mailbox) 관련 상태 및 데이터 ──────────────
+  final List<MailLetter> letters = [
+    MailLetter(
+      id: 1,
+      sender: '정인선',
+      receiver: '강성윤',
+      content: '고생이 많다. 밥 잘 챙겨 먹어라. 날씨가 쌀쌀하니 감기 조심하고.',
+      date: '오늘 오전 10:30',
+      isAnonymous: false,
+      isRead: false,
+    ),
+    MailLetter(
+      id: 2,
+      sender: '강지민',
+      receiver: '가족 모두에게',
+      content: '이번 주 주말 병원 동행은 제가 갈게요. 서류 미리 준비해주세요.',
+      date: '어제 오후 04:15',
+      isAnonymous: false,
+      isRead: true,
+    ),
+    MailLetter(
+      id: 3,
+      sender: '익명',
+      receiver: '가족 모두에게',
+      content: '오늘 약 드시는 시간 확인 부탁한다.',
+      date: '어제 오전 09:00',
+      isAnonymous: true,
+      isRead: false,
+    ),
+  ];
+
+  bool get hasUnreadMail => letters.any((l) => !l.isRead);
+
+  int get unreadMailCount => letters.where((l) => !l.isRead).length;
+
+  void markLetterAsRead(int id) {
+    final index = letters.indexWhere((l) => l.id == id);
+    if (index != -1 && !letters[index].isRead) {
+      letters[index].isRead = true;
+      notifyListeners();
+    }
+  }
+
+  void addLetter({
+    required String receiver,
+    required String content,
+    required bool isAnonymous,
+  }) {
+    final newLetter = MailLetter(
+      id: DateTime.now().millisecondsSinceEpoch,
+      sender: isAnonymous ? '익명' : me.name,
+      receiver: receiver,
+      content: content,
+      date: '방금 전',
+      isAnonymous: isAnonymous,
+      isRead: false,
+    );
+    letters.insert(0, newLetter);
+    notifyListeners();
   }
 }

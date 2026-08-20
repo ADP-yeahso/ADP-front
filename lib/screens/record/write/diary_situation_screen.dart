@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'diary_ai_question_screen.dart';
+import 'diary_emotion_explore_screen.dart';
 
 class DiarySituationScreen extends StatefulWidget {
   const DiarySituationScreen({super.key});
@@ -170,7 +170,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const DiaryAiQuestionScreen(),
+                            builder: (context) => const DiaryEmotionExploreScreen(),
                           ),
                         );
                       },

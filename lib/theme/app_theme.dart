@@ -5,6 +5,7 @@ class AppTheme {
 
   static ThemeData get light => ThemeData(
         useMaterial3: true,
+        fontFamily: 'Pretendard',
         colorScheme: ColorScheme.fromSeed(seedColor: seed),
         scaffoldBackgroundColor: const Color(0xFFFBF9F3),
         appBarTheme: const AppBarTheme(

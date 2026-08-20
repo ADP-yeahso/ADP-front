@@ -4,12 +4,14 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../data/app_data.dart';
 import '../../data/garden_range.dart';
 
 import '../../utils/local_asset_server.dart';
+import '../care_notebook/care_notebook_list_screen.dart';
 import 'entry_detail_sheet.dart';
 
 /// 기억의 정원 – Three.js + WebView 하이브리드 아키텍처
@@ -290,47 +292,71 @@ class _GardenScreenState extends State<GardenScreen> {
   Widget _buildHeader(DateTime month) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-      alignment: Alignment.topCenter,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
+        alignment: Alignment.topCenter,
         children: [
-          // 날짜 (예: 07 . 26)
-          Text(
-            '${month.month.toString().padLeft(2, '0')} . ${month.year.toString().substring(2)}',
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF4A6B8A), // 스케치의 파란 펜 느낌 색상
-              letterSpacing: 2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          // 그룹 선택 (더미)
-          Row(
+          Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                '우리가족',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF4A6B8A),
+              // 날짜 (예: 07 . 26)
+              Text(
+                '${month.month.toString().padLeft(2, '0')} . ${month.year.toString().substring(2)}',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4A6B8A), // 스케치의 파란 펜 느낌 색상
+                  letterSpacing: 2,
                 ),
               ),
-              const SizedBox(width: 4),
-              Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF4A6B8A), width: 1.5),
-                ),
-                child: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 12,
-                  color: Color(0xFF4A6B8A),
-                ),
+              const SizedBox(height: 4),
+              // 그룹 선택 (더미)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '우리가족',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF4A6B8A),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF4A6B8A), width: 1.5),
+                    ),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 12,
+                      color: Color(0xFF4A6B8A),
+                    ),
+                  ),
+                ],
               ),
             ],
+          ),
+          Positioned(
+            right: 0,
+            top: 0,
+            child: IconButton(
+              icon: SvgPicture.asset(
+                'assets/icons/spiral_notebook.svg',
+                width: 28,
+                height: 28,
+                colorFilter: const ColorFilter.mode(Color(0xFF4A6B8A), BlendMode.srcIn),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CareNotebookListScreen(),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

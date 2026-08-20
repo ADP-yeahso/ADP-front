@@ -258,15 +258,16 @@ class AppData extends ChangeNotifier {
   Diary addDiary({
     required DateTime date,
     required String content,
-    required Emotion emotion,
+    Emotion? emotion,
     List<Media> mediaList = const [],
     bool isPublic = true,
   }) {
     final analysis = analyzeEmotion(content);
+    final finalEmotion = emotion ?? analysis.primary;
 
     final flower = Flower(
-      id: emotion.id,
-      emotionId: emotion,
+      id: finalEmotion.id,
+      emotionId: finalEmotion,
       flowerName: 'Mock Flower',
       colorCode: '#000000',
       sentence: 'Mock sentence',

@@ -38,6 +38,7 @@ dependencies:
   intl: ^0.20.2
   shelf: ^1.4.2
   webview_flutter: ^4.14.1
+  flutter_svg: ^2.3.0
   image_picker: ^1.1.2
   video_player: ^2.14.0
   just_audio: ^0.10.6
@@ -77,6 +78,11 @@ flutter:
     - assets/www/
     - assets/gallery/screen4/
     - assets/gallery/screen4_png/
+    - assets/auth/login/
+    - assets/auth/family_group/
+    - assets/auth/create_family/
+    - assets/auth/signup/
+    - assets/auth/group_created/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -101,6 +107,17 @@ flutter:
   #       - asset: fonts/TrajanPro.ttf
   #       - asset: fonts/TrajanPro_Bold.ttf
   #         weight: 700
-  #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Pretendard-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Pretendard-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.ttf
+          weight: 700

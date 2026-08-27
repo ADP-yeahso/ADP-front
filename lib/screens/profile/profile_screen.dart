@@ -9,6 +9,7 @@ import 'patient_info_screen.dart';
 import 'app_settings_screen.dart';
 import '../auth/login_screen.dart';
 import 'emotion_analysis_screen.dart';
+import '../care_notebook/care_notebook_list_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -181,6 +182,18 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.logout,
             label: '로그아웃',
             onTap: () => _confirmLogout(context),
+          ),
+          _SettingsTile(
+            icon: Icons.note_alt_outlined,
+            label: '돌봄 수첩',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CareNotebookListScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),

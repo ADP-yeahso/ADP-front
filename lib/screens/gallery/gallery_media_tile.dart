@@ -285,7 +285,9 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
   @override
   Widget build(BuildContext context) {
     final dateStr = DateFormat('yyyy.MM.dd').format(widget.resolvedDate);
-
+    if (widget.item.fileType == 'audio') {
+      return _buildAudioCard(dateStr);
+    }
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -330,6 +332,54 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
                       letterSpacing: -0.2,
                       height: 1.0,
                     ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAudioCard(String dateStr) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: _handleTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/gallery/screen4_png/4_audio_file_frame.png',
+              fit: BoxFit.fill,
+            ),
+
+            Align(
+              alignment: const Alignment(0, -0.20),
+              child: SvgPicture.asset(
+                'assets/gallery/screen4/4_audio_icon.svg',
+                width: 46,
+                height: 46,
+                fit: BoxFit.contain,
+              ),
+            ),
+
+            Positioned(
+              left: 4,
+              right: 4,
+              bottom: 7,
+              height: 18,
+              child: Center(
+                child: Text(
+                  dateStr,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                    height: 1.0,
                   ),
                 ),
               ),
@@ -412,7 +462,7 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
           Padding(
             padding: const EdgeInsets.all(4.0),
             child: SvgPicture.asset(
-              'assets/gallery/screen4/4_illustration.svg',
+              'assets/gallery/screen4/4_audio_file_frame.svg',
               fit: BoxFit.contain,
             ),
           ),

@@ -34,14 +34,31 @@ class GalleryFilterPanel extends StatelessWidget {
     required this.onSortByChanged,
     required this.onReset,
   });
-  Widget _pngButton({required String assetPath, required VoidCallback onTap}) {
+  Widget _filterButton({
+    required bool isSelected,
+    required String textAssetPath,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: 77,
         height: 29,
-        child: Image.asset(assetPath, fit: BoxFit.contain),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                isSelected
+                    ? 'assets/gallery/screen4_png/4_filter_button_green.png'
+                    : 'assets/gallery/screen4_png/4_filter_button_white.png',
+                fit: BoxFit.fill,
+              ),
+            ),
+            Center(child: SvgPicture.asset(textAssetPath, fit: BoxFit.contain)),
+          ],
+        ),
       ),
     );
   }
@@ -113,9 +130,11 @@ class GalleryFilterPanel extends StatelessWidget {
                     Positioned(
                       left: 70,
                       top: 38,
-                      child: _pngButton(
-                        assetPath:
-                            '${basePathPng}${selectedRecordTypes.contains('patient') ? '4_after_click_record_classification_patient.png' : '4_before_click_record_classification_patient.png'}',
+                      child: _filterButton(
+                        isSelected: selectedRecordTypes.contains('patient'),
+                        textAssetPath: selectedRecordTypes.contains('patient')
+                            ? '${basePathSvg}4_after_record_patient.svg'
+                            : '${basePathSvg}4_before_record_patient.svg',
                         onTap: () {
                           onRecordTypeChanged(
                             'patient',
@@ -129,9 +148,11 @@ class GalleryFilterPanel extends StatelessWidget {
                     Positioned(
                       left: 149,
                       top: 38,
-                      child: _pngButton(
-                        assetPath:
-                            '${basePathPng}${selectedRecordTypes.contains('emotion') ? '4_after_click_record_classification_emotion.png' : '4_before_click_record_classification_emotion.png'}',
+                      child: _filterButton(
+                        isSelected: selectedRecordTypes.contains('emotion'),
+                        textAssetPath: selectedRecordTypes.contains('emotion')
+                            ? '${basePathSvg}4_after_record_emotion.svg'
+                            : '${basePathSvg}4_before_record_emotion.svg',
                         onTap: () {
                           onRecordTypeChanged(
                             'emotion',
@@ -145,9 +166,11 @@ class GalleryFilterPanel extends StatelessWidget {
                     Positioned(
                       left: 228,
                       top: 38,
-                      child: _pngButton(
-                        assetPath:
-                            '${basePathPng}${selectedRecordTypes.contains('custom') ? '4_after_click_record_classification_direct_add.png' : '4_before_click_record_classification_direct_add.png'}',
+                      child: _filterButton(
+                        isSelected: selectedRecordTypes.contains('custom'),
+                        textAssetPath: selectedRecordTypes.contains('custom')
+                            ? '${basePathSvg}4_after_record_direct_add.svg'
+                            : '${basePathSvg}4_before_record_direct_add.svg',
                         onTap: () {
                           onRecordTypeChanged(
                             'custom',
@@ -181,9 +204,11 @@ class GalleryFilterPanel extends StatelessWidget {
                     Positioned(
                       left: 70,
                       top: 69,
-                      child: _pngButton(
-                        assetPath:
-                            '${basePathPng}${selectedFileTypes.contains('image') ? '4_after_click_file_type_photo.png' : '4_before_click_file_type_photo.png'}',
+                      child: _filterButton(
+                        isSelected: selectedFileTypes.contains('image'),
+                        textAssetPath: selectedFileTypes.contains('image')
+                            ? '${basePathSvg}4_after_file_photo.svg'
+                            : '${basePathSvg}4_before_file_photo.svg',
                         onTap: () {
                           onFileTypeChanged(
                             'image',
@@ -197,9 +222,11 @@ class GalleryFilterPanel extends StatelessWidget {
                     Positioned(
                       left: 149,
                       top: 69,
-                      child: _pngButton(
-                        assetPath:
-                            '${basePathPng}${selectedFileTypes.contains('video') ? '4_after_click_file_type_video.png' : '4_before_click_file_type_video.png'}',
+                      child: _filterButton(
+                        isSelected: selectedFileTypes.contains('video'),
+                        textAssetPath: selectedFileTypes.contains('video')
+                            ? '${basePathSvg}4_after_file_video.svg'
+                            : '${basePathSvg}4_before_file_video.svg',
                         onTap: () {
                           onFileTypeChanged(
                             'video',
@@ -213,9 +240,11 @@ class GalleryFilterPanel extends StatelessWidget {
                     Positioned(
                       left: 228,
                       top: 69,
-                      child: _pngButton(
-                        assetPath:
-                            '${basePathPng}${selectedFileTypes.contains('audio') ? '4_after_click_file_type_audio.png' : '4_before_click_file_type_audio.png'}',
+                      child: _filterButton(
+                        isSelected: selectedFileTypes.contains('audio'),
+                        textAssetPath: selectedFileTypes.contains('audio')
+                            ? '${basePathSvg}4_after_file_audio.svg'
+                            : '${basePathSvg}4_before_file_audio.svg',
                         onTap: () {
                           onFileTypeChanged(
                             'audio',
@@ -248,9 +277,11 @@ class GalleryFilterPanel extends StatelessWidget {
                     Positioned(
                       left: 70,
                       top: 100,
-                      child: _pngButton(
-                        assetPath:
-                            '${basePathPng}${sortBy == 'latest' ? '4_after_click_sort_latest.png' : '4_before_click_sort_latest.png'}',
+                      child: _filterButton(
+                        isSelected: sortBy == 'latest',
+                        textAssetPath: sortBy == 'latest'
+                            ? '${basePathSvg}4_after_sort_latest.svg'
+                            : '${basePathSvg}4_before_sort_latest.svg',
                         onTap: () {
                           onSortByChanged('latest');
                         },
@@ -261,9 +292,11 @@ class GalleryFilterPanel extends StatelessWidget {
                     Positioned(
                       left: 149,
                       top: 100,
-                      child: _pngButton(
-                        assetPath:
-                            '${basePathPng}${sortBy == 'oldest' ? '4_after_click_sort_oldest.png' : '4_before_click_sort_oldest.png'}',
+                      child: _filterButton(
+                        isSelected: sortBy == 'oldest',
+                        textAssetPath: sortBy == 'oldest'
+                            ? '${basePathSvg}4_after_sort_oldest.svg'
+                            : '${basePathSvg}4_before_sort_oldest.svg',
                         onTap: () {
                           onSortByChanged('oldest');
                         },

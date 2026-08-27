@@ -585,20 +585,52 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       });
                     },
                     behavior: HitTestBehavior.opaque,
-                    child: SvgPicture.asset(
-                      'assets/gallery/screen4/4_condition_search.svg',
-                      height: 18,
-                      fit: BoxFit.contain,
+                    child: SizedBox(
+                      width: 110,
+                      height: 36,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned.fill(
+                            child: Image.asset(
+                              'assets/gallery/screen4_png/4_condition_search_button_frame.png',
+                              fit: BoxFit.fill,
+                            ),
+                          ),
+
+                          SvgPicture.asset(
+                            'assets/gallery/screen4/4_condition_search.svg',
+                            height: 18,
+                            fit: BoxFit.contain,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
                   GestureDetector(
                     onTap: _showAddMediaDialog,
                     behavior: HitTestBehavior.opaque,
-                    child: SvgPicture.asset(
-                      'assets/gallery/screen4/4_file_add.svg',
-                      height: 28,
-                      fit: BoxFit.contain,
+                    child: SizedBox(
+                      width: 82,
+                      height: 36,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned.fill(
+                            child: Image.asset(
+                              'assets/gallery/screen4_png/4_add_button_frame.png',
+                              fit: BoxFit.fill,
+                            ),
+                          ),
+
+                          SvgPicture.asset(
+                            'assets/gallery/screen4/4_file_add.svg',
+                            height: 28,
+                            fit: BoxFit.contain,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -652,10 +684,26 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 child: GestureDetector(
                   onTap: _showAddMediaDialog,
                   behavior: HitTestBehavior.opaque,
-                  child: SvgPicture.asset(
-                    'assets/gallery/screen4/4_file_add.svg',
-                    height: 28,
-                    fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: 82,
+                    height: 36,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Positioned.fill(
+                          child: Image.asset(
+                            'assets/gallery/screen4_png/4_add_button_frame.png',
+                            fit: BoxFit.fill,
+                          ),
+                        ),
+
+                        SvgPicture.asset(
+                          'assets/gallery/screen4/4_file_add.svg',
+                          height: 28,
+                          fit: BoxFit.contain,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

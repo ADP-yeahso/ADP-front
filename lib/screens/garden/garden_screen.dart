@@ -26,7 +26,7 @@ class _GardenScreenState extends State<GardenScreen> {
 
   late final WebViewController _webViewController;
   late final LocalAssetServer _localhostServer;
-  
+
   bool _isFocusing = false;
   bool _isServerStarted = false;
 
@@ -38,10 +38,10 @@ class _GardenScreenState extends State<GardenScreen> {
     _localhostServer = LocalAssetServer(assetBase: 'assets');
     _initWebViewAndServer();
   }
-  
+
   Future<void> _initWebViewAndServer() async {
     await _localhostServer.start();
-    
+
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
@@ -68,7 +68,11 @@ class _GardenScreenState extends State<GardenScreen> {
       );
 
     await _webViewController.clearCache();
-    await _webViewController.loadRequest(Uri.parse('http://localhost:8080/www/index.html?v=\${DateTime.now().millisecondsSinceEpoch}'));
+    await _webViewController.loadRequest(
+      Uri.parse(
+        'http://localhost:8080/www/index.html?v=\${DateTime.now().millisecondsSinceEpoch}',
+      ),
+    );
 
     if (mounted) {
       setState(() {
@@ -84,29 +88,33 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   void _prevMonth() => setState(() {
-        if (_pageIndex > 0) {
-          _pageIndex--;
-          _reload3DScene();
-        }
-      });
+    if (_pageIndex > 0) {
+      _pageIndex--;
+      _reload3DScene();
+    }
+  });
 
   void _nextMonth() => setState(() {
-        if (_pageIndex < gardenTotalPages - 1) {
-          _pageIndex++;
-          _reload3DScene();
-        }
-      });
+    if (_pageIndex < gardenTotalPages - 1) {
+      _pageIndex++;
+      _reload3DScene();
+    }
+  });
 
   /// 달이 변경될 때마다 3D Scene의 데이터를 다시 주입
   void _reload3DScene() {
     final appData = context.read<AppData>();
     final diaries = appData.diariesForMonth(_currentMonth);
-    
-    final diariesJson = jsonEncode(diaries.map((e) => {'id': e.id, 'emotion': e.flowerType.emotionId.name}).toList());
+
+    final diariesJson = jsonEncode(
+      diaries
+          .map((e) => {'id': e.id, 'emotion': e.flowerType.emotionId.name})
+          .toList(),
+    );
     final ts = DateTime.now().millisecondsSinceEpoch;
     final treeUrl = 'http://localhost:8080/images/worldtree.glb?v=$ts';
     final flowerUrl = 'http://localhost:8080/images/flower2.glb?v=$ts';
-    
+
     _webViewController.runJavaScript('''
       function tryInitGarden() {
         if (typeof window.initGarden === 'function') {
@@ -141,7 +149,9 @@ class _GardenScreenState extends State<GardenScreen> {
                         Positioned.fill(
                           child: IgnorePointer(
                             ignoring: _isFocusing,
-                            child: WebViewWidget(controller: _webViewController),
+                            child: WebViewWidget(
+                              controller: _webViewController,
+                            ),
                           ),
                         ),
 
@@ -187,16 +197,21 @@ class _GardenScreenState extends State<GardenScreen> {
                           bottom: 16,
                           child: Center(
                             child: GestureDetector(
-                              onTap: () => showMemoryListSheet(context, memories),
+                              onTap: () =>
+                                  showMemoryListSheet(context, memories),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.9),
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.1),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       blurRadius: 8,
                                     ),
                                   ],
@@ -243,7 +258,9 @@ class _GardenScreenState extends State<GardenScreen> {
       setState(() {
         _isFocusing = false;
       });
-      _webViewController.runJavaScript('if(typeof window.resetCamera === "function") window.resetCamera()');
+      _webViewController.runJavaScript(
+        'if(typeof window.resetCamera === "function") window.resetCamera()',
+      );
     }
   }
 
@@ -262,7 +279,9 @@ class _GardenScreenState extends State<GardenScreen> {
         _isFocusing = false;
       });
       // 나무에서 멀어질 경우 리셋 카메라(선택적)
-      _webViewController.runJavaScript('if(typeof window.resetCamera === "function") window.resetCamera()');
+      _webViewController.runJavaScript(
+        'if(typeof window.resetCamera === "function") window.resetCamera()',
+      );
     }
   }
 
@@ -279,9 +298,10 @@ class _GardenScreenState extends State<GardenScreen> {
               color: Colors.white,
               shadows: [
                 Shadow(
-                    color: Colors.black45,
-                    blurRadius: 4,
-                    offset: Offset(0, 1))
+                  color: Colors.black45,
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                ),
               ],
             ),
           ),
@@ -293,9 +313,10 @@ class _GardenScreenState extends State<GardenScreen> {
               color: Colors.white70,
               shadows: [
                 Shadow(
-                    color: Colors.black45,
-                    blurRadius: 4,
-                    offset: Offset(0, 1))
+                  color: Colors.black45,
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                ),
               ],
             ),
           ),
@@ -303,8 +324,7 @@ class _GardenScreenState extends State<GardenScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(20),
@@ -328,8 +348,11 @@ class _GardenScreenState extends State<GardenScreen> {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 18, color: Color(0xFF9E9E9E)),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: Color(0xFF9E9E9E),
+                  ),
                 ],
               ),
             ),

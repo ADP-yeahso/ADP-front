@@ -17,6 +17,14 @@ bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
 extension UserUIInfo on User {
+  bool get isMe => id == 1;
+  String get nickname => name;
+  String get relation {
+    if (id == 1) return '딸';
+    if (id == 2) return '아들';
+    return '며느리';
+  }
+
   Color get color {
     if (id == 1) return const Color(0xFF6B93D1);
     if (id == 2) return const Color(0xFF6FBF8B);
@@ -134,6 +142,7 @@ class AppData extends ChangeNotifier {
 
   User userById(int id) =>
       users.firstWhere((u) => u.id == id, orElse: () => me);
+
   void updateCurrentUserProfile({
     required String name,
     required String password,
@@ -232,6 +241,7 @@ class AppData extends ChangeNotifier {
             fileUrl: m.fileUrl,
             fileType: m.fileType,
             duration: m.duration,
+            thumbnailPath: m.thumbnailPath,
             sortOrder: m.sortOrder,
             createdAt: m.createdAt,
           ),
@@ -251,7 +261,6 @@ class AppData extends ChangeNotifier {
         updatedAt: DateTime.now(),
       ),
     );
-
     notifyListeners();
   }
 
@@ -272,7 +281,6 @@ class AppData extends ChangeNotifier {
     );
 
     final diaryId = _nextId();
-
     final updatedMedia = mediaList
         .map(
           (m) => Media(
@@ -282,6 +290,7 @@ class AppData extends ChangeNotifier {
             fileUrl: m.fileUrl,
             fileType: m.fileType,
             duration: m.duration,
+            thumbnailPath: m.thumbnailPath,
             sortOrder: m.sortOrder,
             createdAt: m.createdAt,
           ),
@@ -568,18 +577,7 @@ class AppData extends ChangeNotifier {
       date: d(2, 6),
       title: '함께 본 옛날 사진',
       content: '$patientRelationLabel과 함께 젊은 시절 사진을 꺼내 보았다. 잠시 웃으셨다.',
-      mediaList: [
-        Media(
-          id: 0,
-          memoryId: null,
-          diaryId: null,
-          fileUrl: 'dummy.jpg',
-          fileType: 'image',
-          duration: 0,
-          sortOrder: 1,
-          createdAt: DateTime.now(),
-        ),
-      ],
+      mediaList: [],
     );
     addMemory(
       date: d(1, 12),
@@ -590,18 +588,7 @@ class AppData extends ChangeNotifier {
       date: d(0, 3),
       title: '산책',
       content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
-      mediaList: [
-        Media(
-          id: 0,
-          memoryId: null,
-          diaryId: null,
-          fileUrl: 'dummy.jpg',
-          fileType: 'image',
-          duration: 0,
-          sortOrder: 1,
-          createdAt: DateTime.now(),
-        ),
-      ],
+      mediaList: [],
     );
 
     addDiary(date: d(2, 8), content: '오늘은 유난히 지치고 눈물이 났다. 혼자 감당하기 힘든 하루였다.');

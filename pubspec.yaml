@@ -40,9 +40,15 @@ dependencies:
   webview_flutter: ^4.14.1
   flutter_svg: ^2.3.0
   image_picker: ^1.1.2
+  video_player: ^2.14.0
+  just_audio: ^0.10.6
+  
+  audioplayers: ^6.8.1
+  fc_native_video_thumbnail: ^3.0.1
   file_picker: ^10.3.10
 
   fl_chart: ^1.2.0
+ 
 
 
 dev_dependencies:
@@ -70,6 +76,8 @@ flutter:
   assets:
     - assets/images/
     - assets/www/
+    - assets/gallery/screen4/
+    - assets/gallery/screen4_png/
     - assets/auth/login/
     - assets/auth/family_group/
     - assets/auth/create_family/

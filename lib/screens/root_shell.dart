@@ -17,6 +17,7 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   int _index = 0;
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   static const _screens = [
     GardenScreen(),
@@ -62,6 +63,7 @@ class _RootShellState extends State<RootShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Navigator(
+        key: _navigatorKey,
         onGenerateRoute: (settings) => MaterialPageRoute(
           builder: (context) => IndexedStack(index: _index, children: _screens),
         ),
@@ -130,7 +132,12 @@ class _RootShellState extends State<RootShell> {
     final color = isSelected ? Theme.of(context).primaryColor : Colors.grey[600];
 
     return InkWell(
-      onTap: () => setState(() => _index = index),
+      onTap: () {
+        _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+        if (_index != index) {
+          setState(() => _index = index);
+        }
+      },
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),

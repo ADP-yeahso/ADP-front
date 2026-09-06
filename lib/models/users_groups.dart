@@ -3,6 +3,7 @@ class UserGroup {
   final int userId;
   final int groupId;
   final String patientsNickname;
+  final String relationship;
   final DateTime joinedAt;
 
   UserGroup({
@@ -10,6 +11,7 @@ class UserGroup {
     required this.userId,
     required this.groupId,
     required this.patientsNickname,
+    this.relationship = '',
     required this.joinedAt,
   });
 }

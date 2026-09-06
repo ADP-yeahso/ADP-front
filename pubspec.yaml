@@ -38,6 +38,7 @@ dependencies:
   intl: ^0.20.2
   shelf: ^1.4.2
   webview_flutter: ^4.14.1
+  flutter_svg: ^2.3.0
   image_picker: ^1.1.2
   file_picker: ^10.3.10
 
@@ -54,6 +55,12 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "web/Moaon_icon.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -67,8 +74,15 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/icons/
     - assets/images/
+    - assets/images/flower/
     - assets/www/
+    - assets/auth/login/
+    - assets/auth/family_group/
+    - assets/auth/create_family/
+    - assets/auth/signup/
+    - assets/auth/group_created/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -93,6 +107,17 @@ flutter:
   #       - asset: fonts/TrajanPro.ttf
   #       - asset: fonts/TrajanPro_Bold.ttf
   #         weight: 700
-  #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Pretendard-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Pretendard-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.ttf
+          weight: 700

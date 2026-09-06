@@ -1,10 +1,27 @@
 import 'package:flutter/material.dart';
 
+class AppColors {
+  // Image 2 Palette (Named Roles)
+  static const Color primary = Color(0xFF98CC6B); // Soft Leaf Green
+  static const Color secondary = Color(0xFF24361B); // Deep Forest Green
+  static const Color accent = Color(0xFFED7A3B); // Warm Tangerine
+  static const Color background = Color(0xFFEEF2EC); // Pale Sage Mist
+
+  // Image 1 Palette (Variants)
+  static const Color green1 = Color(0xFF317E39);
+  static const Color green2 = Color(0xFF144419);
+  static const Color green3 = Color(0xFF6D8272);
+  static const Color green4 = Color(0xFFA7E664);
+  static const Color orange1 = Color(0xFFF7931A);
+  static const Color lightGrayGreen = Color(0xFFECF0E7);
+}
+
 class AppTheme {
-  static const seed = Color(0xFF5C9271);
+  static const seed = AppColors.primary;
 
   static ThemeData get light => ThemeData(
         useMaterial3: true,
+        fontFamily: 'Pretendard',
         colorScheme: ColorScheme.fromSeed(seedColor: seed),
         scaffoldBackgroundColor: const Color(0xFFFBF9F3),
         appBarTheme: const AppBarTheme(

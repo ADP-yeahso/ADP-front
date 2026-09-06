@@ -169,14 +169,23 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
     let diariesByUrl = {};
     
     diaries.forEach(diary => {
-      let emotion = diary.emotion ? diary.emotion.toLowerCase() : 'joy';
-      let urls = flowerUrlsMap[emotion];
-      if (!urls || urls.length === 0) {
-        urls = flowerUrlsMap['joy']; // fallback
+      const emotion = typeof diary.emotion === 'string' && diary.emotion.trim() !== ''
+      ? diary.emotion.toLowerCase()
+      : null;
+
+      if (!emotion) {
+        return;
+      }
+
+      const urls = flowerUrlsMap[emotion];
+
+      if (!Array.isArray(urls) || urls.length === 0) {
+        console.warn(`No flower mapping for emotion: ${emotion}`);
+        return;
       }
       // Stable random using diary.id
-      let urlIndex = diary.id % urls.length;
-      let url = urls[urlIndex];
+      const urlIndex = diary.id % urls.length;
+      const url = urls[urlIndex];
       
       if (!diariesByUrl[url]) {
         diariesByUrl[url] = [];
@@ -469,17 +478,22 @@ setTimeout(() => {
   if (!window.FlutterChannel) {
     console.log("Running in local simulator. Initializing with mid flower...");
     const dummyDiaries = JSON.stringify([
-      { id: "1", emotion: "joy" }, 
-      { id: "2", emotion: "guilt" }, 
-      { id: "3", emotion: "anger" }, 
-      { id: "4", emotion: "sadness" }, 
-      { id: "5", emotion: "guilt" }
+      { id: 1, emotion: "affection" },
+      { id: 2, emotion: "anger" },
+      { id: 3, emotion: "anxiety" },
+      { id: 4, emotion: "guilt" },
+      { id: 5, emotion: "sadness" },
+      { id: 6, emotion: "gratitude" },
+      { id: 7, emotion: "neutral" }
     ]);
     const dummyMap = JSON.stringify({
-      "joy": ["../images/flower/Affection_lisian_low.glb"],
+      "affection": ["../images/flower/Affection_Lisianthus.glb"],
       "guilt": ["../images/flower/Guilt_Canna.glb", "../images/flower/Guilt_Clematis.glb"],
       "anger": ["../images/flower/Anger_Phlox.glb"],
-      "sadness": ["../images/flower/Sadness_ebw.glb"]
+      "sadness": ["../images/flower/Sadness_ebw.glb"],
+      "anxiety": ["../images/flower/Anxiety_Borage.glb"],
+      "gratitude": ["../images/flower/flower.glb"],
+      "neutral": ["../images/flower/flower.glb"]
     });
     window.initGarden(
       '../images/worldtree.glb',

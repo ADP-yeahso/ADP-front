@@ -258,14 +258,16 @@ class AppData extends ChangeNotifier {
   Diary addDiary({
     required DateTime date,
     required String content,
+    Emotion? emotion,
     List<Media> mediaList = const [],
     bool isPublic = true,
   }) {
     final analysis = analyzeEmotion(content);
+    final finalEmotion = emotion ?? analysis.primary;
 
     final flower = Flower(
-      id: analysis.primary.id,
-      emotionId: analysis.primary,
+      id: finalEmotion.id,
+      emotionId: finalEmotion,
       flowerName: 'Mock Flower',
       colorCode: '#000000',
       sentence: 'Mock sentence',
@@ -601,6 +603,32 @@ class AppData extends ChangeNotifier {
           sortOrder: 1,
           createdAt: DateTime.now(),
         ),
+      ],
+    );
+    addMemory(
+      date: d(0, 8),
+      title: '가족 모임',
+      content: '오랜만에 온 가족이 모여 식사를 했다. $patientRelationLabel이 무척 즐거워하셨다.',
+    );
+    addMemory(
+      date: d(0, 11),
+      title: '옛 동네 방문',
+      content: '예전에 살던 동네를 차로 둘러보았다. 기억이 조금씩 나시는 듯했다.',
+      mediaList: [
+        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+      ],
+    );
+    addMemory(
+      date: d(0, 18),
+      title: '좋아하시는 노래',
+      content: '라디오에서 옛날 노래가 나오자 따라 부르셨다.',
+    );
+    addMemory(
+      date: d(0, 22),
+      title: '손주와의 영상통화',
+      content: '손주와 영상통화를 하며 활짝 웃으시는 모습을 보니 내 마음도 따뜻해졌다.',
+      mediaList: [
+        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
       ],
     );
 

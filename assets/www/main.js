@@ -4,7 +4,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 let scene, camera, renderer, controls;
 let raycaster, mouse;
-let flowerMeshes = [];
+let flowerMeshes = []; // Not used for clones anymore, but we can keep for backwards compat or remove.
+let flowerData = [];
 let worldTree;
 let isFocusing = false;
 
@@ -95,6 +96,36 @@ function init() {
   window.addEventListener('resize', onWindowResize);
   window.addEventListener('click', onClick);
 
+  // ── 모바일 터치 지원 ──
+  // iOS WebView에서는 click 이벤트가 제대로 발생하지 않으므로
+  // touchstart/touchend로 "탭"을 감지하여 raycast를 수행합니다.
+  let touchStartX = 0, touchStartY = 0;
+  let touchStartTime = 0;
+
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', (e) => {
+    if (e.changedTouches.length !== 1) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
+    const dt = Date.now() - touchStartTime;
+
+    // 손가락 이동이 10px 이하이고 300ms 이내면 "탭"으로 간주
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && dt < 300) {
+      onClick({
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      });
+    }
+  });
+
   // Hide loading by default until data comes
   document.getElementById('loading').style.display = 'none';
 }
@@ -106,9 +137,10 @@ function onWindowResize() {
 }
 
 // Function called from Flutter to initialize models
-window.initGarden = function (treeUrl, flowerUrl, diariesJson) {
+window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
   document.getElementById('loading').style.display = 'block';
   let diaries = JSON.parse(diariesJson);
+  let flowerUrlsMap = JSON.parse(flowerUrlsMapJson);
   const loader = new GLTFLoader();
 
   // Load Tree
@@ -127,69 +159,119 @@ window.initGarden = function (treeUrl, flowerUrl, diariesJson) {
     worldTree.scale.set(1.5, 1.5, 1.5);
     scene.add(worldTree);
 
-    // Load Flower
-    loader.load(flowerUrl, (fgltf) => {
+    const numFlowers = diaries.length;
+    if (numFlowers === 0) {
       document.getElementById('loading').style.display = 'none';
-      const baseFlower = fgltf.scene;
+      return;
+    }
 
-      // 12개가 될 때까지 테스트용 더미 꽃 추가
-      while (diaries.length < 12) {
-        diaries.push({ id: 'dummy_' + diaries.length });
+    // Determine required flower URLs and mapping for diaries
+    let diariesByUrl = {};
+    
+    diaries.forEach(diary => {
+      let emotion = diary.emotion ? diary.emotion.toLowerCase() : 'joy';
+      let urls = flowerUrlsMap[emotion];
+      if (!urls || urls.length === 0) {
+        urls = flowerUrlsMap['joy']; // fallback
       }
-
-      // Compute bounding box to debug size and offset
-      const box = new THREE.Box3().setFromObject(baseFlower);
-      const size = new THREE.Vector3();
-      box.getSize(size);
-      if (window.FlutterChannel) {
-        window.FlutterChannel.postMessage('FLOWER_SIZE: ' + size.x.toFixed(4) + ', ' + size.y.toFixed(4) + ', ' + size.z.toFixed(4));
-        window.FlutterChannel.postMessage('FLOWER_CENTER: ' + box.getCenter(new THREE.Vector3()).x.toFixed(4));
+      // Stable random using diary.id
+      let urlIndex = diary.id % urls.length;
+      let url = urls[urlIndex];
+      
+      if (!diariesByUrl[url]) {
+        diariesByUrl[url] = [];
       }
+      diariesByUrl[url].push(diary);
+    });
 
-      const numFlowers = diaries.length;
+    let uniqueUrls = Object.keys(diariesByUrl);
+    
+    // Load all required flowers in parallel
+    let loadPromises = uniqueUrls.map(url => {
+      return new Promise((resolve, reject) => {
+        loader.load(url, (fgltf) => {
+           resolve({ url: url, gltf: fgltf });
+        }, undefined, (error) => {
+           console.error("Error loading flower: " + url, error);
+           reject(error);
+        });
+      });
+    });
 
-      for (let i = 0; i < numFlowers; i++) {
-        const diary = diaries[i];
-        const clone = baseFlower.clone();
+    Promise.all(loadPromises).then(results => {
+      document.getElementById('loading').style.display = 'none';
+      
+      flowerData = [];
+      flowerMeshes = []; // array of InstancedMeshes
+      
+      const flowerScale = 0.2;
+      const dummy = new THREE.Object3D();
 
-        // Random placement on the ground (반경 10 ~ 30 사이 무작위 배치)
-        const angle = Math.random() * Math.PI * 2;
-        const r = 10 + Math.random() * 20;
+      results.forEach(result => {
+        const url = result.url;
+        const baseFlower = result.gltf.scene;
+        const assignedDiaries = diariesByUrl[url];
+        const numInstances = assignedDiaries.length;
 
-        clone.position.x = Math.cos(angle) * r;
-        clone.position.z = Math.sin(angle) * r;
-        clone.position.y = 0; // 임시로 0 설정 후 BoundingBox 기반으로 바닥에 딱 맞게 자동 조정
+        baseFlower.position.set(0, 0, 0);
+        baseFlower.rotation.set(0, 0, 0);
+        baseFlower.scale.set(1, 1, 1);
+        baseFlower.updateMatrixWorld(true);
 
-        // 베이스 모델 크기가 무려 180이나 되므로, 0.015 수준으로 대폭 축소
-        clone.scale.set(1.5, 1.5, 1.5);
+        const baseBox = new THREE.Box3().setFromObject(baseFlower);
+        const baseMinY = baseBox.min.y;
 
-        // Face the tree
-        clone.lookAt(origin);
-
-        clone.userData = { isFlower: true, diaryId: diary.id };
-
-        clone.traverse((child) => {
+        const typeInstancedMeshes = [];
+        baseFlower.traverse((child) => {
           if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-            if (child.material) {
-              child.material = child.material.clone();
-            }
+            const material = child.material ? child.material.clone() : new THREE.MeshStandardMaterial();
+            const geometry = child.geometry.clone();
+            geometry.applyMatrix4(child.matrixWorld);
+
+            const imesh = new THREE.InstancedMesh(geometry, material, numInstances);
+            imesh.castShadow = true;
+            imesh.receiveShadow = true;
+            imesh.userData = { isFlower: true, diaryIds: [] };
+            
+            // Add instance id to diary id mapping inside userData if we needed specific raycasting index mapping
+            // But raycasting logic uses instanceId, so flowerData array mapping must align with instanceId
+            typeInstancedMeshes.push(imesh);
+            flowerMeshes.push(imesh);
+            scene.add(imesh);
           }
         });
 
-        // BoundingBox를 계산하여 꽃의 맨 아랫부분(줄기 끝)이 정확히 바닥(y=0)에 닿도록 보정
-        clone.updateMatrixWorld(true);
-        const flowerBox = new THREE.Box3().setFromObject(clone);
-        clone.position.y += (0 - flowerBox.min.y);
+        for (let i = 0; i < numInstances; i++) {
+          const diary = assignedDiaries[i];
+          const angle = Math.random() * Math.PI * 2;
+          const r = 10 + Math.random() * 20;
 
-        scene.add(clone);
-        flowerMeshes.push(clone);
-      }
-    }, undefined, function (error) {
-      if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_FLOWER: ' + error.message);
+          dummy.position.x = Math.cos(angle) * r;
+          dummy.position.z = Math.sin(angle) * r;
+          dummy.scale.set(flowerScale, flowerScale, flowerScale);
+          dummy.position.y = -(baseMinY * flowerScale);
+          dummy.lookAt(origin);
+          dummy.updateMatrix();
+
+          typeInstancedMeshes.forEach(imesh => {
+            imesh.setMatrixAt(i, dummy.matrix);
+            // Since raycaster hits a specific InstancedMesh, we need to map imesh + instanceId -> diary.
+            // Currently flowerData is a flat array, but raycaster uses instanceId (0 to numInstances-1).
+            // To fix raycasting with multiple InstancedMeshes, we must store a mapping per imesh!
+            if (!imesh.userData.diaryMapping) imesh.userData.diaryMapping = [];
+            imesh.userData.diaryMapping[i] = { diaryId: diary.id, position: dummy.position.clone() };
+          });
+        }
+
+        typeInstancedMeshes.forEach(imesh => {
+          imesh.instanceMatrix.needsUpdate = true;
+        });
+      });
+    }).catch(error => {
+      if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_FLOWER_BATCH: ' + error.message);
       document.getElementById('loading').style.display = 'none';
     });
+
   }, undefined, function (error) {
     if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_TREE: ' + error.message);
     document.getElementById('loading').style.display = 'none';
@@ -204,38 +286,49 @@ function onClick(event) {
 
   raycaster.setFromCamera(mouse, camera);
 
-  // We raycast against flower meshes
+  // We raycast against all objects
   const intersects = raycaster.intersectObjects(scene.children, true);
 
   for (let i = 0; i < intersects.length; i++) {
     let object = intersects[i].object;
-    // Walk up to find the group with userData
-    while (object && !object.userData.isFlower && object.parent) {
-      object = object.parent;
+
+    // Check if it's a flower InstancedMesh
+    if (object.userData && object.userData.isFlower) {
+      const instanceId = intersects[i].instanceId;
+      if (instanceId !== undefined) {
+        const data = object.userData.diaryMapping ? object.userData.diaryMapping[instanceId] : undefined;
+        if (data) {
+          if (String(data.diaryId).startsWith('dummy')) {
+            break; // Ignore dummy clicks
+          }
+          focusOnFlower(data);
+          break; // Stop raycast loop
+        }
+      }
     }
 
-    if (object && object.userData.isFlower) {
-      focusOnFlower(object);
-      break;
-    } else if (object && object.userData.isTree) {
-      // 중앙 나무가 클릭된 경우
-      focusOnTree(object);
+    // Walk up to find if it's the tree
+    let parent = object;
+    while (parent && !parent.userData?.isTree && parent.parent) {
+      parent = parent.parent;
+    }
+
+    if (parent && parent.userData?.isTree) {
+      focusOnTree(parent);
       break;
     }
   }
 }
 
-function focusOnFlower(flowerObj) {
+function focusOnFlower(fData) {
   isFocusing = true;
   controls.enabled = false;
 
-  // Calculate target camera position (zoom in slightly above and in front of flower)
-  const offset = new THREE.Vector3(0, 5, 8);
   // Transform offset to face same direction as flower to tree
-  const direction = new THREE.Vector3().subVectors(origin, flowerObj.position).normalize();
+  const direction = new THREE.Vector3().subVectors(origin, fData.position).normalize();
 
   // Just a simple heuristic: move camera closer to flower
-  const targetCamPos = flowerObj.position.clone().add(new THREE.Vector3(0, 4, 0)).sub(direction.multiplyScalar(8));
+  const targetCamPos = fData.position.clone().add(new THREE.Vector3(0, 4, 0)).sub(direction.multiplyScalar(8));
 
   // Tween Camera Position
   gsap.to(camera.position, {
@@ -252,15 +345,15 @@ function focusOnFlower(flowerObj) {
 
   // Tween Controls Target (LookAt)
   gsap.to(controls.target, {
-    x: flowerObj.position.x,
-    y: flowerObj.position.y,
-    z: flowerObj.position.z,
+    x: fData.position.x,
+    y: fData.position.y,
+    z: fData.position.z,
     duration: 1.5,
     ease: "power3.inOut",
     onComplete: () => {
       // Notify Flutter
       if (window.FlutterChannel) {
-        window.FlutterChannel.postMessage(flowerObj.userData.diaryId);
+        window.FlutterChannel.postMessage(fData.diaryId);
       }
     }
   });
@@ -326,3 +419,72 @@ function animate() {
   controls.update();
   renderer.render(scene, camera);
 }
+
+window.disposeGarden = function() {
+  if (worldTree) {
+    scene.remove(worldTree);
+    worldTree.traverse((child) => {
+      if (child.isMesh) {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => {
+               if(m.map) m.map.dispose();
+               m.dispose();
+            });
+          } else {
+            if(child.material.map) child.material.map.dispose();
+            child.material.dispose();
+          }
+        }
+      }
+    });
+    worldTree = null;
+  }
+
+  if (flowerMeshes && flowerMeshes.length > 0) {
+    flowerMeshes.forEach(imesh => {
+      scene.remove(imesh);
+      if (imesh.geometry) imesh.geometry.dispose();
+      if (imesh.material) {
+          if (Array.isArray(imesh.material)) {
+            imesh.material.forEach(m => {
+               if(m.map) m.map.dispose();
+               m.dispose();
+            });
+          } else {
+            if(imesh.material.map) imesh.material.map.dispose();
+            imesh.material.dispose();
+          }
+      }
+    });
+    flowerMeshes = [];
+    flowerData = [];
+  }
+}
+
+// --- Local Simulator Test Code ---
+// Flutter 환경이 아닐 경우(웹 브라우저에서 직접 실행 시) mid 꽃 파일로 시뮬레이터를 자동 실행합니다.
+setTimeout(() => {
+  if (!window.FlutterChannel) {
+    console.log("Running in local simulator. Initializing with mid flower...");
+    const dummyDiaries = JSON.stringify([
+      { id: "1", emotion: "joy" }, 
+      { id: "2", emotion: "guilt" }, 
+      { id: "3", emotion: "anger" }, 
+      { id: "4", emotion: "sadness" }, 
+      { id: "5", emotion: "guilt" }
+    ]);
+    const dummyMap = JSON.stringify({
+      "joy": ["../images/flower/Affection_lisian_low.glb"],
+      "guilt": ["../images/flower/Guilt_Canna.glb", "../images/flower/Guilt_Clematis.glb"],
+      "anger": ["../images/flower/Anger_Phlox.glb"],
+      "sadness": ["../images/flower/Sadness_ebw.glb"]
+    });
+    window.initGarden(
+      '../images/worldtree.glb',
+      dummyMap,
+      dummyDiaries
+    );
+  }
+}, 500);

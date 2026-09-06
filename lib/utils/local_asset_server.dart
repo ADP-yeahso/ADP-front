@@ -47,6 +47,7 @@ class LocalAssetServer {
       return Response.ok(buffer, headers: {
         'Content-Type': contentType,
         'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       });
     } catch (e) {
       return Response.notFound('Asset not found: $path');

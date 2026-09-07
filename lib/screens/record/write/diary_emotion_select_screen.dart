@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../models/emotion_model.dart';
 import 'diary_loading_screen.dart';
 
@@ -49,6 +50,38 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     });
   }
 
+  Widget _buildAssetWidget({
+    required List<String> candidatePaths,
+    required Widget fallback,
+    double? width,
+    double? height,
+  }) {
+    return _tryPath(candidatePaths, 0, fallback, width, height);
+  }
+
+  Widget _tryPath(List<String> paths, int index, Widget fallback, double? width, double? height) {
+    if (index >= paths.length) return fallback;
+    final path = paths[index];
+    final isSvg = path.toLowerCase().endsWith('.svg');
+    if (isSvg) {
+      return SvgPicture.asset(
+        path,
+        width: width,
+        height: height,
+        fit: BoxFit.contain,
+        placeholderBuilder: (context) => fallback,
+      );
+    } else {
+      return Image.asset(
+        path,
+        width: width,
+        height: height,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => _tryPath(paths, index + 1, fallback, width, height),
+      );
+    }
+  }
+
   Widget _buildEmotionButton(EmotionModel emotion) {
     final isSelected = _selectedEmotions.contains(emotion);
     final isMaxReached = _selectedEmotions.length >= _maxSelection;
@@ -58,7 +91,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
       onTap: isDisabled ? null : () => _toggleEmotion(emotion),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? emotion.color : Colors.white,
           borderRadius: BorderRadius.circular(24),
@@ -66,13 +99,22 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
             color: (isDisabled && !isSelected) ? Colors.grey.shade300 : emotion.color,
             width: 1.5,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: emotion.color.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
         ),
         child: Text(
           emotion.name,
           style: TextStyle(
             fontSize: 16,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected 
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            color: isSelected
                 ? ((emotion.color == const Color(0xFFFFE367)) ? Colors.black87 : Colors.white)
                 : ((isDisabled && !isSelected) ? Colors.grey : Colors.black87),
           ),
@@ -83,186 +125,168 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isComplete = _selectedEmotions.length == _maxSelection;
+    const backgroundColor = Color(0xFFF7F5EE);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Character Image Placeholder
-              Center(
-                child: Container(
-                  width: 140,
-                  height: 140,
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.blueAccent, width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                '오늘 느낀 감정은\n어떤 건가요?',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              // Emotion Buttons Staggered Layout
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildEmotionButton(_scatteredEmotions[0][0]),
-                          const SizedBox(width: 16),
-                          _buildEmotionButton(_scatteredEmotions[0][1]),
-                          const SizedBox(width: 16),
-                          _buildEmotionButton(_scatteredEmotions[0][2]),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 다람쥐 캐릭터 (150x150 확대)
+                  Center(
+                    child: SizedBox(
+                      width: 150,
+                      height: 150,
+                      child: _buildAssetWidget(
+                        candidatePaths: const [
+                          'assets/record/choice/svg/3-2-3.svg/svg/3-2-3 다람쥐4.svg',
+                          'assets/record/choice/png/3-2-3.png/png/3-2-3 다람쥐4.png',
                         ],
-                      ),
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 32),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildEmotionButton(_scatteredEmotions[1][0]),
-                            const SizedBox(width: 20),
-                            _buildEmotionButton(_scatteredEmotions[1][1]),
-                            const SizedBox(width: 16),
-                            _buildEmotionButton(_scatteredEmotions[1][2]),
-                          ],
+                        fallback: Container(
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFDCDCDC),
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 24),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildEmotionButton(_scatteredEmotions[2][0]),
-                            const SizedBox(width: 24),
-                            _buildEmotionButton(_scatteredEmotions[2][1]),
-                            const SizedBox(width: 20),
-                            _buildEmotionButton(_scatteredEmotions[2][2]),
-                          ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // 메인 헤드라인 ("오늘 느낀 감정은 무엇인가요?")
+                  Center(
+                    child: _buildAssetWidget(
+                      candidatePaths: const [
+                        'assets/record/choice/svg/3-2-3.svg/svg/3-2-3 메인 헤드라인.svg',
+                        'assets/record/choice/png/3-2-3.png/png/3-2-3 메인 헤드라인.png',
+                      ],
+                      fallback: const Text(
+                        '오늘 느낀 감정은 무엇인가요?',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF222222),
                         ),
+                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildEmotionButton(_scatteredEmotions[3][0]),
-                            const SizedBox(width: 16),
-                            _buildEmotionButton(_scatteredEmotions[3][1]),
-                            const SizedBox(width: 20),
-                            _buildEmotionButton(_scatteredEmotions[3][2]),
-                          ],
-                        ),
-                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // 감정 태그 선택 영역
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildEmotionButton(_scatteredEmotions[0][0]),
+                      const SizedBox(width: 12),
+                      _buildEmotionButton(_scatteredEmotions[0][1]),
+                      const SizedBox(width: 12),
+                      _buildEmotionButton(_scatteredEmotions[0][2]),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Selection Counter
-              Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${_selectedEmotions.length} / $_maxSelection',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black54,
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildEmotionButton(_scatteredEmotions[1][0]),
+                        const SizedBox(width: 14),
+                        _buildEmotionButton(_scatteredEmotions[1][1]),
+                        const SizedBox(width: 12),
+                        _buildEmotionButton(_scatteredEmotions[1][2]),
+                      ],
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              // Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildEmotionButton(_scatteredEmotions[2][0]),
+                        const SizedBox(width: 14),
+                        _buildEmotionButton(_scatteredEmotions[2][1]),
+                        const SizedBox(width: 14),
+                        _buildEmotionButton(_scatteredEmotions[2][2]),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildEmotionButton(_scatteredEmotions[3][0]),
+                        const SizedBox(width: 12),
+                        _buildEmotionButton(_scatteredEmotions[3][1]),
+                        const SizedBox(width: 14),
+                        _buildEmotionButton(_scatteredEmotions[3][2]),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+
+                  // 하단 다음 버튼
+                  Center(
+                    child: SizedBox(
+                      width: 180,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DiaryLoadingScreen(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isComplete
+                              ? const Color(0xFFA5DD82)
+                              : const Color(0xFFFFF2B2),
+                          foregroundColor: Colors.black87,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26),
+                          ),
                         ),
-                        side: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      child: const Text(
-                        '이전으로',
-                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                        child: const Text(
+                          '다음',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _selectedEmotions.length != _maxSelection
-                          ? null
-                          : () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const DiaryLoadingScreen(),
-                                ),
-                              );
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        disabledBackgroundColor: Colors.grey.shade300,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        '다음으로',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
+                  const SizedBox(height: 10),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
+

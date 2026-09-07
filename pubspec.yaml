@@ -75,6 +75,26 @@ flutter:
     - assets/auth/create_family/
     - assets/auth/signup/
     - assets/auth/group_created/
+    - assets/record/
+    - assets/record/choice/
+    - assets/record/choice/svg/
+    - assets/record/choice/png/
+    - assets/record/choice/svg/3-0svg/svg/
+    - assets/record/choice/png/3-0png/png/
+    - assets/record/choice/svg/3-2-0.svg/svg/
+    - assets/record/choice/png/3-2-0.png/png/
+    - assets/record/choice/svg/3-2-1.svg/svg/
+    - assets/record/choice/png/3-2-1.png/png/
+    - assets/record/choice/svg/3-2-2.svg/svg/
+    - assets/record/choice/png/3-2-2.png/png/
+    - assets/record/choice/svg/3-2-3.svg/svg/
+    - assets/record/choice/png/3-2-3.png/png/
+    - assets/record/choice/svg/로딩중.svg/svg/
+    - assets/record/choice/png/로딩중.png/png/
+    - assets/record/choice/svg/3-2-5.svg/svg/
+    - assets/record/choice/png/3-2-5.png/png/
+    - assets/record/choice/svg/3-2-6.svg/svg/
+    - assets/record/choice/png/3-2-6.png/png/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -137,7 +137,6 @@ class _InfoTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -147,7 +146,11 @@ class _InfoTile extends StatelessWidget {
           ),
         ],
       ),
-      child: ListTile(
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 3,
@@ -176,6 +179,7 @@ class _InfoTile extends StatelessWidget {
                 ),
               ),
         onTap: onTap,
+      ),
       ),
     );
   }

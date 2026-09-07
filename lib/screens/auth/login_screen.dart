@@ -175,7 +175,7 @@ class _SvgInputWidgetState extends State<_SvgInputWidget> {
             Align(
               alignment: Alignment.centerLeft,
               child: Padding(
-                padding: EdgeInsets.only(left: 5 * widget.wScale), // 안내 텍스트 조절 위치 패딩값 튜닝
+                padding: EdgeInsets.only(left: 18 * widget.wScale), // 안내 텍스트 조절 위치 패딩값 튜닝
                 child: Image.asset(widget.textAsset, width: widget.textWidth * widget.wScale, height: widget.textHeight * widget.wScale),
               ),
             ),

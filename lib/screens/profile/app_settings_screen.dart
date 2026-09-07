@@ -70,7 +70,6 @@ class _AppSettingsTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -80,7 +79,11 @@ class _AppSettingsTile extends StatelessWidget {
           ),
         ],
       ),
-      child: ListTile(
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: CircleAvatar(
           backgroundColor: const Color(0xFFF0F5F1),
@@ -99,6 +102,7 @@ class _AppSettingsTile extends StatelessWidget {
         ),
         trailing: const Icon(Icons.chevron_right, color: Colors.black26),
         onTap: onTap,
+      ),
       ),
     );
   }

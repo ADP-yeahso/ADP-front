@@ -282,7 +282,6 @@ class _SettingsTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -292,7 +291,11 @@ class _SettingsTile extends StatelessWidget {
           ),
         ],
       ),
-      child: ListTile(
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         leading: Icon(icon, color: Colors.black54),
         title: Text(
@@ -301,6 +304,7 @@ class _SettingsTile extends StatelessWidget {
         ),
         trailing: const Icon(Icons.chevron_right, color: Colors.black26),
         onTap: onTap,
+      ),
       ),
     );
   }

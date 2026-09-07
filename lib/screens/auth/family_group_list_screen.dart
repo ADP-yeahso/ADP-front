@@ -90,18 +90,16 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                         child: SvgPicture.asset('assets/auth/family_group/group_box_1.svg', fit: BoxFit.fill),
                       ),
                       Positioned(
-                        right: 16 * wScale, // 오른쪽 여백 조절
+                        right: 20 * wScale,
                         child: GestureDetector(
                           onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
                           },
-                          // 버튼 크기를 키우시려면 아래 width와 height를 조절하세요.
-                          // 예: width: 100 * wScale, height: 42 * wScale
-                          child: SvgPicture.asset(
-                            'assets/auth/family_group/enter_text.svg', 
-                            width: 84 * wScale, 
-                            height: 35 * wScale,
-                            fit: BoxFit.fill, // 크기 변경 시 꽉 차게 늘어나도록 설정
+                          child: Image.asset(
+                            'assets/auth/family_group/enter_text.png', 
+                            width: 85 * wScale, 
+                            height: 85 * (112 / 292) * wScale, // 실제 PNG 비율(292x112)에 맞춰 높이 자동 계산 (약 32.2)
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),
@@ -133,8 +131,8 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                           },
                           child: Image.asset(
                             'assets/auth/family_group/enter_text.png', 
-                            width: 79 * wScale, 
-                            height: 79 * (112 / 292) * wScale, // 실제 PNG 비율(292x112)에 맞춰 높이 자동 계산 (약 32.2)
+                            width: 85 * wScale, 
+                            height: 85 * (112 / 292) * wScale, // 실제 PNG 비율(292x112)에 맞춰 높이 자동 계산 (약 32.2)
                             fit: BoxFit.contain,
                           ),
                         ),
@@ -196,7 +194,7 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                     
                     // 실제 텍스트 입력창 (투명)
                     Positioned(
-                      left: 20,
+                      left: 10,
                       right: 60 * wScale, // 우측에 확인 버튼이 있다고 가정하고 여백
                       bottom: 0 * wScale,
                       height: 48 * wScale,

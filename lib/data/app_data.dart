@@ -626,40 +626,63 @@ class AppData extends ChangeNotifier {
   // ── 편지함 (Mailbox) 관련 상태 및 데이터 ──────────────
   final List<MailLetter> letters = [
     MailLetter(
-      id: 1,
+      id: 'letter-1',
+      groupId: 1,
+      senderUserId: '3',
+      receiverUserId: '1',
       sender: '정인선',
       receiver: '강성윤',
       content: '고생이 많다. 밥 잘 챙겨 먹어라. 날씨가 쌀쌀하니 감기 조심하고.',
-      date: '오늘 오전 10:30',
       isAnonymous: false,
+      isGroupLetter: false,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
       isRead: false,
     ),
     MailLetter(
-      id: 2,
+      id: 'letter-2',
+      groupId: 1,
+      senderUserId: '2',
+      receiverUserId: null,
       sender: '강지민',
       receiver: '가족 모두에게',
       content: '이번 주 주말 병원 동행은 제가 갈게요. 서류 미리 준비해주세요.',
-      date: '어제 오후 04:15',
       isAnonymous: false,
+      isGroupLetter: true,
+      createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
       isRead: true,
     ),
     MailLetter(
-      id: 3,
-      sender: '익명',
+      id: 'letter-3',
+      groupId: 1,
+      senderUserId: null,
+      receiverUserId: null,
+      sender: '익명의 가족',
       receiver: '가족 모두에게',
-      content: '오늘 약 드시는 시간 확인 부탁한다.',
-      date: '어제 오전 09:00',
+      content: '오늘 약 드시는 시간 확인 부탁드려요.',
       isAnonymous: true,
+      isGroupLetter: true,
+      createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 8)),
       isRead: false,
     ),
   ];
 
-  bool get hasUnreadMail => letters.any((l) => !l.isRead);
+  String get currentMailboxUserId => currentUserId.toString();
 
-  int get unreadMailCount => letters.where((l) => !l.isRead).length;
+  List<MailLetter> get receivedLetters => letters
+      .where((letter) => letter.isReceivedBy(currentMailboxUserId))
+      .toList();
 
-  void markLetterAsRead(int id) {
-    final index = letters.indexWhere((l) => l.id == id);
+  List<MailLetter> get sentLetters =>
+      letters.where((letter) => letter.isSentBy(currentMailboxUserId)).toList();
+
+  bool get hasUnreadMail => receivedLetters.any((letter) => !letter.isRead);
+
+  int get unreadMailCount =>
+      receivedLetters.where((letter) => !letter.isRead).length;
+
+  void markLetterAsRead(String id) {
+    final index = letters.indexWhere((letter) => letter.id == id);
+
     if (index != -1 && !letters[index].isRead) {
       letters[index].isRead = true;
       notifyListeners();
@@ -671,15 +694,31 @@ class AppData extends ChangeNotifier {
     required String content,
     required bool isAnonymous,
   }) {
+    final isGroupLetter = receiver == '가족 모두에게';
+
+    String? receiverUserId;
+
+    if (!isGroupLetter) {
+      receiverUserId = users
+          .firstWhere((user) => user.name == receiver)
+          .id
+          .toString();
+    }
+
     final newLetter = MailLetter(
-      id: DateTime.now().millisecondsSinceEpoch,
-      sender: isAnonymous ? '익명' : me.name,
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      groupId: 1,
+      senderUserId: currentMailboxUserId,
+      receiverUserId: receiverUserId,
+      sender: me.name,
       receiver: receiver,
       content: content,
-      date: '방금 전',
       isAnonymous: isAnonymous,
+      isGroupLetter: isGroupLetter,
+      createdAt: DateTime.now(),
       isRead: false,
     );
+
     letters.insert(0, newLetter);
     notifyListeners();
   }

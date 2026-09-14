@@ -9,7 +9,6 @@ import 'patient_info_screen.dart';
 import 'app_settings_screen.dart';
 import '../auth/login_screen.dart';
 import 'emotion_analysis_screen.dart';
-import '../care_notebook/care_notebook_list_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -33,7 +32,7 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
     if (confirmed == true && context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (route) => false,
       );
@@ -183,18 +182,6 @@ class ProfileScreen extends StatelessWidget {
             label: '로그아웃',
             onTap: () => _confirmLogout(context),
           ),
-          _SettingsTile(
-            icon: Icons.note_alt_outlined,
-            label: '돌봄 수첩',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const CareNotebookListScreen(),
-                ),
-              );
-            },
-          ),
         ],
       ),
     );
@@ -295,7 +282,6 @@ class _SettingsTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -305,7 +291,11 @@ class _SettingsTile extends StatelessWidget {
           ),
         ],
       ),
-      child: ListTile(
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         leading: Icon(icon, color: Colors.black54),
         title: Text(
@@ -314,6 +304,7 @@ class _SettingsTile extends StatelessWidget {
         ),
         trailing: const Icon(Icons.chevron_right, color: Colors.black26),
         onTap: onTap,
+      ),
       ),
     );
   }

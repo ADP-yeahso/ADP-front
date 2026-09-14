@@ -12,6 +12,7 @@ import '../../widgets/recommendation_card.dart';
 class DiaryResultScreen extends StatelessWidget {
   final DateTime date;
   final String content;
+  final Emotion emotion;
   final bool isPublic;
   final List<Media> mediaList;
 
@@ -19,15 +20,14 @@ class DiaryResultScreen extends StatelessWidget {
     super.key,
     required this.date,
     required this.content,
+    required this.emotion,
     required this.isPublic,
     this.mediaList = const [],
   });
 
   @override
   Widget build(BuildContext context) {
-    final analysis = analyzeEmotion(content);
-    final recommendation = recommendationFor(analysis.primary);
-    final sortedScores = analysis.scores.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final recommendation = recommendationFor(emotion);
 
     return Scaffold(
       appBar: AppBar(title: const Text('감정 분석 결과')),
@@ -38,20 +38,7 @@ class DiaryResultScreen extends StatelessWidget {
           children: [
             const Text('오늘 기록에서 이런 감정이 느껴져요', style: TextStyle(color: Colors.black54, fontSize: 13)),
             const SizedBox(height: 10),
-            EmotionChip(emotion: analysis.primary),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: const Color(0xFFF7F5EE), borderRadius: BorderRadius.circular(16)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('감정 분포', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                  const SizedBox(height: 12),
-                  for (final e in sortedScores) _ScoreBar(emotion: e.key, value: e.value),
-                ],
-              ),
-            ),
+            EmotionChip(emotion: emotion),
             if (mediaList.isNotEmpty) ...[
               const SizedBox(height: 20),
               Container(
@@ -75,7 +62,7 @@ class DiaryResultScreen extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 20),
-            RecommendationCard(emotion: analysis.primary, recommendation: recommendation),
+            RecommendationCard(emotion: emotion, recommendation: recommendation),
             const SizedBox(height: 28),
             SizedBox(
               width: double.infinity,
@@ -86,6 +73,7 @@ class DiaryResultScreen extends StatelessWidget {
                   context.read<AppData>().addDiary(
                     date: date, 
                     content: content, 
+                    emotion: emotion,
                     mediaList: mediaList,
                     isPublic: isPublic,
                   );
@@ -98,40 +86,6 @@ class DiaryResultScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ScoreBar extends StatelessWidget {
-  final Emotion emotion;
-  final double value;
-  const _ScoreBar({required this.emotion, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          SizedBox(width: 44, child: Text(emotion.label, style: const TextStyle(fontSize: 12))),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: value,
-                minHeight: 8,
-                backgroundColor: emotion.color.withValues(alpha: 0.12),
-                valueColor: AlwaysStoppedAnimation(emotion.color),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 36,
-            child: Text('${(value * 100).round()}%', style: const TextStyle(fontSize: 11, color: Colors.black45)),
-          ),
-        ],
       ),
     );
   }

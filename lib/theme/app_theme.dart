@@ -7,7 +7,7 @@ class AppTheme {
         useMaterial3: true,
         fontFamily: 'Pretendard',
         colorScheme: ColorScheme.fromSeed(seedColor: seed),
-        scaffoldBackgroundColor: const Color(0xFFFBF9F3),
+        scaffoldBackgroundColor: const Color(0xFFFFFBF0),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           elevation: 0,

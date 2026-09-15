@@ -53,7 +53,7 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const backgroundColor = Color(0xFFF7F5EE);
+    const backgroundColor = Color(0xFFFFFBF0);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -140,38 +140,46 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 하단 다음 버튼 (180x52로 확대)
-              Center(
-                child: SizedBox(
-                  width: 180,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const DiaryEmotionSelectScreen(),
+              // 하단 다음 버튼 (텍스트 입력 전까지 클릭 불가)
+              Builder(
+                builder: (context) {
+                  final bool isFormValid = _controller.text.trim().isNotEmpty;
+                  return Center(
+                    child: SizedBox(
+                      width: 180,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: isFormValid
+                            ? () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const DiaryEmotionSelectScreen(),
+                                  ),
+                                );
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isFormValid ? const Color(0xFFA5DD82) : const Color(0xFFFFF2B2),
+                          disabledBackgroundColor: const Color(0xFFFFF2B2),
+                          foregroundColor: Colors.black87,
+                          disabledForegroundColor: Colors.black45,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26),
+                          ),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFA5DD82),
-                      foregroundColor: Colors.black87,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(26),
+                        child: const Text(
+                          '다음',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      '다음',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 10),
             ],

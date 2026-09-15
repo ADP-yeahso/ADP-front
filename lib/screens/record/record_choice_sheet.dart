@@ -23,7 +23,7 @@ class RecordChoiceSheet extends StatelessWidget {
       // 시안(Photo 2) 비율에 알맞게 바텀 시트 높이를 컴팩트하게 조정 (약 56%)
       height: height * 0.56,
       decoration: const BoxDecoration(
-        color: Color(0xFFF7F5EE), // 따뜻한 크림 베이지 배경
+        color: Color(0xFFFFFBF0), // FFFBF0 베이지 배경
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),

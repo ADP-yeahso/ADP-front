@@ -40,9 +40,9 @@ class DiaryStartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F5EE),
+      backgroundColor: const Color(0xFFFFFBF0),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F5EE),
+        backgroundColor: const Color(0xFFFFFBF0),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF2C3E50), size: 20),

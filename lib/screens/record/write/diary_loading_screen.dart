@@ -54,7 +54,7 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFBF0),
       body: SafeArea(
         child: Center(
           child: Column(

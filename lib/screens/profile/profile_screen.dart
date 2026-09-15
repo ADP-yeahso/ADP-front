@@ -56,7 +56,7 @@ class ProfileScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFFF7F5EE),
+              color: const Color(0xFFFFFBF0),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(

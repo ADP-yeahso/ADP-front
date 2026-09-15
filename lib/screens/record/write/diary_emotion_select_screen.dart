@@ -29,12 +29,10 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     [
       EmotionModel(name: '애정', color: Color(0xFFE36887)),
       EmotionModel(name: '자책', color: Color(0xFFD09ED7)),
-      EmotionModel(name: '안도감', color: Color(0xFFFFE367)),
     ],
     [
+      EmotionModel(name: '안도감', color: Color(0xFFFFE367)),
       EmotionModel(name: '답답함', color: Color(0xFF5EA7FF)),
-      EmotionModel(name: '초조함', color: Color(0xFFD09ED7)),
-      EmotionModel(name: '소진', color: Color(0xFF9E9E9E)),
     ],
   ];
 
@@ -126,7 +124,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isComplete = _selectedEmotions.length == _maxSelection;
-    const backgroundColor = Color(0xFFF7F5EE);
+    const backgroundColor = Color(0xFFFFFBF0);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -188,7 +186,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // 감정 태그 선택 영역
+                  // 감정 태그 선택 영역 (총 10개)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -214,54 +212,94 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildEmotionButton(_scatteredEmotions[2][0]),
-                        const SizedBox(width: 14),
-                        _buildEmotionButton(_scatteredEmotions[2][1]),
-                        const SizedBox(width: 14),
-                        _buildEmotionButton(_scatteredEmotions[2][2]),
-                      ],
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildEmotionButton(_scatteredEmotions[2][0]),
+                      const SizedBox(width: 14),
+                      _buildEmotionButton(_scatteredEmotions[2][1]),
+                    ],
                   ),
                   const SizedBox(height: 18),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 10),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildEmotionButton(_scatteredEmotions[3][0]),
-                        const SizedBox(width: 12),
-                        _buildEmotionButton(_scatteredEmotions[3][1]),
-                        const SizedBox(width: 14),
-                        _buildEmotionButton(_scatteredEmotions[3][2]),
-                      ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildEmotionButton(_scatteredEmotions[3][0]),
+                      const SizedBox(width: 14),
+                      _buildEmotionButton(_scatteredEmotions[3][1]),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // 하위감정 선택 게이지 바 (0/3, 1/3, 2/3, 3/3)
+                  Center(
+                    child: Container(
+                      width: 100,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                      ),
+                      child: Stack(
+                        children: [
+                          // 채워지는 프로그래스 바 (ffcb0f / 3개 달성 시 연두색)
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final double fillWidth = constraints.maxWidth * (_selectedEmotions.length / _maxSelection);
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                width: fillWidth,
+                                height: constraints.maxHeight,
+                                decoration: BoxDecoration(
+                                  color: isComplete
+                                      ? const Color(0xFFA5DD82)
+                                      : const Color(0xFFFFCB0F),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              );
+                            },
+                          ),
+                          // 게이지 표시 텍스트 (0/3 ~ 3/3)
+                          Center(
+                            child: Text(
+                              '${_selectedEmotions.length}/$_maxSelection',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 14),
 
-                  // 하단 다음 버튼
+                  // 하단 다음 버튼 (감정 3개 선택 완료 전까지 클릭 불가)
                   Center(
                     child: SizedBox(
                       width: 180,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DiaryLoadingScreen(),
-                            ),
-                          );
-                        },
+                        onPressed: isComplete
+                            ? () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const DiaryLoadingScreen(),
+                                  ),
+                                );
+                              }
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isComplete
                               ? const Color(0xFFA5DD82)
                               : const Color(0xFFFFF2B2),
+                          disabledBackgroundColor: const Color(0xFFFFF2B2),
                           foregroundColor: Colors.black87,
+                          disabledForegroundColor: Colors.black45,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(26),
@@ -272,7 +310,6 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
                           ),
                         ),
                       ),

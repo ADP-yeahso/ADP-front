@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="care_garden"
+        android:label="모아온"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

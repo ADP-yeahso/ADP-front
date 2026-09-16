@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.caregarden.care_garden"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

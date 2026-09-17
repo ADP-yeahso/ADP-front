@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../models/media.dart';
-import '../../models/emotions.dart';
-import '../../utils/emotion_utils.dart';
 import 'diary_result_screen.dart';
 
 class DiaryLoadingScreen extends StatefulWidget {

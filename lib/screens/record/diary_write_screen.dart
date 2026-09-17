@@ -1,9 +1,12 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
+import '../../data/auth_session.dart';
 import '../../models/media.dart';
 import 'diary_loading_screen.dart';
 
@@ -60,7 +63,10 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
         });
       }
     } catch (_) {
-      final result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: true);
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
+      );
       if (result != null && result.files.isNotEmpty) {
         setState(() {
           for (final file in result.files) {
@@ -105,7 +111,9 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
       }
     } catch (_) {
       final result = await FilePicker.platform.pickFiles(type: FileType.video);
-      if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
+      if (result != null &&
+          result.files.isNotEmpty &&
+          result.files.single.path != null) {
         setState(() {
           _attachedMedia.add(
             Media(
@@ -165,12 +173,21 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
       ).showSnackBar(const SnackBar(content: Text('오늘의 감정을 조금이라도 적어주세요.')));
       return;
     }
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('일기를 저장하려면 먼저 로그인해주세요.')));
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => DiaryLoadingScreen(
           date: _date,
+          title: _titleController.text.trim(),
           content: _contentController.text.trim(),
+          tokens: tokens,
           isPublic: true,
           mediaList: List.from(_attachedMedia),
         ),
@@ -192,7 +209,10 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
         children: [
           Icon(icon, color: Colors.black45, size: 24),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: Colors.black54),
+          ),
         ],
       ),
     );
@@ -222,7 +242,8 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _titleController,
-              contextMenuBuilder: (context, editableTextState) => const SizedBox.shrink(),
+              contextMenuBuilder: (context, editableTextState) =>
+                  const SizedBox.shrink(),
               decoration: const InputDecoration(
                 labelText: '제목',
                 hintText: '예: 오늘 하루의 감정',
@@ -232,7 +253,8 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
             TextField(
               controller: _contentController,
               maxLines: 6,
-              contextMenuBuilder: (context, editableTextState) => const SizedBox.shrink(),
+              contextMenuBuilder: (context, editableTextState) =>
+                  const SizedBox.shrink(),
               decoration: const InputDecoration(
                 labelText: '오늘의 감정 일기',
                 hintText: '오늘 하루는 어떠셨나요?',
@@ -263,7 +285,9 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                     label: const Text('사진', style: TextStyle(fontSize: 12)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -275,7 +299,9 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                     label: const Text('동영상', style: TextStyle(fontSize: 12)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -287,7 +313,9 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                     label: const Text('음성파일', style: TextStyle(fontSize: 12)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -300,25 +328,43 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: _attachedMedia.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 8),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final media = _attachedMedia[index];
-                    final file = File(media.fileUrl);
-                    final exists = file.existsSync();
-                    final fileName = file.path.split(Platform.pathSeparator).last;
+                    final fileName = media.fileUrl.split(RegExp(r'[\\/]')).last;
 
                     Widget content;
-                    if (media.fileType == 'image' && exists) {
+                    if (media.fileType == 'image' && kIsWeb) {
                       content = ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          file,
+                        child: Image.network(
+                          media.fileUrl,
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(Icons.image, '사진'),
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildPlaceholderIcon(Icons.image, '사진'),
                         ),
                       );
+                    } else if (media.fileType == 'image') {
+                      final file = File(media.fileUrl);
+                      final exists = file.existsSync();
+                      if (exists) {
+                        content = ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            file,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildPlaceholderIcon(Icons.image, '사진'),
+                          ),
+                        );
+                      } else {
+                        content = _buildPlaceholderIcon(Icons.image, '사진');
+                      }
                     } else if (media.fileType == 'video') {
                       content = Container(
                         width: 80,
@@ -330,15 +376,24 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.play_circle_fill, color: Colors.white, size: 28),
+                            const Icon(
+                              Icons.play_circle_fill,
+                              color: Colors.white,
+                              size: 28,
+                            ),
                             const SizedBox(height: 4),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
                               child: Text(
                                 fileName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white70, fontSize: 9),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 9,
+                                ),
                               ),
                             ),
                           ],
@@ -356,22 +411,35 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.mic, color: Color(0xFF2B80FF), size: 26),
+                            const Icon(
+                              Icons.mic,
+                              color: Color(0xFF2B80FF),
+                              size: 26,
+                            ),
                             const SizedBox(height: 4),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
                               child: Text(
                                 fileName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Color(0xFF1B4D89), fontSize: 9, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  color: Color(0xFF1B4D89),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       );
                     } else {
-                      content = _buildPlaceholderIcon(Icons.insert_drive_file, media.fileType);
+                      content = _buildPlaceholderIcon(
+                        Icons.insert_drive_file,
+                        media.fileType,
+                      );
                     }
 
                     return Stack(
@@ -388,7 +456,11 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                                 color: Colors.black54,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.close, color: Colors.white, size: 14),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 14,
+                              ),
                             ),
                           ),
                         ),
@@ -413,4 +485,3 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
     );
   }
 }
-

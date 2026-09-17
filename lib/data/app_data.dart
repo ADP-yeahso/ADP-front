@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/comment.dart';
 import '../models/diary.dart';
 import '../models/emotions.dart';
 import '../models/flower.dart';
@@ -17,6 +18,14 @@ bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
 extension UserUIInfo on User {
+  bool get isMe => id == 1;
+  String get nickname => name;
+  String get relation {
+    if (id == 1) return '딸';
+    if (id == 2) return '아들';
+    return '며느리';
+  }
+
   Color get color {
     if (id == 1) return const Color(0xFF6B93D1);
     if (id == 2) return const Color(0xFF6FBF8B);
@@ -134,6 +143,7 @@ class AppData extends ChangeNotifier {
 
   User userById(int id) =>
       users.firstWhere((u) => u.id == id, orElse: () => me);
+
   void updateCurrentUserProfile({
     required String name,
     required String password,
@@ -206,6 +216,35 @@ class AppData extends ChangeNotifier {
 
   final List<Memory> memories = [];
   final List<Diary> diaries = [];
+  final List<Comment> comments = [];
+
+  List<Comment> commentsForMemory(int memoryRecordId) {
+    return comments
+        .where((c) => c.memoryRecordId == memoryRecordId && c.deletedAt == null)
+        .toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  void addMemoryComment({
+    required int memoryRecordId,
+    required String commentText,
+    int? userId,
+  }) {
+    final text = commentText.trim();
+    if (text.isEmpty) return;
+    final now = DateTime.now();
+    comments.add(
+      Comment(
+        id: _nextId(),
+        memoryRecordId: memoryRecordId,
+        userId: userId ?? currentUserId,
+        commentText: text,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    notifyListeners();
+  }
 
   // To keep track of public states since Diary doesn't have isPublic
   final Set<int> _publicDiaryIds = {};
@@ -232,6 +271,7 @@ class AppData extends ChangeNotifier {
             fileUrl: m.fileUrl,
             fileType: m.fileType,
             duration: m.duration,
+            thumbnailPath: m.thumbnailPath,
             sortOrder: m.sortOrder,
             createdAt: m.createdAt,
           ),
@@ -251,7 +291,6 @@ class AppData extends ChangeNotifier {
         updatedAt: DateTime.now(),
       ),
     );
-
     notifyListeners();
   }
 
@@ -274,7 +313,6 @@ class AppData extends ChangeNotifier {
     );
 
     final diaryId = _nextId();
-
     final updatedMedia = mediaList
         .map(
           (m) => Media(
@@ -284,6 +322,7 @@ class AppData extends ChangeNotifier {
             fileUrl: m.fileUrl,
             fileType: m.fileType,
             duration: m.duration,
+            thumbnailPath: m.thumbnailPath,
             sortOrder: m.sortOrder,
             createdAt: m.createdAt,
           ),
@@ -570,18 +609,7 @@ class AppData extends ChangeNotifier {
       date: d(2, 6),
       title: '함께 본 옛날 사진',
       content: '$patientRelationLabel과 함께 젊은 시절 사진을 꺼내 보았다. 잠시 웃으셨다.',
-      mediaList: [
-        Media(
-          id: 0,
-          memoryId: null,
-          diaryId: null,
-          fileUrl: 'dummy.jpg',
-          fileType: 'image',
-          duration: 0,
-          sortOrder: 1,
-          createdAt: DateTime.now(),
-        ),
-      ],
+      mediaList: [],
     );
     addMemory(
       date: d(1, 12),
@@ -592,18 +620,7 @@ class AppData extends ChangeNotifier {
       date: d(0, 3),
       title: '산책',
       content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
-      mediaList: [
-        Media(
-          id: 0,
-          memoryId: null,
-          diaryId: null,
-          fileUrl: 'dummy.jpg',
-          fileType: 'image',
-          duration: 0,
-          sortOrder: 1,
-          createdAt: DateTime.now(),
-        ),
-      ],
+      mediaList: [],
     );
     addMemory(
       date: d(0, 8),
@@ -648,5 +665,32 @@ class AppData extends ChangeNotifier {
     );
     addDiary(date: d(0, 5), content: '오늘은 그냥 편안하고 괜찮은 하루였다.');
     _seedEmotionAnalysisTestData();
+
+    // ── 댓글 더미 데이터 생성 ────────────────────
+    final now = DateTime.now();
+    for (var m in memories) {
+      if (m.contextText?.contains('라디오') ?? false) {
+        comments.add(
+          Comment(
+            id: _nextId(),
+            memoryRecordId: m.id,
+            userId: 2, // 강지민
+            commentText: '멋진 기록입니다!',
+            createdAt: now.subtract(const Duration(hours: 1)),
+            updatedAt: now.subtract(const Duration(hours: 1)),
+          ),
+        );
+        comments.add(
+          Comment(
+            id: _nextId(),
+            memoryRecordId: m.id,
+            userId: 3, // 정인선
+            commentText: '와, 나도 가보고 싶다.',
+            createdAt: now.subtract(const Duration(hours: 2)),
+            updatedAt: now.subtract(const Duration(hours: 2)),
+          ),
+        );
+      }
+    }
   }
 }

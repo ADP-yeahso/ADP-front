@@ -1,0 +1,9 @@
+.git
+.dart_tool
+.idea
+.vscode
+build
+coverage
+env.json
+node_modules
+.DS_Store

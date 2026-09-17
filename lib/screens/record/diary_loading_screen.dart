@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../models/media.dart';
-import '../../models/emotions.dart';
 import '../../utils/emotion_utils.dart';
 import 'diary_result_screen.dart';
 
@@ -72,7 +71,7 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F5EE),
+      backgroundColor: const Color(0xFFFFFBF0),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),

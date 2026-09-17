@@ -5,7 +5,6 @@ import '../../data/app_data.dart';
 import '../../data/emotion_analyzer.dart';
 import '../../models/emotions.dart';
 import '../../models/media.dart';
-import '../../utils/emotion_utils.dart';
 import '../../widgets/emotion_chip.dart';
 import '../../widgets/recommendation_card.dart';
 

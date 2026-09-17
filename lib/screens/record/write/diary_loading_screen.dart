@@ -3,7 +3,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'diary_result_screen.dart';
 
 class DiaryLoadingScreen extends StatefulWidget {
-  const DiaryLoadingScreen({super.key});
+  final Widget? nextScreen;
+
+  const DiaryLoadingScreen({
+    super.key,
+    this.nextScreen,
+  });
 
   @override
   State<DiaryLoadingScreen> createState() => _DiaryLoadingScreenState();
@@ -18,7 +23,7 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const DiaryResultScreen(),
+            builder: (context) => widget.nextScreen ?? const DiaryResultScreen(),
           ),
         );
       }

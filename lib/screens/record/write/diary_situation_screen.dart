@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../models/media.dart';
 import 'diary_emotion_explore_screen.dart';
+import 'diary_loading_screen.dart';
 
 class DiarySituationScreen extends StatefulWidget {
   const DiarySituationScreen({super.key});
@@ -718,7 +719,11 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                             ? () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (context) => const DiaryEmotionExploreScreen()),
+                                  MaterialPageRoute(
+                                    builder: (context) => const DiaryLoadingScreen(
+                                      nextScreen: DiaryEmotionExploreScreen(),
+                                    ),
+                                  ),
                                 );
                               }
                             : null,

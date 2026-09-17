@@ -79,6 +79,7 @@ class DiaryService {
       '/diaries/$diaryId/ai-question',
       tokens,
       const {},
+      timeout: const Duration(seconds: 75),
     );
     final text = question['ai_question_text'];
     if (text is! String || text.isEmpty) {
@@ -165,13 +166,15 @@ class DiaryService {
   Future<Map<String, dynamic>> _post(
     String path,
     AuthTokens tokens,
-    Map<String, dynamic> body,
-  ) => _write(
+    Map<String, dynamic> body, {
+    Duration timeout = const Duration(seconds: 20),
+  }) => _write(
     () => _client.post(
       _uri(path),
       headers: _headers(tokens),
       body: jsonEncode(body),
     ),
+    timeout: timeout,
   );
 
   Future<Map<String, dynamic>> _patch(
@@ -199,9 +202,10 @@ class DiaryService {
   );
 
   Future<Map<String, dynamic>> _write(
-    Future<http.Response> Function() request,
-  ) async {
-    final response = await _send(request);
+    Future<http.Response> Function() request, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final response = await _send(request, timeout: timeout);
     final body = _bodyOrThrow(response);
     if (body is! Map<String, dynamic>) {
       throw const DiaryException('서버 응답 형식이 올바르지 않습니다.');
@@ -209,9 +213,12 @@ class DiaryService {
     return body;
   }
 
-  Future<http.Response> _send(Future<http.Response> Function() request) async {
+  Future<http.Response> _send(
+    Future<http.Response> Function() request, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
     try {
-      return await request().timeout(const Duration(seconds: 20));
+      return await request().timeout(timeout);
     } on Exception {
       throw const DiaryException('서버에 연결할 수 없습니다. 네트워크와 서버 주소를 확인해주세요.');
     }

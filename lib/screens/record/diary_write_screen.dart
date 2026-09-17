@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -331,18 +332,14 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                       const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final media = _attachedMedia[index];
-                    final file = File(media.fileUrl);
-                    final exists = file.existsSync();
-                    final fileName = file.path
-                        .split(Platform.pathSeparator)
-                        .last;
+                    final fileName = media.fileUrl.split(RegExp(r'[\\/]')).last;
 
                     Widget content;
-                    if (media.fileType == 'image' && exists) {
+                    if (media.fileType == 'image' && kIsWeb) {
                       content = ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          file,
+                        child: Image.network(
+                          media.fileUrl,
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
@@ -350,6 +347,24 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                               _buildPlaceholderIcon(Icons.image, '사진'),
                         ),
                       );
+                    } else if (media.fileType == 'image') {
+                      final file = File(media.fileUrl);
+                      final exists = file.existsSync();
+                      if (exists) {
+                        content = ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            file,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildPlaceholderIcon(Icons.image, '사진'),
+                          ),
+                        );
+                      } else {
+                        content = _buildPlaceholderIcon(Icons.image, '사진');
+                      }
                     } else if (media.fileType == 'video') {
                       content = Container(
                         width: 80,

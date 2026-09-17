@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../data/garden_nav_controller.dart';
 import 'calendar/calendar_screen.dart';
-import 'family/family_share_screen.dart';
 import 'garden/garden_screen.dart';
 import 'profile/profile_screen.dart';
 import 'record/record_choice_sheet.dart';
+import 'gallery/gallery_screen.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -17,11 +17,12 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   int _index = 0;
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   static const _screens = [
     GardenScreen(),
     CalendarScreen(),
-    FamilyShareScreen(),
+    GalleryScreen(),
     ProfileScreen(),
   ];
 
@@ -61,7 +62,12 @@ class _RootShellState extends State<RootShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _index, children: _screens),
+      body: Navigator(
+        key: _navigatorKey,
+        onGenerateRoute: (settings) => MaterialPageRoute(
+          builder: (context) => IndexedStack(index: _index, children: _screens),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openRecordChoice,
         elevation: 2,
@@ -126,7 +132,12 @@ class _RootShellState extends State<RootShell> {
     final color = isSelected ? Theme.of(context).primaryColor : Colors.grey[600];
 
     return InkWell(
-      onTap: () => setState(() => _index = index),
+      onTap: () {
+        _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+        if (_index != index) {
+          setState(() => _index = index);
+        }
+      },
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),

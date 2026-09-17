@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
-import '../../models/diary_entry.dart';
-import '../../models/emotion.dart';
-import '../../models/family_member.dart';
-import '../../models/patient_leaf.dart';
+import '../../models/diary.dart';
+import '../../models/emotions.dart';
+import '../../utils/emotion_utils.dart';
+import '../../models/users.dart';
+import '../../models/memory.dart';
 import '../../widgets/emotion_chip.dart';
 import '../garden/entry_detail_sheet.dart';
 
@@ -17,14 +18,14 @@ class FamilyShareScreen extends StatefulWidget {
 }
 
 class _FamilyShareScreenState extends State<FamilyShareScreen> {
-  String? _filterMemberId;
+  int? _filterMemberId;
 
   @override
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
 
     final feedItems = <_FeedItem>[
-      ...appData.sharedLeaves.map((l) => _FeedItem.leaf(l)),
+      ...appData.sharedMemories.map((m) => _FeedItem.memory(m)),
       ...appData.sharedDiaries.map((d) => _FeedItem.diary(d)),
     ]..sort((a, b) => b.date.compareTo(a.date));
 
@@ -51,11 +52,13 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                for (final member in appData.familyMembers)
+                for (final member in appData.users)
                   _MemberAvatar(
                     member: member,
                     emotion: appData.latestEmotionFor(member.id),
                     selected: _filterMemberId == member.id,
+                    isMe: appData.isCurrentUser(member.id),
+                    relation: appData.userRelationOf(member.id),
                     onTap: () => setState(() {
                       _filterMemberId = _filterMemberId == member.id ? null : member.id;
                     }),
@@ -71,7 +74,7 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text(
-              _filterMemberId == null ? '전체 공유 기록' : '${appData.memberById(_filterMemberId!).nickname}의 공유 기록',
+              _filterMemberId == null ? '전체 공유 기록' : '${appData.userById(_filterMemberId!).name}의 공유 기록',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
           ),
@@ -85,10 +88,10 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
             for (final item in filtered)
               _FeedCard(
                 item: item,
-                author: appData.memberById(item.authorId),
+                author: appData.userById(item.authorId),
                 onTap: () {
-                  if (item.leaf != null) {
-                    showLeafDetailSheet(context, item.leaf!);
+                  if (item.memory != null) {
+                    showMemoryDetailSheet(context, item.memory!);
                   } else {
                     showDiaryDetailSheet(context, item.diary!);
                   }
@@ -102,15 +105,19 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
 }
 
 class _MemberAvatar extends StatelessWidget {
-  final FamilyMember member;
+  final User member;
   final Emotion? emotion;
   final bool selected;
+  final bool isMe;
+  final String relation;
   final VoidCallback onTap;
 
   const _MemberAvatar({
     required this.member,
     required this.emotion,
     required this.selected,
+    required this.isMe,
+    required this.relation,
     required this.onTap,
   });
 
@@ -155,11 +162,11 @@ class _MemberAvatar extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              member.isMe ? '나' : member.nickname,
+              isMe ? '나' : member.name,
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
               overflow: TextOverflow.ellipsis,
             ),
-            Text(member.relation, style: const TextStyle(fontSize: 10, color: Colors.black45)),
+            Text(relation, style: const TextStyle(fontSize: 10, color: Colors.black45)),
           ],
         ),
       ),
@@ -168,28 +175,28 @@ class _MemberAvatar extends StatelessWidget {
 }
 
 class _FeedItem {
-  final PatientLeaf? leaf;
-  final DiaryEntry? diary;
+  final Memory? memory;
+  final Diary? diary;
 
-  _FeedItem.leaf(this.leaf) : diary = null;
-  _FeedItem.diary(this.diary) : leaf = null;
+  _FeedItem.memory(this.memory) : diary = null;
+  _FeedItem.diary(this.diary) : memory = null;
 
-  DateTime get date => (leaf?.date ?? diary!.date);
-  String get authorId => (leaf?.authorId ?? diary!.authorId);
+  DateTime get date => (memory?.recordDate ?? diary!.recordDate);
+  int get authorId => (memory?.userId ?? diary!.userId);
 }
 
 class _FeedCard extends StatelessWidget {
   final _FeedItem item;
-  final FamilyMember author;
+  final User author;
   final VoidCallback onTap;
 
   const _FeedCard({required this.item, required this.author, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final isLeaf = item.leaf != null;
-    final title = isLeaf ? item.leaf!.title : '감정 일기';
-    final content = isLeaf ? item.leaf!.content : item.diary!.content;
+    final isMemory = item.memory != null;
+    final title = isMemory ? '가족 기록' : '감정 일기';
+    final content = isMemory ? (item.memory!.contextText ?? '') : item.diary!.context;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -206,11 +213,11 @@ class _FeedCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: (isLeaf ? const Color(0xFF6FBF8B) : item.diary!.emotion.color).withValues(alpha: 0.15),
+                backgroundColor: (isMemory ? const Color(0xFF6FBF8B) : item.diary!.flowerType.emotionId.color).withValues(alpha: 0.15),
                 child: Icon(
-                  isLeaf ? Icons.eco : item.diary!.emotion.flowerIcon,
+                  isMemory ? Icons.eco : item.diary!.flowerType.emotionId.flowerIcon,
                   size: 18,
-                  color: isLeaf ? const Color(0xFF6FBF8B) : item.diary!.emotion.color,
+                  color: isMemory ? const Color(0xFF6FBF8B) : item.diary!.flowerType.emotionId.color,
                 ),
               ),
               const SizedBox(width: 12),
@@ -220,11 +227,11 @@ class _FeedCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(author.nickname, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text(author.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         const SizedBox(width: 6),
                         Text('· ${item.date.month}월 ${item.date.day}일', style: const TextStyle(fontSize: 11, color: Colors.black38)),
                         const Spacer(),
-                        if (!isLeaf) EmotionChip(emotion: item.diary!.emotion),
+                        if (!isMemory) EmotionChip(emotion: item.diary!.flowerType.emotionId),
                       ],
                     ),
                     const SizedBox(height: 4),

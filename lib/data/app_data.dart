@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/comment.dart';
 import '../models/diary.dart';
 import '../models/emotions.dart';
 import '../models/flower.dart';
@@ -206,6 +207,35 @@ class AppData extends ChangeNotifier {
 
   final List<Memory> memories = [];
   final List<Diary> diaries = [];
+  final List<Comment> comments = [];
+
+  List<Comment> commentsForMemory(int memoryRecordId) {
+    return comments
+        .where((c) => c.memoryRecordId == memoryRecordId && c.deletedAt == null)
+        .toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  void addMemoryComment({
+    required int memoryRecordId,
+    required String commentText,
+    int? userId,
+  }) {
+    final text = commentText.trim();
+    if (text.isEmpty) return;
+    final now = DateTime.now();
+    comments.add(
+      Comment(
+        id: _nextId(),
+        memoryRecordId: memoryRecordId,
+        userId: userId ?? currentUserId,
+        commentText: text,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    notifyListeners();
+  }
 
   // To keep track of public states since Diary doesn't have isPublic
   final Set<int> _publicDiaryIds = {};
@@ -648,5 +678,32 @@ class AppData extends ChangeNotifier {
     );
     addDiary(date: d(0, 5), content: '오늘은 그냥 편안하고 괜찮은 하루였다.');
     _seedEmotionAnalysisTestData();
+
+    // ── 댓글 더미 데이터 생성 ────────────────────
+    final now = DateTime.now();
+    for (var m in memories) {
+      if (m.contextText?.contains('라디오') ?? false) {
+        comments.add(
+          Comment(
+            id: _nextId(),
+            memoryRecordId: m.id,
+            userId: 2, // 강지민
+            commentText: '멋진 기록입니다!',
+            createdAt: now.subtract(const Duration(hours: 1)),
+            updatedAt: now.subtract(const Duration(hours: 1)),
+          ),
+        );
+        comments.add(
+          Comment(
+            id: _nextId(),
+            memoryRecordId: m.id,
+            userId: 3, // 정인선
+            commentText: '와, 나도 가보고 싶다.',
+            createdAt: now.subtract(const Duration(hours: 2)),
+            updatedAt: now.subtract(const Duration(hours: 2)),
+          ),
+        );
+      }
+    }
   }
 }

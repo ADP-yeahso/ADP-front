@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/app_data.dart';
+import 'data/auth_session.dart';
 import 'data/garden_nav_controller.dart';
 import 'screens/auth/login_screen.dart';
 import 'theme/app_theme.dart';
@@ -18,6 +19,7 @@ class CareGardenApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppData()),
+        ChangeNotifierProvider(create: (_) => AuthSession()),
         ChangeNotifierProvider(create: (_) => GardenNavController()),
       ],
       child: MaterialApp(

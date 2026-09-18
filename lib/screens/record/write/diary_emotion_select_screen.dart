@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../../models/emotion_model.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/diary_service.dart';
 import 'diary_loading_screen.dart';
+import 'diary_result_screen.dart';
 
 class DiaryEmotionSelectScreen extends StatefulWidget {
-  const DiaryEmotionSelectScreen({super.key});
+  const DiaryEmotionSelectScreen({
+    super.key,
+    required this.diaryId,
+    required this.tokens,
+    required this.tags,
+  });
+  final int diaryId;
+  final AuthTokens tokens;
+  final List<EmotionTagOption> tags;
 
   @override
   State<DiaryEmotionSelectScreen> createState() =>
@@ -12,31 +22,10 @@ class DiaryEmotionSelectScreen extends StatefulWidget {
 }
 
 class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
-  final List<EmotionModel> _selectedEmotions = [];
+  final List<EmotionTagOption> _selectedEmotions = [];
   static const int _maxSelection = 3;
 
-  final List<List<EmotionModel>> _scatteredEmotions = const [
-    [
-      EmotionModel(name: '죄책감', color: Color(0xFFD09ED7)),
-      EmotionModel(name: '애틋함', color: Color(0xFFFFE367)),
-      EmotionModel(name: '슬픔', color: Color(0xFFE36887)),
-    ],
-    [
-      EmotionModel(name: '분노', color: Color(0xFFE36887)),
-      EmotionModel(name: '고마움', color: Color(0xFFFFE367)),
-      EmotionModel(name: '후회감', color: Color(0xFF5EA7FF)),
-    ],
-    [
-      EmotionModel(name: '애정', color: Color(0xFFE36887)),
-      EmotionModel(name: '자책', color: Color(0xFFD09ED7)),
-    ],
-    [
-      EmotionModel(name: '안도감', color: Color(0xFFFFE367)),
-      EmotionModel(name: '답답함', color: Color(0xFF5EA7FF)),
-    ],
-  ];
-
-  void _toggleEmotion(EmotionModel emotion) {
+  void _toggleEmotion(EmotionTagOption emotion) {
     setState(() {
       if (_selectedEmotions.contains(emotion)) {
         _selectedEmotions.remove(emotion);
@@ -57,7 +46,13 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     return _tryPath(candidatePaths, 0, fallback, width, height);
   }
 
-  Widget _tryPath(List<String> paths, int index, Widget fallback, double? width, double? height) {
+  Widget _tryPath(
+    List<String> paths,
+    int index,
+    Widget fallback,
+    double? width,
+    double? height,
+  ) {
     if (index >= paths.length) return fallback;
     final path = paths[index];
     final isSvg = path.toLowerCase().endsWith('.svg');
@@ -75,12 +70,23 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
         width: width,
         height: height,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => _tryPath(paths, index + 1, fallback, width, height),
+        errorBuilder: (context, error, stackTrace) =>
+            _tryPath(paths, index + 1, fallback, width, height),
       );
     }
   }
 
-  Widget _buildEmotionButton(EmotionModel emotion) {
+  Color _colorFor(int id) => const [
+    Color(0xFFD09ED7),
+    Color(0xFFFFE367),
+    Color(0xFFE36887),
+    Color(0xFF5EA7FF),
+  ][id % 4];
+
+  EmotionTagOption _tag(int index) => widget.tags[index % widget.tags.length];
+
+  Widget _buildEmotionButton(EmotionTagOption emotion) {
+    final color = _colorFor(emotion.id);
     final isSelected = _selectedEmotions.contains(emotion);
     final isMaxReached = _selectedEmotions.length >= _maxSelection;
     final isDisabled = !isSelected && isMaxReached;
@@ -91,19 +97,19 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? emotion.color : Colors.white,
+          color: isSelected ? color : Colors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: (isDisabled && !isSelected) ? Colors.grey.shade300 : emotion.color,
+            color: (isDisabled && !isSelected) ? Colors.grey.shade300 : color,
             width: 1.5,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: emotion.color.withValues(alpha: 0.3),
+                    color: color.withValues(alpha: 0.3),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ]
               : null,
         ),
@@ -113,7 +119,9 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
             fontSize: 16,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
             color: isSelected
-                ? ((emotion.color == const Color(0xFFFFE367)) ? Colors.black87 : Colors.white)
+                ? ((color == const Color(0xFFFFE367))
+                      ? Colors.black87
+                      : Colors.white)
                 : ((isDisabled && !isSelected) ? Colors.grey : Colors.black87),
           ),
         ),
@@ -132,7 +140,11 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
         backgroundColor: backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black87,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -140,7 +152,10 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
         child: Center(
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 10.0,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -190,11 +205,11 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildEmotionButton(_scatteredEmotions[0][0]),
+                      _buildEmotionButton(_tag(0)),
                       const SizedBox(width: 12),
-                      _buildEmotionButton(_scatteredEmotions[0][1]),
+                      _buildEmotionButton(_tag(1)),
                       const SizedBox(width: 12),
-                      _buildEmotionButton(_scatteredEmotions[0][2]),
+                      _buildEmotionButton(_tag(2)),
                     ],
                   ),
                   const SizedBox(height: 18),
@@ -203,11 +218,11 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildEmotionButton(_scatteredEmotions[1][0]),
+                        _buildEmotionButton(_tag(3)),
                         const SizedBox(width: 14),
-                        _buildEmotionButton(_scatteredEmotions[1][1]),
+                        _buildEmotionButton(_tag(4)),
                         const SizedBox(width: 12),
-                        _buildEmotionButton(_scatteredEmotions[1][2]),
+                        _buildEmotionButton(_tag(5)),
                       ],
                     ),
                   ),
@@ -215,18 +230,18 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildEmotionButton(_scatteredEmotions[2][0]),
+                      _buildEmotionButton(_tag(6)),
                       const SizedBox(width: 14),
-                      _buildEmotionButton(_scatteredEmotions[2][1]),
+                      _buildEmotionButton(_tag(7)),
                     ],
                   ),
                   const SizedBox(height: 18),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildEmotionButton(_scatteredEmotions[3][0]),
+                      _buildEmotionButton(_tag(8)),
                       const SizedBox(width: 14),
-                      _buildEmotionButton(_scatteredEmotions[3][1]),
+                      _buildEmotionButton(_tag(9)),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -239,14 +254,19 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1.2,
+                        ),
                       ),
                       child: Stack(
                         children: [
                           // 채워지는 프로그래스 바 (ffcb0f / 3개 달성 시 연두색)
                           LayoutBuilder(
                             builder: (context, constraints) {
-                              final double fillWidth = constraints.maxWidth * (_selectedEmotions.length / _maxSelection);
+                              final double fillWidth =
+                                  constraints.maxWidth *
+                                  (_selectedEmotions.length / _maxSelection);
                               return AnimatedContainer(
                                 duration: const Duration(milliseconds: 250),
                                 width: fillWidth,
@@ -288,7 +308,21 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const DiaryLoadingScreen(),
+                                    builder: (_) => DiaryLoadingScreen(
+                                      loadNext: () async {
+                                        final result = await DiaryService()
+                                            .saveTagsAndFinalize(
+                                              tokens: widget.tokens,
+                                              diaryId: widget.diaryId,
+                                              tagIds: _selectedEmotions
+                                                  .map((tag) => tag.id)
+                                                  .toList(),
+                                            );
+                                        return DiaryResultScreen(
+                                          result: result,
+                                        );
+                                      },
+                                    ),
                                   ),
                                 );
                               }
@@ -325,5 +359,3 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     );
   }
 }
-
-

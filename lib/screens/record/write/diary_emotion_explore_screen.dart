@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/diary_service.dart';
+import 'diary_loading_screen.dart';
 import 'diary_emotion_select_screen.dart';
 
 class DiaryEmotionExploreScreen extends StatefulWidget {
-  const DiaryEmotionExploreScreen({super.key});
+  const DiaryEmotionExploreScreen({
+    super.key,
+    required this.draft,
+    required this.tokens,
+  });
+
+  final DiaryDraft draft;
+  final AuthTokens tokens;
 
   @override
   State<DiaryEmotionExploreScreen> createState() =>
@@ -28,7 +38,13 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
     return _tryPath(candidatePaths, 0, fallback, width, height);
   }
 
-  Widget _tryPath(List<String> paths, int index, Widget fallback, double? width, double? height) {
+  Widget _tryPath(
+    List<String> paths,
+    int index,
+    Widget fallback,
+    double? width,
+    double? height,
+  ) {
     if (index >= paths.length) return fallback;
     final path = paths[index];
     final isSvg = path.toLowerCase().endsWith('.svg');
@@ -46,7 +62,8 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
         width: width,
         height: height,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => _tryPath(paths, index + 1, fallback, width, height),
+        errorBuilder: (context, error, stackTrace) =>
+            _tryPath(paths, index + 1, fallback, width, height),
       );
     }
   }
@@ -61,7 +78,11 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
         backgroundColor: backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black87,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -112,6 +133,16 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
               ),
               const SizedBox(height: 20),
 
+              Text(
+                widget.draft.aiQuestion,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+
               // 입력창 (텍스트 입력) - 단일 테두리 적용 (이중 경계 제거)
               Expanded(
                 child: TextField(
@@ -123,17 +154,26 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                   style: const TextStyle(fontSize: 15, color: Colors.black87),
                   decoration: InputDecoration(
                     hintText: '텍스트 입력',
-                    hintStyle: const TextStyle(fontSize: 15, color: Colors.grey),
+                    hintStyle: const TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey,
+                    ),
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.all(16),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade300,
+                        width: 1,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade400,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -151,16 +191,33 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                       child: ElevatedButton(
                         onPressed: isFormValid
                             ? () {
+                                final answer = _controller.text.trim();
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const DiaryEmotionSelectScreen(),
+                                    builder: (_) => DiaryLoadingScreen(
+                                      loadNext: () async {
+                                        final tags = await DiaryService()
+                                            .saveAnswerAndGetSuggestions(
+                                              tokens: widget.tokens,
+                                              diaryId: widget.draft.id,
+                                              answer: answer,
+                                            );
+                                        return DiaryEmotionSelectScreen(
+                                          diaryId: widget.draft.id,
+                                          tokens: widget.tokens,
+                                          tags: tags,
+                                        );
+                                      },
+                                    ),
                                   ),
                                 );
                               }
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isFormValid ? const Color(0xFFA5DD82) : const Color(0xFFFFF2B2),
+                          backgroundColor: isFormValid
+                              ? const Color(0xFFA5DD82)
+                              : const Color(0xFFFFF2B2),
                           disabledBackgroundColor: const Color(0xFFFFF2B2),
                           foregroundColor: Colors.black87,
                           disabledForegroundColor: Colors.black45,
@@ -189,5 +246,3 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
     );
   }
 }
-
-

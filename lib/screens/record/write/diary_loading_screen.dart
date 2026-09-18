@@ -1,117 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'diary_result_screen.dart';
 
 class DiaryLoadingScreen extends StatefulWidget {
-  final Widget? nextScreen;
+  const DiaryLoadingScreen({super.key, required this.loadNext});
 
-  const DiaryLoadingScreen({
-    super.key,
-    this.nextScreen,
-  });
+  final Future<Widget> Function() loadNext;
 
   @override
   State<DiaryLoadingScreen> createState() => _DiaryLoadingScreenState();
 }
 
 class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> {
+  String? _error;
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _error = null);
+    try {
+      final next = await widget.loadNext();
+      if (mounted)
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => widget.nextScreen ?? const DiaryResultScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => next),
         );
-      }
-    });
-  }
-
-  Widget _buildAssetWidget({
-    required List<String> candidatePaths,
-    required Widget fallback,
-  }) {
-    return _tryPath(candidatePaths, 0, fallback);
-  }
-
-  Widget _tryPath(List<String> paths, int index, Widget fallback) {
-    if (index >= paths.length) return fallback;
-    final path = paths[index];
-    final isSvg = path.toLowerCase().endsWith('.svg');
-    if (isSvg) {
-      return SvgPicture.asset(
-        path,
-        fit: BoxFit.contain,
-        placeholderBuilder: (context) => fallback,
-      );
-    } else {
-      return Image.asset(
-        path,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => _tryPath(paths, index + 1, fallback),
-      );
+    } catch (error) {
+      if (mounted)
+        setState(
+          () => _error = error.toString().replaceFirst('DiaryException: ', ''),
+        );
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFBF0),
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 로딩중 다람쥐5 에셋
-              SizedBox(
-                width: 180,
-                height: 180,
-                child: _buildAssetWidget(
-                  candidatePaths: const [
-                    'assets/record/choice/svg/로딩중.svg/svg/로딩중 다람쥐5.svg',
-                    'assets/record/choice/png/로딩중.png/png/로딩중 다람쥐5.png',
-                  ],
-                  fallback: Container(
-                    width: 150,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.green.shade200, width: 2),
-                    ),
-                    child: const Icon(Icons.local_florist, size: 80, color: Colors.green),
-                  ),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFFFFBF0),
+    body: SafeArea(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 180,
+              height: 180,
+              child: SvgPicture.asset(
+                'assets/record/choice/svg/로딩중.svg/svg/로딩중 다람쥐5.svg',
+                placeholderBuilder: (_) => const Icon(
+                  Icons.local_florist,
+                  size: 100,
+                  color: Color(0xFF4E7B45),
                 ),
               ),
-              const SizedBox(height: 32),
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4E7B45)),
-              ),
-              const SizedBox(height: 28),
-              // 로딩중 메인 헤드라인 ("AI가 감정을 추출하고 있어요...")
-              _buildAssetWidget(
-                candidatePaths: const [
-                  'assets/record/choice/svg/로딩중.svg/svg/로딩중 메인 헤드라인.svg',
-                  'assets/record/choice/png/로딩중.png/png/로딩중 메인 헤드라인.png',
-                ],
-                fallback: const Text(
-                  'AI가 감정을\n추출하고 있어요...',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                    height: 1.5,
-                  ),
-                ),
-              ),
+            ),
+            const SizedBox(height: 28),
+            if (_error == null) ...[
+              const CircularProgressIndicator(color: Color(0xFF4E7B45)),
+              const SizedBox(height: 22),
+              const Text('AI가 감정을 정리하고 있어요...', textAlign: TextAlign.center),
+            ] else ...[
+              Text(_error!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: _load, child: const Text('다시 시도')),
             ],
-          ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }

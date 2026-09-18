@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'diary_care_content_screen.dart';
+import '../../../services/diary_service.dart';
 
 class DiaryResultScreen extends StatelessWidget {
-  const DiaryResultScreen({super.key});
+  const DiaryResultScreen({super.key, required this.result});
+
+  final DiaryFinalization result;
 
   Widget _buildAssetWidget({
     required List<String> candidatePaths,
@@ -26,7 +29,8 @@ class DiaryResultScreen extends StatelessWidget {
       return Image.asset(
         path,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => _tryPath(paths, index + 1, fallback),
+        errorBuilder: (context, error, stackTrace) =>
+            _tryPath(paths, index + 1, fallback),
       );
     }
   }
@@ -51,7 +55,10 @@ class DiaryResultScreen extends StatelessWidget {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 10.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -125,11 +132,11 @@ class DiaryResultScreen extends StatelessWidget {
                           child: Stack(
                             children: [
                               // 위치 20*30 폰트크기 40 (은방울꽃)
-                              const Positioned(
+                              Positioned(
                                 top: 24,
                                 left: 20,
                                 child: Text(
-                                  '은방울꽃',
+                                  result.flowerName,
                                   style: TextStyle(
                                     fontSize: 30,
                                     fontWeight: FontWeight.bold,
@@ -139,11 +146,13 @@ class DiaryResultScreen extends StatelessWidget {
                                 ),
                               ),
                               // 위치 20*80 폰트크기 16 (꽃말)
-                              const Positioned(
+                              Positioned(
                                 top: 68,
                                 left: 20,
                                 child: Text(
-                                  '행복이 반드시 찾아옵니다',
+                                  result.flowerSentence.isEmpty
+                                      ? result.emotionName
+                                      : result.flowerSentence,
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.white70,
@@ -166,7 +175,10 @@ class DiaryResultScreen extends StatelessWidget {
                                 right: 16,
                                 bottom: 16,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF2C4A28),
                                     borderRadius: BorderRadius.circular(6),
@@ -174,9 +186,17 @@ class DiaryResultScreen extends StatelessWidget {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: const [
-                                      Icon(Icons.park, size: 12, color: Color(0xFFA5DD82)),
+                                      Icon(
+                                        Icons.park,
+                                        size: 12,
+                                        color: Color(0xFFA5DD82),
+                                      ),
                                       SizedBox(width: 2),
-                                      Icon(Icons.local_florist, size: 12, color: Color(0xFFFFCB0F)),
+                                      Icon(
+                                        Icons.local_florist,
+                                        size: 12,
+                                        color: Color(0xFFFFCB0F),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -200,7 +220,8 @@ class DiaryResultScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const DiaryCareContentScreen(),
+                            builder: (context) =>
+                                const DiaryCareContentScreen(),
                           ),
                         );
                       },

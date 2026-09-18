@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'family_group_list_screen.dart';
+import '../../services/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -21,11 +21,12 @@ class _SignupScreenState extends State<SignupScreen> {
 
   bool _isPwVisible = false;
   bool _isPwConfirmVisible = false;
-  
+
   bool _agreeAll = false;
   bool _agreeTerms = false;
   bool _agreePrivacy = false;
   bool _agreeMarketing = false;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -49,6 +50,31 @@ class _SignupScreenState extends State<SignupScreen> {
 
   void _onChanged() {
     setState(() {});
+  }
+
+  Future<void> _signup() async {
+    if (!_isStep2Valid || _isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      await AuthService().signup(
+        email: _emailController.text.trim(),
+        password: _pwController.text,
+        name: _nicknameController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원가입이 완료되었습니다. 로그인해주세요.')));
+      Navigator.pop(context);
+    } on AuthException catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   void _updateAll(bool? value) {
@@ -121,26 +147,33 @@ class _SignupScreenState extends State<SignupScreen> {
                         ? GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () => setState(() => _step = 1),
-                            child: SvgPicture.asset('assets/auth/signup/icon_back.svg', width: 21 * wScale, height: 31 * wScale),
+                            child: SvgPicture.asset(
+                              'assets/auth/signup/icon_back.svg',
+                              width: 21 * wScale,
+                              height: 31 * wScale,
+                            ),
                           )
                         : SizedBox(height: 31 * wScale, width: 21 * wScale),
                   ),
                 ),
               ),
-              
+
               // --- [상단 뒤로가기 버튼과 타이틀 사이의 여백] --- (조절 가능)
               SizedBox(height: 10 * hScale),
 
               // --- [2. 메인 타이틀 ('회원가입')] ---
-              SvgPicture.asset('assets/auth/signup/text_signup.svg', width: 147 * wScale, height: 42 * wScale),
-              
+              SvgPicture.asset(
+                'assets/auth/signup/text_signup.svg',
+                width: 147 * wScale,
+                height: 42 * wScale,
+              ),
+
               // --- [타이틀과 입력 폼들 사이의 여백] --- (조절 가능)
               SizedBox(height: 60 * hScale),
 
               // --- [3. 입력 폼 영역 (Step 1 / Step 2)] ---
               if (_step == 1) _buildStep1(wScale, hScale),
               if (_step == 2) _buildStep2(wScale, hScale),
-
             ],
           ),
         ),
@@ -157,49 +190,82 @@ class _SignupScreenState extends State<SignupScreen> {
           // --- [아이디 (이메일) 라벨] ---
           Padding(
             padding: EdgeInsets.only(left: 12 * wScale),
-            child: SvgPicture.asset('assets/auth/signup/text_id.svg', width: 100 * wScale),
+            child: SvgPicture.asset(
+              'assets/auth/signup/text_id.svg',
+              width: 100 * wScale,
+            ),
           ),
-          
+
           // 라벨과 입력창 사이의 여백 (조절 가능)
           SizedBox(height: 2 * hScale),
-          
+
           // --- [아이디 (이메일) 입력창] ---
-          _buildInputBox(_emailController, wScale, hScale, isValid: _isEmailValid, isError: _emailController.text.isNotEmpty && !_isEmailValid),
-          
+          _buildInputBox(
+            _emailController,
+            wScale,
+            hScale,
+            isValid: _isEmailValid,
+            isError: _emailController.text.isNotEmpty && !_isEmailValid,
+          ),
+
           // 입력창과 하단 안내문구 사이의 여백 (조절 가능)
           SizedBox(height: 6 * hScale),
-          
+
           // --- [아이디 (이메일) 안내 문구] ---
           if (_emailController.text.isNotEmpty)
             Padding(
               padding: EdgeInsets.only(left: 6 * wScale),
               child: Row(
                 children: [
-                  SvgPicture.asset(_isEmailValid ? 'assets/auth/signup/icon_check.svg' : 'assets/auth/signup/icon_x.svg', width: 16 * wScale),
+                  SvgPicture.asset(
+                    _isEmailValid
+                        ? 'assets/auth/signup/icon_check.svg'
+                        : 'assets/auth/signup/icon_x.svg',
+                    width: 16 * wScale,
+                  ),
                   SizedBox(width: 4 * wScale),
-                  SvgPicture.asset(_isEmailValid ? 'assets/auth/signup/text_email_available.svg' : 'assets/auth/signup/text_email_unavailable.svg', height: 12 * wScale),
+                  SvgPicture.asset(
+                    _isEmailValid
+                        ? 'assets/auth/signup/text_email_available.svg'
+                        : 'assets/auth/signup/text_email_unavailable.svg',
+                    height: 12 * wScale,
+                  ),
                 ],
               ),
             ),
-          
+
           // 각 입력 항목 그룹들 간의 여백 (조절 가능)
           SizedBox(height: 48 * hScale),
 
           // --- [비밀번호 라벨] ---
           Padding(
             padding: EdgeInsets.only(left: 12 * wScale),
-            child: SvgPicture.asset('assets/auth/signup/text_pw.svg', width: 62 * wScale),
+            child: SvgPicture.asset(
+              'assets/auth/signup/text_pw.svg',
+              width: 62 * wScale,
+            ),
           ),
-          
+
           // 라벨과 입력창 사이의 여백 (조절 가능)
           SizedBox(height: 6 * hScale),
-          
+
           // --- [비밀번호 입력창] ---
-          _buildInputBox(_pwController, wScale, hScale, isPassword: true, showEyeIcon: true, isValid: _isPwValid, isError: _pwController.text.isNotEmpty && !_isPwValid, isVisible: _isPwVisible, onToggleVisibility: () => setState(() => _isPwVisible = !_isPwVisible)),
-          
+          _buildInputBox(
+            _pwController,
+            wScale,
+            hScale,
+            isPassword: true,
+            showEyeIcon: true,
+            isValid: _isPwValid,
+            isError: _pwController.text.isNotEmpty && !_isPwValid,
+            isVisible: _isPwVisible,
+            onToggleVisibility: () =>
+                setState(() => _isPwVisible = !_isPwVisible),
+          ),
+
           // 입력창과 하단 안내문구 사이의 여백 (조절 가능)
           SizedBox(height: 6 * hScale),
-          
+
           // --- [비밀번호 안내 문구들] ---
           if (_pwController.text.isNotEmpty)
             Padding(
@@ -209,58 +275,94 @@ class _SignupScreenState extends State<SignupScreen> {
                 children: [
                   Row(
                     children: [
-                      SvgPicture.asset(_isPwValid ? 'assets/auth/signup/icon_check.svg' : 'assets/auth/signup/icon_x.svg', width: 16 * wScale),
+                      SvgPicture.asset(
+                        _isPwValid
+                            ? 'assets/auth/signup/icon_check.svg'
+                            : 'assets/auth/signup/icon_x.svg',
+                        width: 16 * wScale,
+                      ),
                       SizedBox(width: 4 * wScale),
-                      SvgPicture.asset('assets/auth/signup/text_pw_rule1.svg', height: 12 * wScale),
+                      SvgPicture.asset(
+                        'assets/auth/signup/text_pw_rule1.svg',
+                        height: 12 * wScale,
+                      ),
                     ],
                   ),
                   SizedBox(height: 4 * hScale),
                   Row(
                     children: [
-                      SvgPicture.asset(_isPwValid ? 'assets/auth/signup/icon_check.svg' : 'assets/auth/signup/icon_check.svg', width: 16 * wScale),
+                      SvgPicture.asset(
+                        _isPwValid
+                            ? 'assets/auth/signup/icon_check.svg'
+                            : 'assets/auth/signup/icon_check.svg',
+                        width: 16 * wScale,
+                      ),
                       SizedBox(width: 4 * wScale),
-                      SvgPicture.asset('assets/auth/signup/text_pw_rule2.svg', height: 12 * wScale),
+                      SvgPicture.asset(
+                        'assets/auth/signup/text_pw_rule2.svg',
+                        height: 12 * wScale,
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
-          
+
           // 각 입력 항목 그룹들 간의 여백 (조절 가능)
           SizedBox(height: 48 * hScale),
 
           // --- [비밀번호 확인 라벨] ---
           Padding(
             padding: EdgeInsets.only(left: 12 * wScale),
-            child: SvgPicture.asset('assets/auth/signup/text_pw_confirm.svg', width: 88 * wScale),
+            child: SvgPicture.asset(
+              'assets/auth/signup/text_pw_confirm.svg',
+              width: 88 * wScale,
+            ),
           ),
-          
+
           // 라벨과 입력창 사이의 여백 (조절 가능)
           SizedBox(height: 6 * hScale),
-          
+
           // --- [비밀번호 확인 입력창] ---
-          _buildInputBox(_pwConfirmController, wScale, hScale, isPassword: true, showEyeIcon: true, isValid: _isPwConfirmValid, isError: _pwConfirmController.text.isNotEmpty && !_isPwConfirmValid, isVisible: _isPwConfirmVisible, onToggleVisibility: () => setState(() => _isPwConfirmVisible = !_isPwConfirmVisible)),
-          
+          _buildInputBox(
+            _pwConfirmController,
+            wScale,
+            hScale,
+            isPassword: true,
+            showEyeIcon: true,
+            isValid: _isPwConfirmValid,
+            isError: _pwConfirmController.text.isNotEmpty && !_isPwConfirmValid,
+            isVisible: _isPwConfirmVisible,
+            onToggleVisibility: () =>
+                setState(() => _isPwConfirmVisible = !_isPwConfirmVisible),
+          ),
+
           // 입력창과 하단 안내문구 사이의 여백 (조절 가능)
           SizedBox(height: 6 * hScale),
-          
+
           // --- [비밀번호 확인 불일치 문구] ---
           if (_pwConfirmController.text.isNotEmpty && !_isPwConfirmValid)
             Padding(
               padding: EdgeInsets.only(left: 6 * wScale),
               child: Row(
                 children: [
-                  SvgPicture.asset('assets/auth/signup/icon_x.svg', width: 16 * wScale),
+                  SvgPicture.asset(
+                    'assets/auth/signup/icon_x.svg',
+                    width: 16 * wScale,
+                  ),
                   SizedBox(width: 4 * wScale),
-                  SvgPicture.asset('assets/auth/signup/text_pw_mismatch.svg', height: 12 * wScale),
+                  SvgPicture.asset(
+                    'assets/auth/signup/text_pw_mismatch.svg',
+                    height: 12 * wScale,
+                  ),
                 ],
               ),
             ),
 
-          // --- [입력 폼과 하단 '다음' 버튼 사이의 커다란 여백] --- 
+          // --- [입력 폼과 하단 '다음' 버튼 사이의 커다란 여백] ---
           // 버튼 위치를 올리려면 높이를 줄이고, 내리려면 높이를 키우세요.
           SizedBox(height: 80 * hScale),
-          
+
           // --- [4. '다음' 버튼] ---
           Center(
             child: GestureDetector(
@@ -270,12 +372,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 }
               },
               child: SvgPicture.asset(
-                _isStep1Valid ? 'assets/auth/signup/btn_next_green.svg' : 'assets/auth/signup/btn_next_yellow.svg',
+                _isStep1Valid
+                    ? 'assets/auth/signup/btn_next_green.svg'
+                    : 'assets/auth/signup/btn_next_yellow.svg',
                 width: 299 * wScale,
               ),
             ),
           ),
-          
+
           // --- [하단 여백 (화면 맨 밑바닥 여유공간)] ---
           SizedBox(height: 40 * hScale),
         ],
@@ -292,39 +396,48 @@ class _SignupScreenState extends State<SignupScreen> {
           // --- [닉네임 라벨] ---
           Padding(
             padding: EdgeInsets.only(left: 12 * wScale),
-            child: SvgPicture.asset('assets/auth/signup/text_nickname.svg', width: 100 * wScale),
+            child: SvgPicture.asset(
+              'assets/auth/signup/text_nickname.svg',
+              width: 100 * wScale,
+            ),
           ),
-          
+
           // 라벨과 입력창 사이의 여백 (조절 가능)
           SizedBox(height: 6 * hScale),
-          
+
           // --- [닉네임 입력창] ---
           _buildInputBox(_nicknameController, wScale, hScale),
-          
+
           // 입력창과 하단 안내문구 사이의 여백 (조절 가능)
           SizedBox(height: 6 * hScale),
-          
+
           // --- [닉네임 안내 문구] ---
           Padding(
             padding: EdgeInsets.only(left: 6 * wScale),
-            child: SvgPicture.asset('assets/auth/signup/text_nickname_rule.svg', height: 12 * wScale),
+            child: SvgPicture.asset(
+              'assets/auth/signup/text_nickname_rule.svg',
+              height: 12 * wScale,
+            ),
           ),
-          
+
           // 각 입력 항목 그룹들 간의 여백 (조절 가능)
           SizedBox(height: 48 * hScale),
 
           // --- [전화번호 라벨] ---
           Padding(
             padding: EdgeInsets.only(left: 12 * wScale),
-            child: SvgPicture.asset('assets/auth/signup/text_phone.svg', width: 62 * wScale),
+            child: SvgPicture.asset(
+              'assets/auth/signup/text_phone.svg',
+              width: 62 * wScale,
+            ),
           ),
-          
+
           // 라벨과 입력창 사이의 여백 (조절 가능)
           SizedBox(height: 6 * hScale),
-          
+
           // --- [전화번호 입력창] ---
           _buildInputBox(_phoneController, wScale, hScale),
-          
+
           // 입력 폼들과 약관 동의 리스트 사이의 여백 (조절 가능)
           SizedBox(height: 40 * hScale),
 
@@ -333,50 +446,67 @@ class _SignupScreenState extends State<SignupScreen> {
             setState(() => _agreeTerms = v ?? false);
             _checkAll();
           }),
-          
-          // 체크박스 항목들 사이 여백 (조절 가능)
-          SizedBox(height: 12 * hScale),
-          
-          _buildTermsRow(wScale, hScale, '개인정보 수집 및 이용 동의 (필수)', _agreePrivacy, (v) {
-            setState(() => _agreePrivacy = v ?? false);
-            _checkAll();
-          }),
-          
-          // 체크박스 항목들 사이 여백 (조절 가능)
-          SizedBox(height: 12 * hScale),
-          
-          _buildTermsRow(wScale, hScale, '광고 및 푸쉬성 알람 수신 동의 (선택)', _agreeMarketing, (v) {
-            setState(() => _agreeMarketing = v ?? false);
-            _checkAll();
-          }),
-          
-          // 체크박스 항목들 사이 여백 (조절 가능)
-          SizedBox(height: 12 * hScale),
-          
-          _buildTermsRow(wScale, hScale, '전체 동의', _agreeAll, _updateAll, isAll: true),
 
-          // --- [약관 리스트와 하단 '회원가입' 버튼 사이의 커다란 여백] --- 
+          // 체크박스 항목들 사이 여백 (조절 가능)
+          SizedBox(height: 12 * hScale),
+
+          _buildTermsRow(
+            wScale,
+            hScale,
+            '개인정보 수집 및 이용 동의 (필수)',
+            _agreePrivacy,
+            (v) {
+              setState(() => _agreePrivacy = v ?? false);
+              _checkAll();
+            },
+          ),
+
+          // 체크박스 항목들 사이 여백 (조절 가능)
+          SizedBox(height: 12 * hScale),
+
+          _buildTermsRow(
+            wScale,
+            hScale,
+            '광고 및 푸쉬성 알람 수신 동의 (선택)',
+            _agreeMarketing,
+            (v) {
+              setState(() => _agreeMarketing = v ?? false);
+              _checkAll();
+            },
+          ),
+
+          // 체크박스 항목들 사이 여백 (조절 가능)
+          SizedBox(height: 12 * hScale),
+
+          _buildTermsRow(
+            wScale,
+            hScale,
+            '전체 동의',
+            _agreeAll,
+            _updateAll,
+            isAll: true,
+          ),
+
+          // --- [약관 리스트와 하단 '회원가입' 버튼 사이의 커다란 여백] ---
           // 버튼 위치를 올리려면 높이를 줄이고, 내리려면 높이를 키우세요.
           SizedBox(height: 80 * hScale),
-          
+
           // --- [5. '회원가입' 버튼] ---
           Center(
             child: GestureDetector(
-              onTap: () {
-                if (_isStep2Valid) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const FamilyGroupListScreen()),
-                  );
-                }
-              },
-              child: SvgPicture.asset(
-                _isStep2Valid ? 'assets/auth/signup/btn_signup_green.svg' : 'assets/auth/signup/btn_signup_yellow.svg',
-                width: 299 * wScale,
+              onTap: _isSubmitting ? null : _signup,
+              child: Opacity(
+                opacity: _isSubmitting ? .6 : 1,
+                child: SvgPicture.asset(
+                  _isStep2Valid
+                      ? 'assets/auth/signup/btn_signup_green.svg'
+                      : 'assets/auth/signup/btn_signup_yellow.svg',
+                  width: 299 * wScale,
+                ),
               ),
             ),
           ),
-          
+
           // --- [하단 여백 (화면 맨 밑바닥 여유공간)] ---
           SizedBox(height: 40 * hScale),
         ],
@@ -384,7 +514,17 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildInputBox(TextEditingController controller, double wScale, double hScale, {bool isPassword = false, bool showEyeIcon = false, bool isValid = false, bool isError = false, bool isVisible = false, VoidCallback? onToggleVisibility}) {
+  Widget _buildInputBox(
+    TextEditingController controller,
+    double wScale,
+    double hScale, {
+    bool isPassword = false,
+    bool showEyeIcon = false,
+    bool isValid = false,
+    bool isError = false,
+    bool isVisible = false,
+    VoidCallback? onToggleVisibility,
+  }) {
     String boxAsset = 'assets/auth/signup/box_empty.png';
     if (isValid) boxAsset = 'assets/auth/signup/box_normal.png';
     if (isError) boxAsset = 'assets/auth/signup/box_error.png';
@@ -394,9 +534,7 @@ class _SignupScreenState extends State<SignupScreen> {
       height: 38 * wScale, // as per svg
       child: Stack(
         children: [
-          Positioned.fill(
-            child: Image.asset(boxAsset, fit: BoxFit.fill),
-          ),
+          Positioned.fill(child: Image.asset(boxAsset, fit: BoxFit.fill)),
           Positioned.fill(
             child: TextField(
               controller: controller,
@@ -412,10 +550,10 @@ class _SignupScreenState extends State<SignupScreen> {
                 filled: false,
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.only(
-                  left: 12 * wScale, 
+                  left: 12 * wScale,
                   right: showEyeIcon ? 40 * wScale : 12 * wScale,
                   top: 6 * hScale, // 커서를 아래로 내리기 위한 여백 추가
-                ), 
+                ),
                 isDense: true,
               ),
             ),
@@ -430,7 +568,9 @@ class _SignupScreenState extends State<SignupScreen> {
                 onTap: onToggleVisibility,
                 child: Center(
                   child: SvgPicture.asset(
-                    isVisible ? 'assets/auth/signup/icon_eye_open.svg' : 'assets/auth/signup/icon_eye_closed.svg',
+                    isVisible
+                        ? 'assets/auth/signup/icon_eye_open.svg'
+                        : 'assets/auth/signup/icon_eye_closed.svg',
                     width: 32 * wScale,
                   ),
                 ),
@@ -441,7 +581,14 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildTermsRow(double wScale, double hScale, String text, bool value, ValueChanged<bool?> onChanged, {bool isAll = false}) {
+  Widget _buildTermsRow(
+    double wScale,
+    double hScale,
+    String text,
+    bool value,
+    ValueChanged<bool?> onChanged, {
+    bool isAll = false,
+  }) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => onChanged(!value),
@@ -466,7 +613,10 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               if (value)
-                SvgPicture.asset('assets/auth/signup/icon_checkbox.svg', width: 14 * wScale),
+                SvgPicture.asset(
+                  'assets/auth/signup/icon_checkbox.svg',
+                  width: 14 * wScale,
+                ),
             ],
           ),
           SizedBox(width: 12 * wScale),

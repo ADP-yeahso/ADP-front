@@ -11,6 +11,17 @@
         "--web-port=5173",
         "--dart-define-from-file=env.json"
       ]
+    },
+    {
+      "name": "Care Garden (Android Emulator)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "emulator-5554"
+    },
+    {
+      "name": "Care Garden (Default Device)",
+      "request": "launch",
+      "type": "dart"
     }
   ]
 }

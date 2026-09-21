@@ -25,6 +25,17 @@ class CareGardenApp extends StatelessWidget {
         title: '마음정원',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        builder: (context, child) {
+          return Container(
+            color: const Color(0xFFF0F0F0), // 넓은 화면일 때 바깥 배경색
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 430),
+                child: child,
+              ),
+            ),
+          );
+        },
         home: const LoginScreen(),
       ),
     );

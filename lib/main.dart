@@ -26,12 +26,19 @@ class CareGardenApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         builder: (context, child) {
+          final mediaQuery = MediaQuery.of(context);
+          final double constrainedWidth = mediaQuery.size.width > 430 ? 430 : mediaQuery.size.width;
           return Container(
             color: const Color(0xFFF0F0F0), // 넓은 화면일 때 바깥 배경색
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 430),
-                child: child,
+                child: MediaQuery(
+                  data: mediaQuery.copyWith(
+                    size: Size(constrainedWidth, mediaQuery.size.height),
+                  ),
+                  child: child!,
+                ),
               ),
             ),
           );

@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../data/auth_session.dart';
 import '../../services/auth_service.dart';
 import 'signup_screen.dart';
-import 'family_group_list_screen.dart';
+import '../record/diary_write_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
       context.read<AuthSession>().signIn(tokens);
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const FamilyGroupListScreen()),
+        MaterialPageRoute(builder: (_) => const DiaryWriteScreen()),
       );
     } on AuthException catch (error) {
       _showMessage(error.message);

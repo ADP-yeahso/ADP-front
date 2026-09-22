@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../services/auth_service.dart';
 import '../../../services/diary_service.dart';
+import 'diary_loading_screen.dart';
 import 'diary_emotion_select_screen.dart';
 
 class DiaryEmotionExploreScreen extends StatefulWidget {
-  const DiaryEmotionExploreScreen({super.key, required this.draft});
+  const DiaryEmotionExploreScreen({
+    super.key,
+    required this.draft,
+    required this.tokens,
+  });
 
   final DiaryDraft draft;
+  final AuthTokens tokens;
 
   @override
   State<DiaryEmotionExploreScreen> createState() =>
@@ -184,11 +191,23 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                       child: ElevatedButton(
                         onPressed: isFormValid
                             ? () {
+                                final answer = _controller.text.trim();
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        const DiaryEmotionSelectScreen(),
+                                    builder: (_) => DiaryLoadingScreen(
+                                      loadNext: () async {
+                                        final tags = await DiaryService()
+                                            .saveAnswerAndGetSuggestions(
+                                              tokens: widget.tokens,
+                                              diaryId: widget.draft.id,
+                                              answer: answer,
+                                            );
+                                        return DiaryEmotionSelectScreen(
+                                          tags: tags,
+                                        );
+                                      },
+                                    ),
                                   ),
                                 );
                               }

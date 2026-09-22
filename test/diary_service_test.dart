@@ -54,4 +54,55 @@ void main() {
     expect(result.aiQuestion, contains('힘들었던'));
     expect(requests.map((request) => request.method), ['GET', 'POST', 'POST']);
   });
+
+  test('답변을 저장하고 AI 감정 태그 추천을 받아온다', () async {
+    final requests = <http.Request>[];
+    final client = MockClient((request) async {
+      requests.add(request);
+      expect(request.headers['authorization'], 'Bearer access-token');
+      if (request.method == 'PATCH' &&
+          request.url.path == '/api/v1/diaries/42/answer') {
+        expect(
+          jsonDecode(request.body),
+          containsPair('question_answer_text', '혼자 감당하는 기분이 들었어요.'),
+        );
+        return http.Response('{}', 200);
+      }
+      if (request.method == 'GET' &&
+          request.url.path == '/api/v1/diaries/42/emotion-tag-suggestions') {
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode([
+              {
+                'display_name': '불안',
+                'tags': [
+                  {'id': 1, 'tag_name': '걱정'},
+                  {'id': 2, 'tag_name': '초조함'},
+                ],
+              },
+              {
+                'display_name': '슬픔',
+                'tags': [
+                  {'id': 3, 'tag_name': '외로움'},
+                ],
+              },
+            ]),
+          ),
+          200,
+          headers: const {'content-type': 'application/json; charset=utf-8'},
+        );
+      }
+      return http.Response('{}', 404);
+    });
+
+    final tags = await DiaryService(client: client).saveAnswerAndGetSuggestions(
+      tokens: tokens,
+      diaryId: 42,
+      answer: '혼자 감당하는 기분이 들었어요.',
+    );
+
+    expect(tags.map((tag) => tag.name), ['걱정', '초조함', '외로움']);
+    expect(tags.first.emotionName, '불안');
+    expect(requests.map((request) => request.method), ['PATCH', 'GET']);
+  });
 }

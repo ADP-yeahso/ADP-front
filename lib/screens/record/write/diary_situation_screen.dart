@@ -887,6 +887,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                                             );
                                         return DiaryEmotionExploreScreen(
                                           draft: draft,
+                                          tokens: tokens,
                                         );
                                       },
                                     ),

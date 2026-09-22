@@ -1,10 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../data/auth_session.dart';
 import '../../../models/media.dart';
+import '../../../services/diary_service.dart';
 import 'diary_emotion_explore_screen.dart';
 import 'diary_loading_screen.dart';
 
@@ -69,13 +72,27 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
       try {
         final dir = Directory(dirPath);
         if (dir.existsSync()) {
-          final List<FileSystemEntity> entities = dir.listSync(recursive: true, followLinks: false);
+          final List<FileSystemEntity> entities = dir.listSync(
+            recursive: true,
+            followLinks: false,
+          );
           for (final entity in entities) {
             if (entity is File) {
               final ext = entity.path.toLowerCase();
-              final isImg = ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.png') || ext.endsWith('.webp');
-              final isVid = ext.endsWith('.mp4') || ext.endsWith('.mov') || ext.endsWith('.mkv');
-              final isAud = ext.endsWith('.mp3') || ext.endsWith('.wav') || ext.endsWith('.m4a') || ext.endsWith('.flac');
+              final isImg =
+                  ext.endsWith('.jpg') ||
+                  ext.endsWith('.jpeg') ||
+                  ext.endsWith('.png') ||
+                  ext.endsWith('.webp');
+              final isVid =
+                  ext.endsWith('.mp4') ||
+                  ext.endsWith('.mov') ||
+                  ext.endsWith('.mkv');
+              final isAud =
+                  ext.endsWith('.mp3') ||
+                  ext.endsWith('.wav') ||
+                  ext.endsWith('.m4a') ||
+                  ext.endsWith('.flac');
 
               if (isImg || isVid || isAud) {
                 DateTime modTime = DateTime.now();
@@ -154,7 +171,9 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
         setState(() {
           for (final image in images) {
             final media = Media(
-              id: DateTime.now().microsecondsSinceEpoch + _allDeviceMedia.length,
+              id:
+                  DateTime.now().microsecondsSinceEpoch +
+                  _allDeviceMedia.length,
               memoryId: null,
               diaryId: null,
               fileUrl: image.path,
@@ -188,7 +207,9 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
         return StatefulBuilder(
           builder: (modalContext, setModalState) {
             final height = MediaQuery.of(modalContext).size.height;
-            final activeTypeName = _activeMediaType == 'image' ? '사진' : (_activeMediaType == 'video' ? '영상' : '음성');
+            final activeTypeName = _activeMediaType == 'image'
+                ? '사진'
+                : (_activeMediaType == 'video' ? '영상' : '음성');
 
             return Container(
               height: height * 0.7,
@@ -211,7 +232,11 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                         alignment: Alignment.centerRight,
                         child: IconButton(
                           onPressed: () => Navigator.pop(modalContext),
-                          icon: const Icon(Icons.close, color: Color(0xFF4C7B43), size: 26),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Color(0xFF4C7B43),
+                            size: 26,
+                          ),
                         ),
                       ),
                     ],
@@ -230,10 +255,18 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                       ),
                       TextButton.icon(
                         onPressed: () => _pickFromSystemGallery(setModalState),
-                        icon: const Icon(Icons.photo_library_outlined, size: 18, color: Color(0xFF4C7B43)),
+                        icon: const Icon(
+                          Icons.photo_library_outlined,
+                          size: 18,
+                          color: Color(0xFF4C7B43),
+                        ),
                         label: const Text(
                           '앨범 선택',
-                          style: TextStyle(color: Color(0xFF4C7B43), fontWeight: FontWeight.bold, fontSize: 13),
+                          style: TextStyle(
+                            color: Color(0xFF4C7B43),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
@@ -251,15 +284,18 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                           )
                         : GridView.builder(
                             itemCount: _recentDeviceMedia.length,
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 3,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 1.0,
-                            ),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: 1.0,
+                                ),
                             itemBuilder: (context, index) {
                               final item = _recentDeviceMedia[index];
-                              final isSelected = _selectedMediaIds.contains(item.id);
+                              final isSelected = _selectedMediaIds.contains(
+                                item.id,
+                              );
 
                               return GestureDetector(
                                 onTap: () {
@@ -284,9 +320,16 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                                       Positioned.fill(
                                         child: Container(
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withValues(alpha: 0.25),
-                                            borderRadius: BorderRadius.circular(16),
-                                            border: Border.all(color: const Color(0xFFA5DD82), width: 3),
+                                            color: Colors.black.withValues(
+                                              alpha: 0.25,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            border: Border.all(
+                                              color: const Color(0xFFA5DD82),
+                                              width: 3,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -336,7 +379,11 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Center(
-          child: Icon(Icons.nature_people_outlined, color: Color(0xFF4C7B43), size: 36),
+          child: Icon(
+            Icons.nature_people_outlined,
+            color: Color(0xFF4C7B43),
+            size: 36,
+          ),
         ),
       );
     } else if (item.fileType == 'video') {
@@ -346,7 +393,12 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
           Container(
             color: const Color(0xFF2C3E50),
             child: fileExists
-                ? Image.file(file, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Icon(Icons.videocam, color: Colors.white54))
+                ? Image.file(
+                    file,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.videocam, color: Colors.white54),
+                  )
                 : const Icon(Icons.landscape, color: Colors.white38, size: 40),
           ),
           Center(
@@ -356,14 +408,20 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                 color: Colors.white.withValues(alpha: 0.85),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.play_arrow_rounded, color: Colors.black87, size: 24),
+              child: const Icon(
+                Icons.play_arrow_rounded,
+                color: Colors.black87,
+                size: 24,
+              ),
             ),
           ),
         ],
       );
     } else {
       // audio
-      final fileName = fileExists ? file.path.split(Platform.pathSeparator).last : '음성 파일';
+      final fileName = fileExists
+          ? file.path.split(Platform.pathSeparator).last
+          : '음성 파일';
       return Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
@@ -383,7 +441,11 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
               fileName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2C4A28)),
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2C4A28),
+              ),
             ),
           ],
         ),
@@ -396,7 +458,9 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
     if (!_isTileRowVisible) return const SizedBox.shrink();
 
     if (_recentDeviceMedia.isEmpty) {
-      final typeName = _activeMediaType == 'image' ? '사진' : (_activeMediaType == 'video' ? '영상' : '음성');
+      final typeName = _activeMediaType == 'image'
+          ? '사진'
+          : (_activeMediaType == 'video' ? '영상' : '음성');
       return Container(
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -414,10 +478,18 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
             ),
             TextButton.icon(
               onPressed: () => _pickFromSystemGallery((fn) => setState(fn)),
-              icon: const Icon(Icons.add_photo_alternate_outlined, size: 16, color: Color(0xFF4C7B43)),
+              icon: const Icon(
+                Icons.add_photo_alternate_outlined,
+                size: 16,
+                color: Color(0xFF4C7B43),
+              ),
               label: const Text(
                 '앨범에서 선택',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4C7B43)),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4C7B43),
+                ),
               ),
             ),
           ],
@@ -425,7 +497,9 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
       );
     }
 
-    final visibleCount = _recentDeviceMedia.length > 3 ? 4 : _recentDeviceMedia.length;
+    final visibleCount = _recentDeviceMedia.length > 3
+        ? 4
+        : _recentDeviceMedia.length;
     final extraCount = _recentDeviceMedia.length - 3;
 
     return Container(
@@ -468,9 +542,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                       _buildMediaThumbnail(item),
                       // 선택 완료 표시 체크 아이콘
                       if (!isFourthSlot && isSelected) ...[
-                        Container(
-                          color: Colors.black.withValues(alpha: 0.25),
-                        ),
+                        Container(color: Colors.black.withValues(alpha: 0.25)),
                         const Center(
                           child: Icon(
                             Icons.check_circle,
@@ -513,7 +585,13 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
     return _tryPath(candidatePaths, 0, fallback, width, height);
   }
 
-  Widget _tryPath(List<String> paths, int index, Widget fallback, double? width, double? height) {
+  Widget _tryPath(
+    List<String> paths,
+    int index,
+    Widget fallback,
+    double? width,
+    double? height,
+  ) {
     if (index >= paths.length) return fallback;
     final path = paths[index];
     final isSvg = path.toLowerCase().endsWith('.svg');
@@ -531,7 +609,8 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
         width: width,
         height: height,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => _tryPath(paths, index + 1, fallback, width, height),
+        errorBuilder: (context, error, stackTrace) =>
+            _tryPath(paths, index + 1, fallback, width, height),
       );
     }
   }
@@ -546,7 +625,11 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
         backgroundColor: backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black87,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -607,14 +690,23 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   hintStyle: const TextStyle(fontSize: 15, color: Colors.grey),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                    borderSide: BorderSide(
+                      color: Colors.grey.shade300,
+                      width: 1,
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                    borderSide: BorderSide(
+                      color: Colors.grey.shade400,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -638,10 +730,16 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                           expands: true,
                           textAlignVertical: TextAlignVertical.top,
                           onChanged: (_) => setState(() {}),
-                          style: const TextStyle(fontSize: 15, color: Colors.black87),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                          ),
                           decoration: const InputDecoration(
                             hintText: '텍스트 입력',
-                            hintStyle: TextStyle(fontSize: 15, color: Colors.grey),
+                            hintStyle: TextStyle(
+                              fontSize: 15,
+                              color: Colors.grey,
+                            ),
                             filled: false,
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
@@ -665,7 +763,10 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.grey.shade300, width: 1),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 12,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -673,31 +774,68 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                       onTap: _pickImages,
                       child: Row(
                         children: const [
-                          Icon(Icons.crop_original, size: 20, color: Colors.black54),
+                          Icon(
+                            Icons.crop_original,
+                            size: 20,
+                            color: Colors.black54,
+                          ),
                           SizedBox(width: 6),
-                          Text('사진 첨부', style: TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500)),
+                          Text(
+                            '사진 첨부',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    Container(height: 18, width: 1, color: Colors.grey.shade300),
+                    Container(
+                      height: 18,
+                      width: 1,
+                      color: Colors.grey.shade300,
+                    ),
                     InkWell(
                       onTap: _pickVideo,
                       child: Row(
                         children: const [
-                          Icon(Icons.add_to_queue_outlined, size: 20, color: Colors.black54),
+                          Icon(
+                            Icons.add_to_queue_outlined,
+                            size: 20,
+                            color: Colors.black54,
+                          ),
                           SizedBox(width: 6),
-                          Text('영상 첨부', style: TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500)),
+                          Text(
+                            '영상 첨부',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    Container(height: 18, width: 1, color: Colors.grey.shade300),
+                    Container(
+                      height: 18,
+                      width: 1,
+                      color: Colors.grey.shade300,
+                    ),
                     InkWell(
                       onTap: _pickAudio,
                       child: Row(
                         children: const [
                           Icon(Icons.mic_none, size: 20, color: Colors.black54),
                           SizedBox(width: 6),
-                          Text('음성 첨부', style: TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500)),
+                          Text(
+                            '음성 첨부',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -709,7 +847,9 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
               // 하단 다음 버튼 (제목 및 텍스트 모두 입력 시 연두색으로 변경 및 클릭 가능)
               Builder(
                 builder: (context) {
-                  final bool isFormValid = _titleController.text.trim().isNotEmpty && _contentController.text.trim().isNotEmpty;
+                  final bool isFormValid =
+                      _titleController.text.trim().isNotEmpty &&
+                      _contentController.text.trim().isNotEmpty;
                   return Center(
                     child: SizedBox(
                       width: 180,
@@ -717,18 +857,47 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                       child: ElevatedButton(
                         onPressed: isFormValid
                             ? () {
+                                final tokens = context
+                                    .read<AuthSession>()
+                                    .tokens;
+                                if (tokens == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('다이어리를 작성하려면 먼저 로그인해주세요.'),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                final title = _titleController.text.trim();
+                                final situation = _contentController.text
+                                    .trim();
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const DiaryLoadingScreen(
-                                      nextScreen: DiaryEmotionExploreScreen(),
+                                    builder: (_) => DiaryLoadingScreen(
+                                      loadNext: () async {
+                                        final draft = await DiaryService()
+                                            .createDraftAndQuestion(
+                                              tokens: tokens,
+                                              title: title.isEmpty
+                                                  ? null
+                                                  : title,
+                                              situationText: situation,
+                                              recordDate: DateTime.now(),
+                                            );
+                                        return DiaryEmotionExploreScreen(
+                                          draft: draft,
+                                        );
+                                      },
                                     ),
                                   ),
                                 );
                               }
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isFormValid ? const Color(0xFFA5DD82) : const Color(0xFFFFF2B2),
+                          backgroundColor: isFormValid
+                              ? const Color(0xFFA5DD82)
+                              : const Color(0xFFFFF2B2),
                           disabledBackgroundColor: const Color(0xFFFFF2B2),
                           foregroundColor: Colors.black87,
                           disabledForegroundColor: Colors.black45,

@@ -22,7 +22,7 @@ class CareGardenApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GardenNavController()),
       ],
       child: MaterialApp(
-        title: '마음정원',
+        title: '모아온',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         builder: (context, child) {

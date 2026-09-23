@@ -243,6 +243,7 @@ class AppData extends ChangeNotifier {
         id: memoryId,
         patientId: 1,
         userId: me.id,
+        title: title,
         contextText: content,
         mediaList: updatedMedia,
         isPublic: isPublic,
@@ -258,6 +259,7 @@ class AppData extends ChangeNotifier {
   Diary addDiary({
     required DateTime date,
     required String content,
+    String? title,
     Emotion? emotion,
     List<Media> mediaList = const [],
     bool isPublic = true,
@@ -293,6 +295,7 @@ class AppData extends ChangeNotifier {
     final entry = Diary(
       id: diaryId,
       userId: me.id,
+      title: title,
       context: content,
       flowerType: flower,
       mediaList: updatedMedia,
@@ -329,6 +332,7 @@ class AppData extends ChangeNotifier {
         id: old.id,
         patientId: old.patientId,
         userId: old.userId,
+        title: old.title,
         contextText: old.contextText,
         mediaList: old.mediaList,
         isPublic: !old.isPublic,

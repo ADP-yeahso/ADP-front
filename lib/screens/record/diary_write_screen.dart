@@ -170,6 +170,9 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
       MaterialPageRoute(
         builder: (_) => DiaryLoadingScreen(
           date: _date,
+          title: _titleController.text.trim().isEmpty
+            ? null
+            : _titleController.text.trim(),
           content: _contentController.text.trim(),
           isPublic: true,
           mediaList: List.from(_attachedMedia),

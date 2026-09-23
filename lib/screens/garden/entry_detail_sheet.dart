@@ -7,6 +7,7 @@ import '../../models/memory.dart';
 import '../../widgets/emotion_chip.dart';
 import '../../widgets/recommendation_card.dart';
 import '../../data/emotion_analyzer.dart';
+import '../calendar/calendar_screen.dart';
 
 String _fmtDate(DateTime d) {
   const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
@@ -269,8 +270,11 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
 
     return GestureDetector(
       onTap: () {
-        // 상세 보기 열기
-        showMemoryDetailSheet(context, memory);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => CalendarScreen(initialDay: memory.recordDate, initialMemory: memory),
+          ),
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),

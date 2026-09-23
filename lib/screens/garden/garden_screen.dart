@@ -13,6 +13,8 @@ import '../../data/garden_range.dart';
 import '../../utils/local_asset_server.dart';
 import '../care_notebook/care_notebook_list_screen.dart';
 import 'entry_detail_sheet.dart';
+import '../calendar/calendar_screen.dart';
+
 
 /// 기억의 정원 – Three.js + WebView 하이브리드 아키텍처
 class GardenScreen extends StatefulWidget {
@@ -260,7 +262,27 @@ class _GardenScreenState extends State<GardenScreen> {
       _isFocusing = true;
     });
 
-    await showDiaryDetailSheet(context, diary);
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return SizedBox(
+          height: MediaQuery.of(context).size.height * 0.94,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(24),
+            ),
+            child: CalendarScreen(
+              initialDay: diary.recordDate,
+              initialDiary: diary,
+            ),
+          ),
+        );
+      },
+
+    );
 
     if (mounted) {
       setState(() {

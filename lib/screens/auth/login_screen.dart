@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../data/auth_session.dart';
 import '../../services/auth_service.dart';
 import 'signup_screen.dart';
-import '../record/write/diary_situation_screen.dart';
+import '../record/write/diary_start_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,17 +20,30 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     setState(() => _isSubmitting = true);
     
-    // 부드러운 화면 전환을 위해 약간의 딜레이
-    await Future.delayed(const Duration(milliseconds: 300));
-    
-    if (!mounted) return;
-    setState(() => _isSubmitting = false);
-    
-    // 로그인 절차 생략하고 바로 넘어가기
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const DiarySituationScreen()),
-    );
+    try {
+      // 데이터 수집용 자동 로그인 처리
+      final tokens = await AuthService().login(
+        email: 'test@example.com',
+        password: 'abc1234!',
+      );
+      if (!mounted) return;
+      
+      // 세션에 토큰 저장 (이후 다이어리 작성 시 사용됨)
+      context.read<AuthSession>().signIn(tokens);
+      
+      // 시작 화면(DiaryStartScreen)으로 바로 넘어가기
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DiaryStartScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('자동 로그인 실패: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override

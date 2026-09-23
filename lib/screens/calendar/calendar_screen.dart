@@ -609,17 +609,15 @@ class _DayGrid extends StatelessWidget {
                   ),
                 ),
               ),
-              child: const Center(
-                child: Text(
-                  '기억 되돌아보기',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w700,
-                  ),
+              child: Center(
+                child: SvgPicture.asset(
+                  'assets/page2/title.svg',
+                  width: 145,
+                  height: 50,
+                  fit: BoxFit.contain,
                 ),
               ),
-             ),
+            ),
           
 
           SizedBox(

@@ -10,6 +10,8 @@ import '../../models/memory.dart';
 import '../../models/media.dart';
 import '../garden/entry_detail_sheet.dart';
 
+import 'package:audioplayers/audioplayers.dart';
+
 enum _RecordViewType { tree, flower }
 
 class DayRecordDetailView extends StatefulWidget {
@@ -194,8 +196,12 @@ class _TreeRecordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasAudio = memory.mediaList.any((item) => item.fileType == 'audio');
+    final audioMedia = memory.mediaList
+      .where((item) => item.fileType == 'audio')
+      .toList();
 
+    final hasAudio = audioMedia.isNotEmpty;
+  
     return Card(
       color: const Color(0xFFFFFBF0),
       elevation: 0,
@@ -214,7 +220,9 @@ class _TreeRecordCard extends StatelessWidget {
 
               if (hasAudio) ...[
                 const SizedBox(height: 12),
-                const _DetailAudioBar(),
+                _DetailAudioBar(
+                  media: audioMedia.first,
+                ),
               ],
 
               const SizedBox(height: 22),
@@ -270,7 +278,11 @@ class _FlowerRecordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasAudio = diary.mediaList.any((item) => item.fileType == 'audio');
+    final audioMedia = diary.mediaList
+      .where((item) => item.fileType == 'audio')
+      .toList();
+
+    final hasAudio = audioMedia.isNotEmpty;
 
     return Card(
       color: const Color(0xFFFFFBF0),
@@ -290,7 +302,9 @@ class _FlowerRecordCard extends StatelessWidget {
 
               if (hasAudio) ...[
                 const SizedBox(height: 12),
-                const _DetailAudioBar(),
+                _DetailAudioBar(
+                  media: audioMedia.first,
+                ),
               ],
 
               if (diary.mediaList.any((item) => item.fileType == 'image'))
@@ -429,34 +443,111 @@ class _DetailContentLines extends StatelessWidget {
   }
 }
 
-class _DetailAudioBar extends StatelessWidget {
-  const _DetailAudioBar();
+class _DetailAudioBar extends StatefulWidget {
+  final Media media;
+
+  const _DetailAudioBar({
+    required this.media,
+  });
+
+  @override
+  State<_DetailAudioBar> createState() => _DetailAudioBarState();
+}
+
+class _DetailAudioBarState extends State<_DetailAudioBar> {
+  final AudioPlayer _player = AudioPlayer();
+
+  bool _isPlaying = false;
+  Duration _position = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _player.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
+
+      setState(() {
+        _isPlaying = state == PlayerState.playing;
+      });
+    });
+
+    _player.onPositionChanged.listen((position) {
+      if (!mounted) return;
+
+      setState(() {
+        _position = position;
+      });
+    });
+
+    _player.onPlayerComplete.listen((_) {
+      if (!mounted) return;
+
+      setState(() {
+        _isPlaying = false;
+        _position = Duration.zero;
+      });
+    });
+  }
+
+  Future<void> _togglePlay() async {
+    if (_isPlaying) {
+      await _player.pause();
+      return;
+    }
+
+    final filePath = widget.media.fileUrl;
+
+    if (filePath.startsWith('http')) {
+      await _player.play(UrlSource(filePath));
+    } else {
+      await _player.play(DeviceFileSource(filePath));
+    }
+  }
+
+  String _formatTime(Duration duration) {
+    final minutes = duration.inMinutes.toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+
+    return '$minutes:$seconds';
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 46,
+      height: 56,
       child: Stack(
         alignment: Alignment.center,
         children: [
           SvgPicture.asset(
             'assets/page2/record_detail/audio_frame.svg',
             width: double.infinity,
-            height: 46,
+            height: 56,
             fit: BoxFit.fill,
           ),
-          const Positioned(
+
+          Positioned(
             left: 14,
             child: Text(
-              '00:00',
-              style: TextStyle(fontSize: 11, color: Colors.black87),
+              _formatTime(_position),
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.black87,
+              ),
             ),
           ),
+
           Positioned(
             left: 70,
             right: 48,
-            top: 22,
+            top: 26,
             child: SvgPicture.asset(
               'assets/page2/record_detail/audio_dotted_line.svg',
               width: double.infinity,
@@ -464,12 +555,16 @@ class _DetailAudioBar extends StatelessWidget {
               fit: BoxFit.fill,
             ),
           ),
+
           Positioned(
             right: 6,
-            child: SvgPicture.asset(
-              'assets/page2/record_detail/play_button.svg',
-              width: 34,
-              height: 34,
+            child: GestureDetector(
+              onTap: _togglePlay,
+              child: SvgPicture.asset(
+                'assets/page2/record_detail/play_button.svg',
+                width: 34,
+                height: 34,
+              ),
             ),
           ),
         ],

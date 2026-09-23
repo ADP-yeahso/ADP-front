@@ -44,10 +44,15 @@ class LocalAssetServer {
       else if (path.endsWith('.glb')) contentType = 'model/gltf-binary';
       else if (path.endsWith('.gltf')) contentType = 'model/gltf+json';
 
+      final isModel =
+        path.endsWith('.glb') || path.endsWith('.gltf');
+
       return Response.ok(buffer, headers: {
         'Content-Type': contentType,
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Cache-Control': isModel
+          ? 'public, max-age=31536000, immutable'
+          : 'no-cache',
       });
     } catch (e) {
       return Response.notFound('Asset not found: $path');

@@ -69,7 +69,6 @@ class _GardenScreenState extends State<GardenScreen> {
         ),
       );
 
-    await _webViewController.clearCache();
     await _webViewController.loadRequest(
       Uri.parse(
         'http://localhost:8080/www/index.html?v=\${DateTime.now().millisecondsSinceEpoch}',
@@ -116,41 +115,41 @@ class _GardenScreenState extends State<GardenScreen> {
           .map((e) => {'id': e.id, 'emotion': e.flowerType.emotionId.name})
           .toList(),
     );
-    final ts = DateTime.now().millisecondsSinceEpoch;
-    final treeUrl = 'http://localhost:8080/images/worldtree.glb?v=$ts';
+    const assetVersion = 'flower-mapping-v1';
+    final treeUrl = 'http://localhost:8080/images/worldtree.glb?v=$assetVersion';
 
     final flowerBaseUrl = 'http://localhost:8080/images/flower';
     final placeholderFlowerUrl =
-        '$flowerBaseUrl/flower.glb?v=$ts'; // 감사,중립 꽃 에셋 나오면 교체하고 삭제해도 됨
+        '$flowerBaseUrl/flower.glb?v=$assetVersion'; // 감사,중립 꽃 에셋 나오면 교체하고 삭제해도 됨
 
     final Map<String, List<String>> emotionToFlowers = {
       'anger': [
-        '$flowerBaseUrl/Anger_Phlox.glb?v=$ts',
-        '$flowerBaseUrl/Anger_Gerbera.glb?v=$ts',
-        '$flowerBaseUrl/Anger_Linaria.glb?v=$ts',
-        '$flowerBaseUrl/Anger_Zinnia.glb?v=$ts',
+        '$flowerBaseUrl/Anger_Phlox.glb?v=$assetVersion',
+        '$flowerBaseUrl/Anger_Gerbera.glb?v=$assetVersion',
+        '$flowerBaseUrl/Anger_Linaria.glb?v=$assetVersion',
+        '$flowerBaseUrl/Anger_Zinnia.glb?v=$assetVersion',
       ],
       'anxiety': [
-        '$flowerBaseUrl/Anxiety_Borage.glb?v=$ts',
-        '$flowerBaseUrl/Anxiety_Geranium.glb?v=$ts',
-        '$flowerBaseUrl/Anxiety_Hellebore.glb?v=$ts',
-        '$flowerBaseUrl/Anxiety_Stock.glb?v=$ts',
+        '$flowerBaseUrl/Anxiety_Borage.glb?v=$assetVersion',
+        '$flowerBaseUrl/Anxiety_Geranium.glb?v=$assetVersion',
+        '$flowerBaseUrl/Anxiety_Hellebore.glb?v=$assetVersion',
+        '$flowerBaseUrl/Anxiety_Stock.glb?v=$assetVersion',
       ],
       'guilt': [
-        '$flowerBaseUrl/Guilt_Canna.glb?v=$ts',
-        '$flowerBaseUrl/Guilt_Clematis.glb?v=$ts',
-        '$flowerBaseUrl/Guilt_Delphinium.glb?v=$ts',
+        '$flowerBaseUrl/Guilt_Canna.glb?v=$assetVersion',
+        '$flowerBaseUrl/Guilt_Clematis.glb?v=$assetVersion',
+        '$flowerBaseUrl/Guilt_Delphinium.glb?v=$assetVersion',
       ],
       'sadness': [
-        '$flowerBaseUrl/Sadness_ebw.glb?v=$ts',
-        '$flowerBaseUrl/Sadness_mmc.glb?v=$ts',
-        '$flowerBaseUrl/Sadness_ydc.glb?v=$ts',
+        '$flowerBaseUrl/Sadness_ebw.glb?v=$assetVersion',
+        '$flowerBaseUrl/Sadness_mmc.glb?v=$assetVersion',
+        '$flowerBaseUrl/Sadness_ydc.glb?v=$assetVersion',
       ],
       'affection': [
-        '$flowerBaseUrl/Affection_Bindweed.glb?v=$ts',
-        '$flowerBaseUrl/Affection_Lisianthus.glb?v=$ts',
-        '$flowerBaseUrl/Affection_Marigold.glb?v=$ts',
-        '$flowerBaseUrl/Affection_Nasturtium.glb?v=$ts',
+        '$flowerBaseUrl/Affection_Bindweed.glb?v=$assetVersion',
+        '$flowerBaseUrl/Affection_Lisianthus.glb?v=$assetVersion',
+        '$flowerBaseUrl/Affection_Marigold.glb?v=$assetVersion',
+        '$flowerBaseUrl/Affection_Nasturtium.glb?v=$assetVersion',
       ],
 
       'gratitude': [placeholderFlowerUrl], // 임시임 감사 꽃 에셋 나오면 교체해야함

@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
       context.read<AuthSession>().signIn(tokens);
       
       // 시작 화면(DiaryStartScreen)으로 바로 넘어가기
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const DiaryStartScreen()),
       );

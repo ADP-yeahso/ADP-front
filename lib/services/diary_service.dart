@@ -9,6 +9,9 @@ class DiaryException implements Exception {
   const DiaryException(this.message);
 
   final String message;
+
+  @override
+  String toString() => 'DiaryException: $message';
 }
 
 class DiaryDraft {

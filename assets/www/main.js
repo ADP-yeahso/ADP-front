@@ -8,13 +8,17 @@ let flowerMeshes = []; // Not used for clones anymore, but we can keep for backw
 let flowerData = [];
 let worldTree;
 let isFocusing = false;
+let gardenLoadId = 0;
 
 // Default camera position
 const defaultCameraPos = new THREE.Vector3(0, 35, 50);
 const origin = new THREE.Vector3(0, 0, 0);
 
+let renderQueued = false;
+let renderRunning = false;
+
 init();
-animate();
+requestRender();
 
 function init() {
   const container = document.getElementById('canvas-container');
@@ -33,7 +37,9 @@ function init() {
 
   // Renderer setup
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio || 1, 2)
+  );
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -78,6 +84,7 @@ function init() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
   controls.target.copy(origin);
+  controls.addEventListener('change', requestRender);
 
   // 핀치 줌 완벽 지원 (너무 뚫고 가거나 나가지 않게 제한)
   controls.enableZoom = true;
@@ -134,10 +141,12 @@ function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  requestRender();
 }
 
 // Function called from Flutter to initialize models
 window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
+  const currentLoadId = ++gardenLoadId;
   document.getElementById('loading').style.display = 'block';
   let diaries = JSON.parse(diariesJson);
   let flowerUrlsMap = JSON.parse(flowerUrlsMapJson);
@@ -145,6 +154,10 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
 
   // Load Tree
   loader.load(treeUrl, (gltf) => {
+    if (currentLoadId !== gardenLoadId) {
+      disposeObject3D(gltf.scene, new Set());
+      return;
+    }
     worldTree = gltf.scene;
     worldTree.position.set(0, 0, 0);
     // Apply soft material override for healing vibe
@@ -158,6 +171,7 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
     // scale tree if needed
     worldTree.scale.set(1.5, 1.5, 1.5);
     scene.add(worldTree);
+    requestRender();
 
     const numFlowers = diaries.length;
     if (numFlowers === 0) {
@@ -169,14 +183,23 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
     let diariesByUrl = {};
     
     diaries.forEach(diary => {
-      let emotion = diary.emotion ? diary.emotion.toLowerCase() : 'joy';
-      let urls = flowerUrlsMap[emotion];
-      if (!urls || urls.length === 0) {
-        urls = flowerUrlsMap['joy']; // fallback
+      const emotion = typeof diary.emotion === 'string' && diary.emotion.trim() !== ''
+      ? diary.emotion.toLowerCase()
+      : null;
+
+      if (!emotion) {
+        return;
+      }
+
+      const urls = flowerUrlsMap[emotion];
+
+      if (!Array.isArray(urls) || urls.length === 0) {
+        console.warn(`No flower mapping for emotion: ${emotion}`);
+        return;
       }
       // Stable random using diary.id
-      let urlIndex = diary.id % urls.length;
-      let url = urls[urlIndex];
+      const urlIndex = diary.id % urls.length;
+      const url = urls[urlIndex];
       
       if (!diariesByUrl[url]) {
         diariesByUrl[url] = [];
@@ -199,6 +222,15 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
     });
 
     Promise.all(loadPromises).then(results => {
+      if (currentLoadId !== gardenLoadId) {
+        const textures = new Set();
+
+        results.forEach(({ gltf }) => {
+          disposeObject3D(gltf.scene, textures);
+        });
+
+        return;
+      }
       document.getElementById('loading').style.display = 'none';
       
       flowerData = [];
@@ -267,12 +299,19 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
           imesh.instanceMatrix.needsUpdate = true;
         });
       });
+      requestRender();
     }).catch(error => {
+      if (currentLoadId !== gardenLoadId) {
+        return;
+      }
       if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_FLOWER_BATCH: ' + error.message);
       document.getElementById('loading').style.display = 'none';
     });
 
   }, undefined, function (error) {
+    if (currentLoadId !== gardenLoadId) {
+      return;
+    }
     if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_TREE: ' + error.message);
     document.getElementById('loading').style.display = 'none';
   });
@@ -337,10 +376,7 @@ function focusOnFlower(fData) {
     z: targetCamPos.z,
     duration: 1.5,
     ease: "power3.inOut",
-    onUpdate: () => {
-      // Ensure controls target updates smoothly
-      controls.update();
-    }
+    onUpdate: requestRender,
   });
 
   // Tween Controls Target (LookAt)
@@ -350,6 +386,7 @@ function focusOnFlower(fData) {
     z: fData.position.z,
     duration: 1.5,
     ease: "power3.inOut",
+    onUpdate: requestRender,
     onComplete: () => {
       // Notify Flutter
       if (window.FlutterChannel) {
@@ -372,9 +409,7 @@ function focusOnTree(treeObj) {
     z: targetCamPos.z,
     duration: 1.5,
     ease: "power3.inOut",
-    onUpdate: () => {
-      controls.update();
-    }
+    onUpdate: requestRender,
   });
 
   gsap.to(controls.target, {
@@ -383,6 +418,7 @@ function focusOnTree(treeObj) {
     z: origin.z,
     duration: 1.5,
     ease: "power3.inOut",
+    onUpdate: requestRender,
     onComplete: () => {
       if (window.FlutterChannel) {
         window.FlutterChannel.postMessage('tree');
@@ -398,7 +434,8 @@ window.resetCamera = function () {
     y: defaultCameraPos.y,
     z: defaultCameraPos.z,
     duration: 1.5,
-    ease: "power3.inOut"
+    ease: "power3.inOut",
+    onUpdate: requestRender,
   });
 
   gsap.to(controls.target, {
@@ -407,59 +444,106 @@ window.resetCamera = function () {
     z: origin.z,
     duration: 1.5,
     ease: "power3.inOut",
+    onUpdate: requestRender,
     onComplete: () => {
       isFocusing = false;
       controls.enabled = true;
 }
 
-function animate() {
-  requestAnimationFrame(animate);
-  controls.update();
-  renderer.render(scene, camera);
+function requestRender() {
+  if (renderQueued || renderRunning) return;
+
+  renderQueued = true;
+
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    renderRunning = true;
+
+    const controlsChanged = controls.update();
+    renderer.render(scene, camera);
+
+    renderRunning = false;
+
+    // OrbitControls damping이 끝날 때까지 계속 렌더링
+    if (controlsChanged) {
+      requestRender();
+    }
+  });
+}
+
+const textureKeys = [
+  'map',
+  'normalMap',
+  'roughnessMap',
+  'metalnessMap',
+  'emissiveMap',
+  'aoMap',
+  'alphaMap',
+  'bumpMap',
+  'displacementMap',
+  'lightMap',
+  'clearcoatMap',
+  'clearcoatNormalMap',
+  'clearcoatRoughnessMap',
+  'transmissionMap',
+  'thicknessMap',
+];
+
+function disposeObject3D(root, textures) {
+  root.traverse((child) => {
+    if (!child.isMesh) return;
+
+    child.geometry?.dispose();
+
+    const materials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
+
+    materials.forEach((material) => {
+      if (!material) return;
+
+      textureKeys.forEach((key) => {
+        const texture = material[key];
+
+        if (texture && !textures.has(texture)) {
+          textures.add(texture);
+          texture.dispose();
+        }
+      });
+
+      material.dispose();
+    });
+  });
+
+  scene.remove(root);
 }
 
 window.disposeGarden = function() {
+  gardenLoadId++;
+  gsap.killTweensOf(camera.position);
+  gsap.killTweensOf(controls.target);
+
+  isFocusing = false;
+  controls.enabled = true;
+
+  const textures = new Set();
+
   if (worldTree) {
-    scene.remove(worldTree);
-    worldTree.traverse((child) => {
-      if (child.isMesh) {
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) {
-          if (Array.isArray(child.material)) {
-            child.material.forEach(m => {
-               if(m.map) m.map.dispose();
-               m.dispose();
-            });
-          } else {
-            if(child.material.map) child.material.map.dispose();
-            child.material.dispose();
-          }
-        }
-      }
-    });
+    disposeObject3D(worldTree, textures);
     worldTree = null;
   }
 
-  if (flowerMeshes && flowerMeshes.length > 0) {
-    flowerMeshes.forEach(imesh => {
-      scene.remove(imesh);
-      if (imesh.geometry) imesh.geometry.dispose();
-      if (imesh.material) {
-          if (Array.isArray(imesh.material)) {
-            imesh.material.forEach(m => {
-               if(m.map) m.map.dispose();
-               m.dispose();
-            });
-          } else {
-            if(imesh.material.map) imesh.material.map.dispose();
-            imesh.material.dispose();
-          }
-      }
-    });
-    flowerMeshes = [];
-    flowerData = [];
-  }
-}
+  flowerMeshes.forEach((mesh) => {
+    disposeObject3D(mesh, textures);
+  });
+
+  flowerMeshes = [];
+  flowerData = [];
+
+  renderer.renderLists?.dispose();
+
+  requestRender();
+};
 
 // --- Local Simulator Test Code ---
 // Flutter 환경이 아닐 경우(웹 브라우저에서 직접 실행 시) mid 꽃 파일로 시뮬레이터를 자동 실행합니다.
@@ -467,17 +551,22 @@ setTimeout(() => {
   if (!window.FlutterChannel) {
     console.log("Running in local simulator. Initializing with mid flower...");
     const dummyDiaries = JSON.stringify([
-      { id: "1", emotion: "joy" }, 
-      { id: "2", emotion: "guilt" }, 
-      { id: "3", emotion: "anger" }, 
-      { id: "4", emotion: "sadness" }, 
-      { id: "5", emotion: "guilt" }
+      { id: 1, emotion: "affection" },
+      { id: 2, emotion: "anger" },
+      { id: 3, emotion: "anxiety" },
+      { id: 4, emotion: "guilt" },
+      { id: 5, emotion: "sadness" },
+      { id: 6, emotion: "gratitude" },
+      { id: 7, emotion: "neutral" }
     ]);
     const dummyMap = JSON.stringify({
-      "joy": ["../images/flower/Affection_lisian_low.glb"],
+      "affection": ["../images/flower/Affection_Lisianthus.glb"],
       "guilt": ["../images/flower/Guilt_Canna.glb", "../images/flower/Guilt_Clematis.glb"],
       "anger": ["../images/flower/Anger_Phlox.glb"],
-      "sadness": ["../images/flower/Sadness_ebw.glb"]
+      "sadness": ["../images/flower/Sadness_ebw.glb"],
+      "anxiety": ["../images/flower/Anxiety_Borage.glb"],
+      "gratitude": ["../images/flower/flower.glb"],
+      "neutral": ["../images/flower/flower.glb"]
     });
     window.initGarden(
       '../images/worldtree.glb',

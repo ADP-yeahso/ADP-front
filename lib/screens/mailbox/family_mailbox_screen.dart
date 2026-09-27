@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
 import '../../models/mail_letter.dart';
 
-/// 가족 편지함 스크린 (그레이박스 와이어프레임 스타일)
+/// 가족 편지함 스크린 (디자인 에셋 적용 완결 버전)
 class FamilyMailboxScreen extends StatefulWidget {
   const FamilyMailboxScreen({super.key});
 
@@ -24,17 +25,10 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
 
   List<MailLetter> get _sentLetters => context.watch<AppData>().sentLetters;
 
-  // 3. 편지 쓰기 폼 컨트롤러 및 상태
+  // 편지 쓰기 폼 컨트롤러 및 상태
   final TextEditingController _contentController = TextEditingController();
   String _selectedReceiver = '가족 모두에게';
   bool _isAnonymous = false;
-
-  String _getDisplayReceiver(String receiver) {
-    if (receiver == '가족 모두에게') {
-      return '가족 모두에게';
-    }
-    return '나';
-  }
 
   List<String> _getReceiverOptions(BuildContext context) {
     final appData = context.read<AppData>();
@@ -50,71 +44,116 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
     return ['가족 모두에게', ...memberNames];
   }
 
+  // 5. 수신자 선택 바텀시트 모달 (디자인 가이드 기반)
   Future<void> _showReceiverPicker() async {
     final receiverOptions = _getReceiverOptions(context);
 
     final selectedReceiver = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.white,
-      showDragHandle: true,
+      backgroundColor: const Color(0xFFFFFDF0),
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (bottomSheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '받는 사람을 선택해 주세요',
-                  style: TextStyle(
-                    color: Color(0xFF25341E),
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
+                // 드래그 핸들
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFB5C2AA),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+
+                // 헤더 Row (타이틀 + X 닫기 버튼)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      '받는 사람을 선택해 주세요',
+                      style: TextStyle(
+                        color: Color(0xFF1F2E1B),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.of(bottomSheetContext).pop(),
+                      child: SvgPicture.asset(
+                        'assets/svg/mailbox/close_icon.svg',
+                        width: 22,
+                        height: 22,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFF526B43),
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+
+                // 수신자 옵션 리스트
                 ...receiverOptions.map((receiver) {
                   final isSelected = receiver == _selectedReceiver;
+                  final isGroup = receiver == '가족 모두에게';
 
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFFEAF2E4)
-                            : const Color(0xFFF3F4EF),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        receiver == '가족 모두에게'
-                            ? Icons.groups_outlined
-                            : Icons.person_outline,
-                        color: const Color(0xFF426B2C),
-                        size: 21,
-                      ),
-                    ),
-                    title: Text(
-                      receiver,
-                      style: TextStyle(
-                        color: const Color(0xFF25341E),
-                        fontSize: 15,
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(Icons.check, color: Color(0xFF426B2C))
-                        : null,
+                  return GestureDetector(
                     onTap: () {
                       Navigator.of(bottomSheetContext).pop(receiver);
                     },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFFA1D17A)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          SvgPicture.asset(
+                            isGroup
+                                ? 'assets/svg/mailbox/family_icon.svg'
+                                : 'assets/svg/mailbox/personal_icon.svg',
+                            width: 22,
+                            height: 22,
+                            colorFilter: ColorFilter.mode(
+                              isSelected
+                                  ? const Color(0xFF1F2E1B)
+                                  : const Color(0xFF35452D),
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            receiver,
+                            style: TextStyle(
+                              color: const Color(0xFF1F2E1B),
+                              fontSize: 16,
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   );
                 }),
               ],
@@ -137,12 +176,11 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
     super.dispose();
   }
 
-  // 편지 상세 모달 열기 (읽음 처리)
+  // 2. 편지 상세 모달 팝업 (디자인 가이드 - 편지 박스)
   void _openLetterDetail(MailLetter letter) {
     final appData = context.read<AppData>();
     final isSentLetter = letter.isSentBy(appData.currentMailboxUserId);
 
-    // 받은 편지를 열었을 때만 읽음 처리합니다.
     if (!isSentLetter && !letter.isRead) {
       appData.markLetterAsRead(letter.id);
     }
@@ -162,117 +200,103 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
       barrierDismissible: true,
       builder: (dialogContext) {
         return Dialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
+          backgroundColor: const Color(0xFFFFFBE8),
+          surfaceTintColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(
-            horizontal: 28,
+            horizontal: 24,
             vertical: 40,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0xFF6E8E59), width: 1.5),
           ),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420, maxHeight: 520),
+            constraints: const BoxConstraints(maxWidth: 380, maxHeight: 480),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 18, 18, 18),
+              padding: const EdgeInsets.all(20),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 상단 Header: To. {receiver} 및 X 닫기 버튼
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEAF2E4),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.mail_outline,
-                          color: Color(0xFF426B2C),
-                          size: 20,
+                      Text(
+                        'To. ${isSentLetter ? receiverLabel : "나"}',
+                        style: const TextStyle(
+                          color: Color(0xFF1F2E1B),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          isSentLetter ? '보낸 편지' : '받은 편지',
-                          style: const TextStyle(
-                            color: Color(0xFF25341E),
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
+                      GestureDetector(
+                        onTap: () => Navigator.of(dialogContext).pop(),
+                        child: SvgPicture.asset(
+                          'assets/svg/mailbox/close_icon.svg',
+                          width: 22,
+                          height: 22,
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFF5B7E46),
+                            BlendMode.srcIn,
                           ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        tooltip: '닫기',
-                        icon: const Icon(Icons.close, color: Color(0xFF697066)),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
 
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF6F8F3),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLetterInfoRow(label: '보낸 사람', value: senderLabel),
-                        const SizedBox(height: 7),
-                        _buildLetterInfoRow(
-                          label: '받는 사람',
-                          value: receiverLabel,
-                        ),
-                        const SizedBox(height: 7),
-                        _buildLetterInfoRow(label: '보낸 시간', value: letter.date),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  Flexible(
+                  // 본문 내용 (편지지 느낌)
+                  Expanded(
                     child: SingleChildScrollView(
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(4, 0, 8, 8),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Text(
                           letter.content,
                           style: const TextStyle(
-                            color: Color(0xFF35452D),
+                            color: Color(0xFF2C3E26),
                             fontSize: 15,
-                            height: 1.65,
+                            height: 1.7,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
 
+                  // 구분선
+                  Container(
+                    height: 1,
+                    color: const Color(0xFF7E9F67).withAlpha(100),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 하단 Right: From. {sender} 및 보낸 날짜
                   Align(
                     alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(),
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF426B2C),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'From. $senderLabel',
+                          style: const TextStyle(
+                            color: Color(0xFF1F2E1B),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                      child: const Text(
-                        '닫기',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                        const SizedBox(height: 4),
+                        Text(
+                          letter.date,
+                          style: const TextStyle(
+                            color: Color(0xFF738E64),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
@@ -281,31 +305,6 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildLetterInfoRow({required String label, required String value}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 62,
-          child: Text(
-            label,
-            style: const TextStyle(color: Color(0xFF858C81), fontSize: 12),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              color: Color(0xFF35452D),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -327,22 +326,23 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
           context: context,
           builder: (dialogContext) {
             return AlertDialog(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.white,
+              backgroundColor: const Color(0xFFFFFDF0),
+              surfaceTintColor: Colors.transparent,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
+                side: const BorderSide(color: Color(0xFF6E8E59), width: 1.5),
               ),
               title: const Text(
                 '편지 작성을 그만둘까요?',
                 style: TextStyle(
-                  color: Color(0xFF25341E),
+                  color: Color(0xFF1F2E1B),
                   fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               content: const Text(
                 '작성한 편지 내용이 사라져요.',
-                style: TextStyle(color: Color(0xFF626A5F), fontSize: 14),
+                style: TextStyle(color: Color(0xFF55694A), fontSize: 14),
               ),
               actions: [
                 TextButton(
@@ -358,7 +358,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
                     '그만두기',
                     style: TextStyle(
                       color: Color(0xFF426B2C),
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -380,7 +380,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
     });
   }
 
-  // 편지 보내기 제출
+  // 편지 보내기 제출 (디자인 가이드 - 편지 봉투 팝업 모달)
   Future<void> _submitLetter() async {
     final content = _contentController.text.trim();
 
@@ -388,57 +388,92 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
       return;
     }
 
-    final isGroupLetter = _selectedReceiver == '가족 모두에게';
+    final messageText = _selectedReceiver == '가족 모두에게'
+        ? '가족 모두에게 편지를 보냅니다.'
+        : '$_selectedReceiver 님에게 편지를 보냅니다.';
 
     final shouldSend =
         await showDialog<bool>(
           context: context,
           builder: (dialogContext) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              title: Text(
-                isGroupLetter ? '가족 모두에게 편지를 보낼까요?' : '편지를 보낼까요?',
-                style: const TextStyle(
-                  color: Color(0xFF25341E),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              content: Text(
-                _isAnonymous
-                    ? '${isGroupLetter ? "모든 가족 구성원" : "$_selectedReceiver 님"}에게 익명으로 편지를 보냅니다.\n보낸 사람의 이름은 표시되지 않아요.'
-                    : isGroupLetter
-                    ? '보낸 편지는 모든 가족 구성원이 확인할 수 있어요.'
-                    : '$_selectedReceiver 님에게 편지를 보냅니다.',
-                style: const TextStyle(
-                  color: Color(0xFF626A5F),
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text(
-                    '취소',
-                    style: TextStyle(color: Color(0xFF626A5F)),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text(
-                    '보내기',
-                    style: TextStyle(
-                      color: Color(0xFF426B2C),
-                      fontWeight: FontWeight.w700,
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: SizedBox(
+                width: 279,
+                height: 148,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 1. 봉투 프레임 PNG 에셋 (send_dialog_frame.png)
+                    Image.asset(
+                      'assets/images/mailbox/send_dialog_frame.png',
+                      width: 279,
+                      height: 148,
+                      fit: BoxFit.contain,
                     ),
-                  ),
+
+                    // 2. 메시지 문구 (노란 꽃 아래 여백 배치)
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      top: 72,
+                      child: Text(
+                        messageText,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF182F0D),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+
+                    // 3. 하단 우측 버튼 영역 (cancel_button.svg | action_divider_line.svg | send_button.svg)
+                    Positioned(
+                      right: 20,
+                      bottom: 16,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // 취소 버튼 (cancel_button.svg)
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => Navigator.of(dialogContext).pop(false),
+                            child: SvgPicture.asset(
+                              'assets/svg/mailbox/cancel_button.svg',
+                              width: 27,
+                              height: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+
+                          // 구분선 (action_divider_line.svg)
+                          SvgPicture.asset(
+                            'assets/svg/mailbox/action_divider_line.svg',
+                            width: 1,
+                            height: 12,
+                          ),
+                          const SizedBox(width: 8),
+
+                          // 보내기 버튼 (send_button.svg)
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => Navigator.of(dialogContext).pop(true),
+                            child: SvgPicture.asset(
+                              'assets/svg/mailbox/send_button.svg',
+                              width: 39,
+                              height: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             );
           },
         ) ??
@@ -471,7 +506,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF354F27),
+          backgroundColor: const Color(0xFF5B7E46),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -482,158 +517,193 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appData = context.watch<AppData>();
-    final unreadCount = appData.unreadMailCount;
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F2),
-      appBar: AppBar(
-        leading: _isComposing
-            ? IconButton(
-                onPressed: _closeCompose,
-                icon: const Icon(Icons.arrow_back),
-              )
-            : null,
-        title: const Text(
-          '가족 편지함',
-          style: TextStyle(
-            color: Color(0xFF182F0D),
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
+      backgroundColor: const Color(0xFFFFFDF0),
+      body: SafeArea(
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 480),
+            color: const Color(0xFFFFFDF0),
+            child: Column(
+              children: [
+                // 1. 상단 모아온 편지 에셋 헤더 (top_bar.svg)
+                _buildTopBar(context),
+                const SizedBox(height: 6),
+
+                // 2. 메인 콘텐츠 (편지 작성 모드 vs 편지 목록)
+                Expanded(
+                  child: _isComposing
+                      ? _buildComposeTab()
+                      : Column(
+                          children: [
+                            // 탭 선택바 (letter_tab_bar.svg + selected_item.svg + received_letters_tab.svg / sent_letters_tab.svg)
+                            _buildPillTabBarRow(),
+                            const SizedBox(height: 16),
+
+                            Expanded(child: _buildLetterList()),
+                          ],
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF182F0D)),
-        surfaceTintColor: Colors.white,
       ),
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 480),
-          color: const Color(0xFFF7F7F2),
-          child: _isComposing
-              ? _buildComposeTab()
-              : Column(
-                  children: [
-                    Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildMailboxTab(
-                              title: '받은 편지',
-                              index: 0,
-                              unreadCount: unreadCount,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildMailboxTab(title: '보낸 편지', index: 1),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(child: _buildLetterList()),
-                    SafeArea(
-                      top: false,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                        color: const Color(0xFFF7F7F2),
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() => _isComposing = true);
-                          },
-                          icon: const Icon(Icons.edit_outlined, size: 20),
-                          label: const Text('편지 쓰기'),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(52),
-                            backgroundColor: const Color(0xFF426B2C),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            textStyle: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
+    );
+  }
+
+  // 상단 top_bar.svg 헤더 (원본 359:73 비율 보존하여 세로 변형 방지)
+  Widget _buildTopBar(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width.clamp(0.0, 480.0);
+    final topBarHeight = screenWidth * (73.0 / 359.0);
+
+    return SizedBox(
+      width: double.infinity,
+      height: topBarHeight,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: SvgPicture.asset(
+              'assets/svg/mailbox/top_bar.svg',
+              fit: BoxFit.contain,
+            ),
+          ),
+          // 좌측 뒤로가기 화살표 탭 히트박스 영역
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 70,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (_isComposing) {
+                  _closeCompose();
+                } else {
+                  Navigator.of(context).maybePop();
+                }
+              },
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 탭 선택바 (selected_item.svg, received_letters_tab.svg, sent_letters_tab.svg 사용)
+  Widget _buildPillTabBarRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          const Spacer(),
+          SizedBox(
+            width: 162,
+            height: 42,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 바깥 탭 바 프레임 (letter_tab_bar.png)
+                Image.asset(
+                  'assets/images/mailbox/letter_tab_bar.png',
+                  width: 162,
+                  height: 42,
+                  fit: BoxFit.contain,
+                ),
+
+                // 탭 버튼 및 선택 영역 (selected_item.svg 에셋)
+                Positioned.fill(
+                  child: Row(
+                    children: [
+                      // 받은 편지 탭
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => setState(() => _activeTabIndex = 0),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (_activeTabIndex == 0)
+                                SvgPicture.asset(
+                                  'assets/svg/mailbox/selected_item.svg',
+                                  width: 77,
+                                  height: 37,
+                                  fit: BoxFit.contain,
+                                ),
+                              SvgPicture.asset(
+                                'assets/svg/mailbox/received_letters_tab.svg',
+                                width: 47,
+                                height: 16,
+                                colorFilter: ColorFilter.mode(
+                                  _activeTabIndex == 0
+                                      ? Colors.black
+                                      : const Color(0xFF6B7A63),
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildMailboxTab({
-    required String title,
-    required int index,
-    int unreadCount = 0,
-  }) {
-    final isSelected = _activeTabIndex == index;
-
-    return InkWell(
-      onTap: () {
-        setState(() => _activeTabIndex = index);
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        height: 46,
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEAF2E4) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border(
-            bottom: BorderSide(
-              color: isSelected ? const Color(0xFF426B2C) : Colors.transparent,
-              width: 3,
-            ),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected
-                    ? const Color(0xFF182F0D)
-                    : const Color(0xFF7B8177),
-              ),
-            ),
-            if (unreadCount > 0) ...[
-              const SizedBox(width: 6),
-              Container(
-                constraints: const BoxConstraints(minWidth: 20),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF426B2C),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '$unreadCount',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                      // 보낸 편지 탭
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => setState(() => _activeTabIndex = 1),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (_activeTabIndex == 1)
+                                SvgPicture.asset(
+                                  'assets/svg/mailbox/selected_item.svg',
+                                  width: 77,
+                                  height: 37,
+                                  fit: BoxFit.contain,
+                                ),
+                              SvgPicture.asset(
+                                'assets/svg/mailbox/sent_letters_tab.svg',
+                                width: 45,
+                                height: 12,
+                                colorFilter: ColorFilter.mode(
+                                  _activeTabIndex == 1
+                                      ? Colors.black
+                                      : const Color(0xFF6B7A63),
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-          ],
-        ),
+              ],
+            ),
+          ),
+          const Spacer(),
+
+          // 우측 편지쓰기 아이콘 버튼
+          GestureDetector(
+            onTap: () {
+              setState(() => _isComposing = true);
+            },
+            child: SvgPicture.asset(
+              'assets/svg/mailbox/write_letter_icon.svg',
+              width: 24,
+              height: 24,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // 2. 받은 편지함 (Inbox Tab)
+
+  // 1 & 3. 받은/보낸 편지함 리스트 (빈 상태 및 카드리스트)
   Widget _buildLetterList() {
     final isInbox = _activeTabIndex == 0;
     final letters = isInbox ? _receivedLetters : _sentLetters;
@@ -645,27 +715,33 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                isInbox
-                    ? Icons.mark_email_unread_outlined
-                    : Icons.send_outlined,
-                size: 44,
-                color: const Color(0xFFA9B5A2),
+              // 중앙 나무 일러스트 에셋 (6_그림.svg)
+              SvgPicture.asset(
+                'assets/svg/mailbox/letter_illustration.svg',
+                width: 140,
+                height: 140,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 24),
+
               Text(
                 isInbox ? '아직 받은 편지가 없어요' : '아직 보낸 편지가 없어요',
                 style: const TextStyle(
-                  color: Color(0xFF35452D),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1F2E1B),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                isInbox ? '가족이 전한 편지가 이곳에 차곡차곡 쌓여요.' : '가족에게 따뜻한 마음을 전해보세요.',
+
+              const Text(
+                '소중한 가족에게\n따뜻한 마음을 전해 보아요',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF7B8177), fontSize: 13),
+                style: TextStyle(
+                  color: Color(0xFF738E64),
+                  fontSize: 14,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -674,29 +750,29 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       itemCount: letters.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      separatorBuilder: (context, index) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         final letter = letters[index];
-        final showUnread = isInbox && !letter.isRead;
 
-        return InkWell(
+        final prefix = isInbox ? 'From. ' : 'To. ';
+        final personName = isInbox
+            ? (letter.isAnonymous ? '익명의 가족' : letter.sender)
+            : letter.receiver;
+
+        return GestureDetector(
           onTap: () => _openLetterDetail(letter),
-          borderRadius: BorderRadius.circular(14),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: showUnread ? const Color(0xFFF0F6EC) : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: showUnread
-                    ? const Color(0xFFB8CDAA)
-                    : const Color(0xFFE2E6DF),
-              ),
+              color: const Color(0xFFFFFBE8),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF7E9F67), width: 1.2),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x0D000000),
+                  color: Color(0x0A000000),
                   blurRadius: 8,
                   offset: Offset(0, 2),
                 ),
@@ -705,62 +781,55 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    if (showUnread) ...[
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF426B2C),
-                          shape: BoxShape.circle,
-                        ),
+                // Header: From. {name} or To. {name}
+                RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      color: Color(0xFF1F2E1B),
+                      fontSize: 16,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: prefix,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
-                      const SizedBox(width: 8),
+                      TextSpan(
+                        text: personName,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
                     ],
-                    Expanded(
-                      child: Text(
-                        isInbox
-                            ? (letter.isAnonymous ? '익명의 가족' : letter.sender)
-                            : letter.receiver,
-                        style: const TextStyle(
-                          color: Color(0xFF25341E),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      letter.date,
-                      style: const TextStyle(
-                        color: Color(0xFF92988E),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  isInbox
-                      ? (letter.isGroupLetter ? '가족 모두에게' : '나에게')
-                      : letter.isAnonymous
-                      ? '익명으로 보냄'
-                      : '보낸 편지',
-                  style: const TextStyle(
-                    color: Color(0xFF7B8177),
-                    fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
+
+                // Content preview
                 Text(
                   letter.content,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: const Color(0xFF465043),
+                  style: const TextStyle(
+                    color: Color(0xFF3B4D34),
                     fontSize: 14,
-                    height: 1.45,
-                    fontWeight: showUnread ? FontWeight.w600 : FontWeight.w400,
+                    height: 1.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // 날짜 구분선
+                Container(
+                  height: 1,
+                  color: const Color(0xFF7E9F67).withAlpha(100),
+                ),
+                const SizedBox(height: 10),
+
+                // 날짜 표시 (20XX.XX.XX 월요일)
+                Text(
+                  letter.date,
+                  style: const TextStyle(
+                    color: Color(0xFF6B8756),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -771,7 +840,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
     );
   }
 
-  // 3. 편지 쓰기 (Compose Tab)
+  // 4. 편지 쓰기 화면 (수신자 선택 + 익명 체크박스 + 편지 작성 + 편지 보내기 버튼)
   Widget _buildComposeTab() {
     final canSubmit = _contentController.text.trim().isNotEmpty;
 
@@ -784,184 +853,168 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
       },
       child: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 수신자 선택 라벨
             const Text(
-              '받는 사람',
+              '수신자 선택',
               style: TextStyle(
-                color: Color(0xFF35452D),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              child: InkWell(
-                onTap: _showReceiverPicker,
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 15,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFDDE4D8)),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.person_outline,
-                        color: Color(0xFF426B2C),
-                        size: 21,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _selectedReceiver,
-                          style: const TextStyle(
-                            color: Color(0xFF25341E),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Color(0xFF7B8177),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: const Color(0xFFDDE4D8)),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '익명으로 보내기',
-                          style: TextStyle(
-                            color: Color(0xFF35452D),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '받는 사람에게 보낸 사람의 이름이 표시되지 않아요.',
-                          style: TextStyle(
-                            color: Color(0xFF8A9186),
-                            fontSize: 11,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Switch(
-                    value: _isAnonymous,
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: const Color(0xFF426B2C),
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: const Color(0xFFD5D9D2),
-                    onChanged: (value) {
-                      setState(() => _isAnonymous = value);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 22),
-
-            const Text(
-              '편지 내용',
-              style: TextStyle(
-                color: Color(0xFF35452D),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            TextField(
-              controller: _contentController,
-              minLines: 7,
-              maxLines: 10,
-              maxLength: 500,
-              keyboardType: TextInputType.multiline,
-              textInputAction: TextInputAction.newline,
-              onChanged: (_) => setState(() {}),
-              style: const TextStyle(
-                color: Color(0xFF35452D),
+                color: Color(0xFF1F2E1B),
                 fontSize: 15,
-                height: 1.55,
-              ),
-              decoration: InputDecoration(
-                hintText: '오늘 전하고 싶었던 마음을 편지로 남겨보세요.',
-                hintStyle: const TextStyle(
-                  color: Color(0xFFADB3A9),
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-                counterStyle: const TextStyle(
-                  color: Color(0xFF92988E),
-                  fontSize: 11,
-                ),
-                contentPadding: const EdgeInsets.all(16),
-                filled: true,
-                fillColor: Colors.white,
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFDDE4D8)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF6F925B),
-                    width: 1.5,
-                  ),
-                ),
+                fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 10),
 
-            SizedBox(
+            // To. 수신자 선택 카드
+            GestureDetector(
+              onTap: _showReceiverPicker,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBE8),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF7E9F67), width: 1.2),
+                ),
+                child: Row(
+                  children: [
+                    const Text(
+                      'To. ',
+                      style: TextStyle(
+                        color: Color(0xFF1F2E1B),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        _selectedReceiver,
+                        style: const TextStyle(
+                          color: Color(0xFF1F2E1B),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // 익명으로 보내기 체크박스 Row
+            GestureDetector(
+              onTap: () {
+                setState(() => _isAnonymous = !_isAnonymous);
+              },
+              child: Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: _isAnonymous
+                          ? const Color(0xFF90B978)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xFF90B978),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: _isAnonymous
+                        ? const Icon(
+                            Icons.check,
+                            size: 16,
+                            color: Colors.white,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    '익명으로 보내기',
+                    style: TextStyle(
+                      color: Color(0xFF3B4D34),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // 편지 쓰기 라벨
+            const Text(
+              '편지 쓰기',
+              style: TextStyle(
+                color: Color(0xFF1F2E1B),
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // 편지 작성 텍스트 영역
+            Container(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: canSubmit ? _submitLetter : null,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                  backgroundColor: const Color(0xFF426B2C),
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: const Color(0xFFD8DDD4),
-                  disabledForegroundColor: const Color(0xFF969D92),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBE8),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF7E9F67), width: 1.2),
+              ),
+              child: TextField(
+                controller: _contentController,
+                minLines: 6,
+                maxLines: 10,
+                maxLength: 500,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                onChanged: (_) => setState(() {}),
+                style: const TextStyle(
+                  color: Color(0xFF2C3E26),
+                  fontSize: 15,
+                  height: 1.6,
+                ),
+                decoration: const InputDecoration(
+                  hintText: '가족에게 마음을 전하는 따뜻한 이야기를 적어주세요.',
+                  hintStyle: TextStyle(
+                    color: Color(0xFF91A883),
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  counterStyle: TextStyle(
+                    color: Color(0xFF738E64),
+                    fontSize: 11,
                   ),
                 ),
-                child: const Text(
-                  '편지 보내기',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // 편지 보내기 버튼 (작성 전: send_letter_yellow.png, 작성 후: send_letter_green.png)
+            Align(
+              alignment: Alignment.center,
+              child: GestureDetector(
+                onTap: canSubmit ? _submitLetter : null,
+                child: Image.asset(
+                  canSubmit
+                      ? 'assets/images/mailbox/send_letter_green.png'
+                      : 'assets/images/mailbox/send_letter_yellow.png',
+                  width: 270,
+                  height: 52,
+                  fit: BoxFit.contain,
                 ),
               ),
             ),

@@ -42,6 +42,9 @@ dependencies:
   file_picker: ^10.3.10
 
   fl_chart: ^1.2.0
+  flutter_svg: ^2.0.10
+
+
 
 
 dev_dependencies:
@@ -68,7 +71,11 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/mailbox/
     - assets/www/
+    - assets/svg/mailbox/
+
+
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

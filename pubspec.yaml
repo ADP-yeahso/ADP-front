@@ -129,6 +129,10 @@ flutter:
     - assets/record/3-2-3 감정 세부단어/3-2-3 감정 세부단어/죄책자책/png/
     - assets/record/3-2-3 감정 세부단어/3-2-3 감정 세부단어/중립일상/svg/
     - assets/record/3-2-3 감정 세부단어/3-2-3 감정 세부단어/중립일상/png/
+    - assets/images/mailbox/
+    - assets/svg/mailbox/
+    - assets/svg/screen3_1/
+    - assets/images/screen3_1/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -64,6 +64,7 @@ class RecordChoiceSheet extends StatelessWidget {
           Center(
             child: _AssetOrText(
               candidatePaths: const [
+                'assets/record/choice/svg/3-0,3-2-1~3-2-5대제목 수정.svg/svg/3-0 메인 헤드라인.svg',
                 'assets/record/choice/svg/3-0svg/svg/3-0 메인 헤드라인.svg',
                 'assets/record/choice/png/3-0png/png/3-0 메인 헤드라인.png',
               ],

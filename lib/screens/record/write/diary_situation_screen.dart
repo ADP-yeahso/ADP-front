@@ -664,6 +664,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
               Center(
                 child: _buildAssetWidget(
                   candidatePaths: const [
+                    'assets/record/choice/svg/3-0,3-2-1~3-2-5대제목 수정.svg/svg/3-2-1 메인 헤드라인.svg',
                     'assets/record/choice/svg/3-2-1.svg/svg/3-2-1 메인 헤드라인.svg',
                     'assets/record/choice/png/3-2-1.png/png/3-2-1 메인 헤드라인.png',
                   ],
@@ -874,6 +875,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
+<<<<<<< HEAD
                                     builder: (_) => DiaryLoadingScreen(
                                       loadNext: () async {
                                         final draft = await DiaryService()
@@ -891,6 +893,13 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                                         );
                                       },
                                     ),
+=======
+                                    builder: (context) =>
+                                        const DiaryLoadingScreen(
+                                          nextScreen:
+                                              DiaryEmotionExploreScreen(),
+                                        ),
+>>>>>>> 2b868bf (3번 에셋 수정 및 하위감정 토글 조립)
                                   ),
                                 );
                               }

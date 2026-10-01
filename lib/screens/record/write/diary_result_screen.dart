@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../models/emotions.dart';
+import '../../../utils/emotion_utils.dart';
 import 'diary_care_content_screen.dart';
 
 class DiaryResultScreen extends StatelessWidget {
-  const DiaryResultScreen({super.key});
+  final Emotion? emotion;
+
+  const DiaryResultScreen({
+    super.key,
+    this.emotion,
+  });
 
   Widget _buildAssetWidget({
     required List<String> candidatePaths,
@@ -31,8 +38,45 @@ class DiaryResultScreen extends StatelessWidget {
     }
   }
 
+  List<String> _getGradientCardCandidatePaths(Emotion emotion) {
+    String name = '중립';
+    switch (emotion.id) {
+      case 1:
+        name = '분노답답';
+        break;
+      case 2:
+        name = '불안초조';
+        break;
+      case 3:
+        name = '슬픔소진';
+        break;
+      case 4:
+        name = '죄책감자책';
+        break;
+      case 5:
+        name = '감사안도';
+        break;
+      case 6:
+        name = '애틋수용';
+        break;
+      case 7:
+      default:
+        name = '중립';
+        break;
+    }
+    return [
+      'assets/record/choice/svg/3-2-5그라데이션 컬러카드.svg/svg/3-2-5 $name 컬러박스.svg',
+      if (name == '죄책감자책')
+        'assets/record/choice/svg/3-2-5그라데이션 컬러카드.svg/svg/3-2-5 죄책감자책 컬라박스.svg',
+      'assets/record/choice/png/3-2-5그라데이션 컬러카드.png/png/3-2-5 $name 컬러박스@3x.png',
+      if (name == '죄책감자책')
+        'assets/record/choice/png/3-2-5그라데이션 컬러카드.png/png/3-2-5 죄책감자책 컬라박스@3x.png',
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final activeEmotion = emotion ?? EmotionValues.neutral;
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0),
       appBar: AppBar(
@@ -57,14 +101,21 @@ class DiaryResultScreen extends StatelessWidget {
               children: [
                 const SizedBox(height: 10),
                 // 1. 헤드라인 ("감정 기록 완료")
-                const Text(
-                  '감정 기록 완료',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF222222),
+                _buildAssetWidget(
+                  candidatePaths: const [
+                    'assets/record/choice/svg/3-0,3-2-1~3-2-5대제목 수정.svg/svg/3-2-5 메인 헤드라인.svg',
+                    'assets/record/choice/svg/3-2-5.svg/svg/3-2-5 메인 헤드라인.svg',
+                    'assets/record/choice/png/3-2-5.png/png/3-2-5 메인 헤드라인.png',
+                  ],
+                  fallback: const Text(
+                    '감정 기록 완료',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF222222),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 30),
 
@@ -80,23 +131,28 @@ class DiaryResultScreen extends StatelessWidget {
                         offset: const Offset(18, 18),
                         child: Transform.rotate(
                           angle: 0.08,
-                          child: Container(
+                          child: SizedBox(
                             width: 240,
                             height: 340,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFA5DD82), Color(0xFFC7EFAB)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
+                            child: _buildAssetWidget(
+                              candidatePaths: _getGradientCardCandidatePaths(activeEmotion),
+                              fallback: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [activeEmotion.color, activeEmotion.color.withValues(alpha: 0.7)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(24),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.08),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),

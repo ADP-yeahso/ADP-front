@@ -117,6 +117,7 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
               Center(
                 child: _buildAssetWidget(
                   candidatePaths: const [
+                    'assets/record/choice/svg/3-0,3-2-1~3-2-5대제목 수정.svg/svg/3-2-2 메인 헤드라인.svg',
                     'assets/record/choice/svg/3-2-2.svg/svg/3-2-2 메인 헤드라인.svg',
                     'assets/record/choice/png/3-2-2.png/png/3-2-2 메인 헤드라인.png',
                   ],

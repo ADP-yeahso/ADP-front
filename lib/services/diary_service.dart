@@ -44,10 +44,93 @@ class DiaryFinalization {
   final String flowerSentence;
 }
 
+/// Calendar-only projection of a finalized diary.
+///
+/// A diary is shown on the calendar on the day its final emotion was decided,
+/// rather than on the day its draft was first created.
+class CalendarDiaryEntry {
+  const CalendarDiaryEntry({
+    required this.id,
+    required this.emotionId,
+    required this.emotionName,
+    required this.finalizedAt,
+  });
+
+  final int id;
+  final int? emotionId;
+  final String emotionName;
+  final DateTime finalizedAt;
+
+  static CalendarDiaryEntry? fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    if (id is! int) return null;
+
+    final emotion = json['final_emotion'] ?? json['emotion'];
+    final emotionMap = emotion is Map<String, dynamic>
+        ? emotion
+        : const <String, dynamic>{};
+    if (emotionMap.isEmpty) return null;
+
+    final timestamp =
+        json['finalized_at'] ??
+        json['emotion_finalized_at'] ??
+        json['emotion_created_at'] ??
+        emotionMap['created_at'] ??
+        json['updated_at'];
+    final finalizedAt = timestamp is String
+        ? DateTime.tryParse(timestamp)
+        : null;
+    if (finalizedAt == null) return null;
+
+    return CalendarDiaryEntry(
+      id: id,
+      emotionId: emotionMap['id'] as int?,
+      emotionName: (emotionMap['display_name'] ?? emotionMap['emotion'] ?? '')
+          .toString(),
+      finalizedAt: finalizedAt.toLocal(),
+    );
+  }
+}
+
 class DiaryService {
   DiaryService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+
+  /// Fetches finalized diaries for one calendar month.
+  ///
+  /// The API accepts the date range for efficient filtering. The client also
+  /// filters the result because older servers may ignore those query values.
+  Future<List<CalendarDiaryEntry>> fetchFinalizedForMonth({
+    required AuthTokens tokens,
+    required DateTime month,
+  }) async {
+    final firstDay = DateTime(month.year, month.month, 1);
+    final lastDay = DateTime(month.year, month.month + 1, 0);
+    final response = await _get(
+      '/diaries?start_date=${_dateOnly(firstDay)}&end_date=${_dateOnly(lastDay)}',
+      tokens,
+    );
+    final rawEntries = response is List
+        ? response
+        : response is Map<String, dynamic>
+        ? (response['items'] ?? response['diaries'] ?? response['data'])
+        : null;
+    if (rawEntries is! List) {
+      throw const DiaryException('일기 목록 응답 형식이 올바르지 않습니다.');
+    }
+
+    return rawEntries
+        .whereType<Map<String, dynamic>>()
+        .map(CalendarDiaryEntry.fromJson)
+        .whereType<CalendarDiaryEntry>()
+        .where(
+          (entry) =>
+              entry.finalizedAt.year == month.year &&
+              entry.finalizedAt.month == month.month,
+        )
+        .toList();
+  }
 
   Future<DiaryDraft> createDraftAndQuestion({
     required AuthTokens tokens,
@@ -250,6 +333,9 @@ class DiaryService {
   }
 
   Uri _uri(String path) => Uri.parse('${ApiConfig.baseUrl}$path');
+
+  String _dateOnly(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
   Map<String, String> _headers(AuthTokens tokens) => {
     'Content-Type': 'application/json',

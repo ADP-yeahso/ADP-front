@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
+import '../../data/auth_session.dart';
 import 'day_record_detail_view.dart';
 import '../../data/garden_range.dart';
 
 import '../../models/diary.dart';
 import '../../models/emotions.dart';
 import '../../utils/emotion_utils.dart';
+import '../../services/diary_service.dart';
 
 const _weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -29,6 +31,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late int _year;
   DateTime? _drilldownMonth;
   DateTime? _selectedDay;
+  List<CalendarDiaryEntry>? _calendarDiaries;
+  bool _isLoadingCalendar = false;
 
   @override
   void initState() {
@@ -54,6 +58,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() {
       _selectedDay = day;
     });
+  }
+
+  Future<void> _openMonth(DateTime month) async {
+    setState(() => _drilldownMonth = month);
+    await _loadCalendarDiaries(month);
+  }
+
+  Future<void> _loadCalendarDiaries(DateTime month) async {
+    // Calendar is also embedded in isolated widget tests and preview routes,
+    // where an authenticated session is intentionally not provided.
+    final tokens = context.read<AuthSession?>()?.tokens;
+    if (tokens == null) return;
+
+    setState(() {
+      _isLoadingCalendar = true;
+      _calendarDiaries = null;
+    });
+    try {
+      final diaries = await DiaryService().fetchFinalizedForMonth(
+        tokens: tokens,
+        month: month,
+      );
+      if (mounted && _drilldownMonth == month) {
+        setState(() => _calendarDiaries = diaries);
+      }
+    } on DiaryException {
+      // Keep the calendar usable if the API is temporarily unavailable.
+      if (mounted && _drilldownMonth == month) {
+        setState(() => _calendarDiaries = const []);
+      }
+    } finally {
+      if (mounted && _drilldownMonth == month) {
+        setState(() => _isLoadingCalendar = false);
+      }
+    }
   }
 
   void _goBack() {
@@ -111,15 +150,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _year += delta;
           });
         },
-        onSelectMonth: (month) {
-          setState(() {
-            _drilldownMonth = month;
-          });
-        },
+        onSelectMonth: _openMonth,
       );
     }
 
-    return _DayGrid(month: _drilldownMonth!, onSelectDay: _selectDay);
+    return _DayGrid(
+      month: _drilldownMonth!,
+      onSelectDay: _selectDay,
+      calendarDiaries: _calendarDiaries,
+      isLoading: _isLoadingCalendar,
+    );
   }
 
   @override
@@ -365,10 +405,7 @@ class _MiniDayNumber extends StatelessWidget {
   final int day;
   final bool isToday;
 
-  const _MiniDayNumber({
-    required this.day,
-    required this.isToday,
-  });
+  const _MiniDayNumber({required this.day, required this.isToday});
 
   @override
   Widget build(BuildContext context) {
@@ -394,12 +431,18 @@ class _MiniDayNumber extends StatelessWidget {
   }
 }
 
-
 class _DayGrid extends StatelessWidget {
   final DateTime month;
   final void Function(DateTime day) onSelectDay;
+  final List<CalendarDiaryEntry>? calendarDiaries;
+  final bool isLoading;
 
-  const _DayGrid({required this.month, required this.onSelectDay});
+  const _DayGrid({
+    required this.month,
+    required this.onSelectDay,
+    required this.calendarDiaries,
+    required this.isLoading,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -414,14 +457,30 @@ class _DayGrid extends StatelessWidget {
 
     final latestDiaryByDay = <int, Diary>{};
 
-    for (final diary in appData.diariesForMonth(month)) {
-      if (diary.deletedAt != null) continue;
+    if (calendarDiaries == null) {
+      for (final diary in appData.diariesForMonth(month)) {
+        if (diary.deletedAt != null) continue;
 
-      final day = diary.recordDate.day;
-      final current = latestDiaryByDay[day];
+        final day = diary.recordDate.day;
+        final current = latestDiaryByDay[day];
 
-      if (current == null || diary.createdAt.isAfter(current.createdAt)) {
-        latestDiaryByDay[day] = diary;
+        if (current == null || diary.createdAt.isAfter(current.createdAt)) {
+          latestDiaryByDay[day] = diary;
+        }
+      }
+    }
+
+    final latestRemoteEmotionByDay = <int, Emotion>{};
+    for (final diary in calendarDiaries ?? const <CalendarDiaryEntry>[]) {
+      Emotion? emotion;
+      for (final value in EmotionValues.values) {
+        if (value.id == diary.emotionId) {
+          emotion = value;
+          break;
+        }
+      }
+      if (emotion != null) {
+        latestRemoteEmotionByDay[diary.finalizedAt.day] = emotion;
       }
     }
 
@@ -450,6 +509,7 @@ class _DayGrid extends StatelessWidget {
               .toList(),
         ),
         const SizedBox(height: 6),
+        if (isLoading) const LinearProgressIndicator(minHeight: 2),
         GridView.count(
           crossAxisCount: 7,
           childAspectRatio: 0.82,
@@ -465,7 +525,9 @@ class _DayGrid extends StatelessWidget {
                   today,
                 ),
                 hasMemory: memoryDays.contains(day),
-                flowerEmotion: latestDiaryByDay[day]?.flowerType.emotionId,
+                flowerEmotion:
+                    latestRemoteEmotionByDay[day] ??
+                    latestDiaryByDay[day]?.flowerType.emotionId,
                 onTap: () =>
                     onSelectDay(DateTime(month.year, month.month, day)),
               ),

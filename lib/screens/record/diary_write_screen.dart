@@ -133,30 +133,56 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
   }
 
   Future<void> _pickAudio() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['mp3', 'aac', 'wav', 'm4a', 'flac'],
-      allowMultiple: true,
-    );
-    if (result != null && result.files.isNotEmpty) {
-      setState(() {
-        for (final file in result.files) {
-          if (file.path != null) {
-            _attachedMedia.add(
-              Media(
-                id: DateTime.now().microsecondsSinceEpoch,
-                memoryId: null,
-                diaryId: null,
-                fileUrl: file.path!,
-                fileType: 'audio',
-                duration: 0,
-                sortOrder: _attachedMedia.length + 1,
-                createdAt: DateTime.now(),
-              ),
-            );
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        allowMultiple: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        setState(() {
+          for (final file in result.files) {
+            if (file.path != null) {
+              _attachedMedia.add(
+                Media(
+                  id: DateTime.now().microsecondsSinceEpoch,
+                  memoryId: null,
+                  diaryId: null,
+                  fileUrl: file.path!,
+                  fileType: 'audio',
+                  duration: 0,
+                  sortOrder: _attachedMedia.length + 1,
+                  createdAt: DateTime.now(),
+                ),
+              );
+            }
           }
-        }
-      });
+        });
+      }
+    } catch (_) {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        setState(() {
+          for (final file in result.files) {
+            if (file.path != null) {
+              _attachedMedia.add(
+                Media(
+                  id: DateTime.now().microsecondsSinceEpoch,
+                  memoryId: null,
+                  diaryId: null,
+                  fileUrl: file.path!,
+                  fileType: 'audio',
+                  duration: 0,
+                  sortOrder: _attachedMedia.length + 1,
+                  createdAt: DateTime.now(),
+                ),
+              );
+            }
+          }
+        });
+      }
     }
   }
 

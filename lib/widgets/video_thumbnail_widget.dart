@@ -8,6 +8,7 @@ class VideoThumbnailWidget extends StatefulWidget {
   final double? height;
   final BorderRadius? borderRadius;
   final bool showPlayIcon;
+  final BoxFit fit;
 
   const VideoThumbnailWidget({
     super.key,
@@ -16,6 +17,7 @@ class VideoThumbnailWidget extends StatefulWidget {
     this.height,
     this.borderRadius,
     this.showPlayIcon = true,
+    this.fit = BoxFit.contain,
   });
 
   @override
@@ -92,17 +94,23 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
       inner = Stack(
         fit: StackFit.expand,
         children: [
-          FittedBox(
-            fit: BoxFit.cover,
-            clipBehavior: Clip.hardEdge,
-            child: SizedBox(
-              width: _controller!.value.size.width > 0 ? _controller!.value.size.width : 160,
-              height: _controller!.value.size.height > 0 ? _controller!.value.size.height : 90,
-              child: VideoPlayer(_controller!),
+          // 배경 채움
+          Container(
+            color: const Color(0xFF1E2630),
+          ),
+          // 원본 비율을 유지하며 전체 프레임을 표시 (잘림 방지)
+          Center(
+            child: FittedBox(
+              fit: widget.fit,
+              child: SizedBox(
+                width: _controller!.value.size.width > 0 ? _controller!.value.size.width : 160,
+                height: _controller!.value.size.height > 0 ? _controller!.value.size.height : 90,
+                child: VideoPlayer(_controller!),
+              ),
             ),
           ),
           Container(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withOpacity(0.15),
           ),
           if (widget.showPlayIcon)
             const Center(

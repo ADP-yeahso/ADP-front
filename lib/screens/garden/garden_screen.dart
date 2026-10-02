@@ -16,7 +16,9 @@ import 'entry_detail_sheet.dart';
 
 /// 기억의 정원 – Three.js + WebView 하이브리드 아키텍처
 class GardenScreen extends StatefulWidget {
-  const GardenScreen({super.key});
+  const GardenScreen({super.key, this.assetPreview = false});
+
+  final bool assetPreview;
 
   @override
   State<GardenScreen> createState() => _GardenScreenState();
@@ -107,6 +109,19 @@ class _GardenScreenState extends State<GardenScreen> {
 
   /// 달이 변경될 때마다 3D Scene의 데이터를 다시 주입
   void _reload3DScene() {
+    if (widget.assetPreview) {
+      _webViewController.runJavaScript('''
+        function tryPreviewGarden() {
+          if (typeof window.previewGarden === 'function') {
+            window.previewGarden();
+          } else {
+            setTimeout(tryPreviewGarden, 100);
+          }
+        }
+        tryPreviewGarden();
+      ''');
+      return;
+    }
     final appData = context.read<AppData>();
     final diaries = appData.diariesForMonth(_currentMonth);
 
@@ -202,16 +217,28 @@ class _GardenScreenState extends State<GardenScreen> {
           SafeArea(
             child: Stack(
               children: [
+                if (widget.assetPreview)
+                  const Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: Text(
+                      '꽃 에셋 22종 · 각 한 송이\n꽃을 탭하면 파일 정보와 확대 보기',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF4A6B8A)),
+                    ),
+                  ),
                 // ── 상단 헤더 ──
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: _buildHeader(month),
-                ),
+                if (!widget.assetPreview)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _buildHeader(month),
+                  ),
 
                 // ── 양옆 달 변경 화살표 ──
-                if (!_isFocusing) ...[
+                if (!_isFocusing && !widget.assetPreview) ...[
                   Positioned(
                     left: 12,
                     top: 0,

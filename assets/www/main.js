@@ -9,6 +9,7 @@ let flowerData = [];
 let worldTree;
 let isFocusing = false;
 let gardenLoadId = 0;
+let isAssetPreview = false;
 
 // Default camera position
 const defaultCameraPos = new THREE.Vector3(0, 35, 50);
@@ -145,8 +146,9 @@ function onWindowResize() {
 }
 
 // Function called from Flutter to initialize models
-window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
+window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPreview = false) {
   const currentLoadId = ++gardenLoadId;
+  isAssetPreview = assetPreview;
   document.getElementById('loading').style.display = 'block';
   let diaries = JSON.parse(diariesJson);
   let flowerUrlsMap = JSON.parse(flowerUrlsMapJson);
@@ -275,8 +277,14 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
 
         for (let i = 0; i < numInstances; i++) {
           const diary = assignedDiaries[i];
-          const angle = Math.random() * Math.PI * 2;
-          const r = 10 + Math.random() * 20;
+          // Keep preview flowers separated and in the same place on every run.
+          const previewIndex = diary.previewIndex;
+          const ringIndex = previewIndex < 8 ? previewIndex : previewIndex - 8;
+          const ringCount = previewIndex < 8 ? 8 : diaries.length - 8;
+          const angle = assetPreview
+            ? (ringIndex / ringCount) * Math.PI * 2
+            : Math.random() * Math.PI * 2;
+          const r = assetPreview ? (previewIndex < 8 ? 10 : 18) : 10 + Math.random() * 20;
 
           dummy.position.x = Math.cos(angle) * r;
           dummy.position.z = Math.sin(angle) * r;
@@ -291,7 +299,11 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
             // Currently flowerData is a flat array, but raycaster uses instanceId (0 to numInstances-1).
             // To fix raycasting with multiple InstancedMeshes, we must store a mapping per imesh!
             if (!imesh.userData.diaryMapping) imesh.userData.diaryMapping = [];
-            imesh.userData.diaryMapping[i] = { diaryId: diary.id, position: dummy.position.clone() };
+            imesh.userData.diaryMapping[i] = {
+              diaryId: diary.id,
+              position: dummy.position.clone(),
+              previewLabel: diary.previewLabel,
+            };
           });
         }
 
@@ -337,6 +349,11 @@ function onClick(event) {
       if (instanceId !== undefined) {
         const data = object.userData.diaryMapping ? object.userData.diaryMapping[instanceId] : undefined;
         if (data) {
+          if (data.previewLabel) {
+            showPreviewSelection(data.previewLabel);
+            focusOnFlower(data);
+            break;
+          }
           if (String(data.diaryId).startsWith('dummy')) {
             break; // Ignore dummy clicks
           }
@@ -353,6 +370,7 @@ function onClick(event) {
     }
 
     if (parent && parent.userData?.isTree) {
+      if (isAssetPreview) break;
       focusOnTree(parent);
       break;
     }
@@ -389,7 +407,7 @@ function focusOnFlower(fData) {
     onUpdate: requestRender,
     onComplete: () => {
       // Notify Flutter
-      if (window.FlutterChannel) {
+      if (window.FlutterChannel && !fData.previewLabel) {
         window.FlutterChannel.postMessage(fData.diaryId);
       }
     }
@@ -547,33 +565,56 @@ window.disposeGarden = function() {
   requestRender();
 };
 
-// --- Local Simulator Test Code ---
-// Flutter 환경이 아닐 경우(웹 브라우저에서 직접 실행 시) mid 꽃 파일로 시뮬레이터를 자동 실행합니다.
-setTimeout(() => {
-  if (!window.FlutterChannel) {
-    console.log("Running in local simulator. Initializing with mid flower...");
-    const dummyDiaries = JSON.stringify([
-      { id: 1, emotion: "affection" },
-      { id: 2, emotion: "anger" },
-      { id: 3, emotion: "anxiety" },
-      { id: 4, emotion: "guilt" },
-      { id: 5, emotion: "sadness" },
-      { id: 6, emotion: "gratitude" },
-      { id: 7, emotion: "neutral" }
-    ]);
-    const dummyMap = JSON.stringify({
-      "affection": ["../images/flower/Affection_Lisianthus.glb"],
-      "guilt": ["../images/flower/Guilt_Canna.glb", "../images/flower/Guilt_Clematis.glb"],
-      "anger": ["../images/flower/Anger_Phlox.glb"],
-      "sadness": ["../images/flower/Sadness_ebw.glb"],
-      "anxiety": ["../images/flower/Anxiety_Borage.glb"],
-      "gratitude": ["../images/flower/flower.glb"],
-      "neutral": ["../images/flower/flower.glb"]
+function showPreviewSelection(label) {
+  let panel = document.getElementById('preview-selection');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'preview-selection';
+    panel.style.cssText = 'position:fixed;bottom:60px;left:16px;right:16px;padding:12px;background:rgba(255,255,255,.95);border-radius:12px;font:14px sans-serif;color:#333;text-align:center;z-index:2';
+    const text = document.createElement('div');
+    text.id = 'preview-label';
+    panel.appendChild(text);
+    const button = document.createElement('button');
+    button.textContent = '전체 정원으로 돌아가기';
+    button.style.marginTop = '8px';
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      panel.style.display = 'none';
+      window.resetCamera();
     });
-    window.initGarden(
-      '../images/worldtree.glb',
-      dummyMap,
-      dummyDiaries
-    );
+    // UI taps should not trigger the scene raycaster.
+    panel.addEventListener('touchstart', event => event.stopPropagation(), { passive: true });
+    panel.addEventListener('touchend', event => event.stopPropagation());
+    panel.addEventListener('click', event => event.stopPropagation());
+    document.body.appendChild(panel);
   }
-}, 500);
+  document.getElementById('preview-label').textContent = label;
+  panel.style.display = 'block';
+}
+
+window.previewGarden = async function () {
+  try {
+    const response = await fetch('flower_catalog.json');
+    if (!response.ok) throw new Error(`Flower catalog: HTTP ${response.status}`);
+    const catalog = await response.json();
+    const flowerMap = {};
+    const diaries = catalog.map((flower, index) => {
+      const emotion = `preview_${index}`;
+      flowerMap[emotion] = [`../images/flower/${flower.file}`];
+      return {
+        id: index,
+        emotion,
+        previewIndex: index,
+        previewLabel: `${flower.file} · ${flower.triangles.toLocaleString()} 삼각형 · ${(flower.bytes / 1024).toFixed(0)}KiB${flower.mapped ? '' : ' · 현재 미사용'}`,
+      };
+    });
+    window.disposeGarden();
+    window.initGarden('../images/worldtree.glb', JSON.stringify(flowerMap), JSON.stringify(diaries), true);
+  } catch (error) {
+    document.getElementById('loading').textContent = `미리보기 로딩 실패: ${error.message}`;
+    document.getElementById('loading').style.display = 'block';
+  }
+};
+
+// Opening the viewer directly in a browser uses the same complete asset preview.
+if (!window.FlutterChannel) window.previewGarden();

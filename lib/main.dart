@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'data/app_data.dart';
 import 'data/garden_nav_controller.dart';
 import 'screens/auth/login_screen.dart';

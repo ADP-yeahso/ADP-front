@@ -40,10 +40,12 @@ dependencies:
   webview_flutter: ^4.14.1
   flutter_svg: ^2.3.0
   image_picker: ^1.1.2
-  file_picker: ^10.3.10
-
-  fl_chart: ^1.2.0
+  video_player: ^2.14.0
+  just_audio: ^0.10.6
   audioplayers: ^6.8.1
+  fc_native_video_thumbnail: ^3.0.1
+  file_picker: ^10.3.10
+  fl_chart: ^1.2.0
 
 
 dev_dependencies:
@@ -79,6 +81,8 @@ flutter:
     - assets/images/
     - assets/images/flower/
     - assets/www/
+    - assets/gallery/screen4/
+    - assets/gallery/screen4_png/
     - assets/auth/login/
     - assets/auth/family_group/
     - assets/auth/create_family/
@@ -91,6 +95,28 @@ flutter:
     - assets/page2/weekdays/
     - assets/page2/moods/
     - assets/page2/record_detail/
+
+    - assets/record/
+    - assets/record/choice/
+    - assets/record/choice/svg/
+    - assets/record/choice/png/
+    - assets/record/choice/svg/3-0svg/svg/
+    - assets/record/choice/png/3-0png/png/
+    - assets/record/choice/svg/3-2-0.svg/svg/
+    - assets/record/choice/png/3-2-0.png/png/
+    - assets/record/choice/svg/3-2-1.svg/svg/
+    - assets/record/choice/png/3-2-1.png/png/
+    - assets/record/choice/svg/3-2-2.svg/svg/
+    - assets/record/choice/png/3-2-2.png/png/
+    - assets/record/choice/svg/3-2-3.svg/svg/
+    - assets/record/choice/png/3-2-3.png/png/
+    - assets/record/choice/svg/로딩중.svg/svg/
+    - assets/record/choice/png/로딩중.png/png/
+    - assets/record/choice/svg/3-2-5.svg/svg/
+    - assets/record/choice/png/3-2-5.png/png/
+    - assets/record/choice/svg/3-2-6.svg/svg/
+    - assets/record/choice/png/3-2-6.png/png/
+
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -28,8 +28,8 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   final _titleFocusNode = FocusNode();
   final _contentFocusNode = FocusNode();
 
-  bool get _hasContent =>
-      _titleController.text.trim().isNotEmpty ||
+  bool get _isFormValid =>
+      _titleController.text.trim().isNotEmpty &&
       _contentController.text.trim().isNotEmpty;
 
   @override
@@ -203,7 +203,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   }
 
   void _save() {
-    if (_titleController.text.trim().isEmpty || _contentController.text.trim().isEmpty) {
+    if (!_isFormValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('제목과 내용을 입력해 주세요.')),
       );
@@ -246,11 +246,11 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8DD),
+      backgroundColor: const Color(0xFFFFFBF0),
       body: SafeArea(
         child: Column(
           children: [
-            // ── 상단 영역 (뒤로가기 + 헤드라인 인라인) ──
+            // ── 상단 영역 (뒤로가기 + 헤드라인 가운데 정렬) ──
             _buildTopBar(),
             // ── 스크롤 가능한 메인 영역 ──
             Expanded(
@@ -279,10 +279,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                       const SizedBox(height: 12),
                       _buildMediaList(),
                     ],
-                    const SizedBox(height: 20),
-                    // 가족 공유 토글
-                    _buildShareToggle(),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -298,54 +295,58 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   Widget _buildTopBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-      child: Row(
-        children: [
-          // 뒤로가기 버튼
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: SvgPicture.asset(
-              'assets/svg/screen3_1/back_button.svg',
-              width: 28,
-              height: 28,
-              fit: BoxFit.contain,
-              placeholderBuilder: (_) => Image.asset(
-                'assets/images/screen3_1/back_button.png',
-                width: 28,
-                height: 28,
-                fit: BoxFit.contain,
-                errorBuilder: (e, err, st) => const Icon(
-                  Icons.arrow_back_ios,
-                  color: Color(0xFF4C7B43),
-                  size: 22,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          // 헤드라인 SVG (타이틀 크기로 인라인)
-          Expanded(
-            child: SvgPicture.asset(
-              'assets/svg/screen3_1/main_headline.svg',
-              height: 22,
-              fit: BoxFit.contain,
+      child: SizedBox(
+        height: 32,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // 뒤로가기 버튼
+            Align(
               alignment: Alignment.centerLeft,
-              placeholderBuilder: (_) => Image.asset(
-                'assets/images/screen3_1/main_headline.png',
-                height: 22,
-                fit: BoxFit.contain,
-                alignment: Alignment.centerLeft,
-                errorBuilder: (e, err, st) => const Text(
-                  '환자 정보 입력',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: SvgPicture.asset(
+                  'assets/svg/screen3_1/back_button.svg',
+                  width: 28,
+                  height: 28,
+                  fit: BoxFit.contain,
+                  placeholderBuilder: (_) => Image.asset(
+                    'assets/images/screen3_1/back_button.png',
+                    width: 28,
+                    height: 28,
+                    fit: BoxFit.contain,
+                    errorBuilder: (e, err, st) => const Icon(
+                      Icons.arrow_back_ios,
+                      color: Color(0xFF4C7B43),
+                      size: 22,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+            // 헤드라인 SVG (가운데 정렬, 적절한 크기 조정)
+            Center(
+              child: SvgPicture.asset(
+                'assets/svg/screen3_1/main_headline.svg',
+                height: 25,
+                fit: BoxFit.contain,
+                placeholderBuilder: (_) => Image.asset(
+                  'assets/images/screen3_1/main_headline.png',
+                  height: 25,
+                  fit: BoxFit.contain,
+                  errorBuilder: (e, err, st) => const Text(
+                    '환자 정보 입력',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C3E50),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -353,21 +354,24 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   Widget _buildSubtitle() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: SvgPicture.asset(
-        'assets/svg/screen3_1/subtitle.svg',
-        height: 14,
-        fit: BoxFit.contain,
-        alignment: Alignment.centerLeft,
-        placeholderBuilder: (_) => Image.asset(
-          'assets/images/screen3_1/subtitle.png',
+      child: Center(
+        child: SvgPicture.asset(
+          'assets/svg/screen3_1/subtitle.svg',
           height: 14,
           fit: BoxFit.contain,
-          alignment: Alignment.centerLeft,
-          errorBuilder: (e, err, st) => const Text(
-            '오늘 있었던 일을 기록해 보세요',
-            style: TextStyle(
-              fontSize: 13,
-              color: Color(0xFF6F8962),
+          alignment: Alignment.center,
+          placeholderBuilder: (_) => Image.asset(
+            'assets/images/screen3_1/subtitle.png',
+            height: 14,
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            errorBuilder: (e, err, st) => const Text(
+              '오늘 있었던 일을 기록해 보세요',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF6F8962),
+              ),
             ),
           ),
         ),
@@ -385,9 +389,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // 날짜 박스 배경 SVG
-              SvgPicture.asset(
-                'assets/svg/screen3_1/date_box.svg',
+              // 날짜 박스 배경 PNG
+              Image.asset(
+                'assets/images/screen3_1/date_box.png',
                 fit: BoxFit.fill,
               ),
               // 날짜 레이블 + 값
@@ -439,9 +443,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 제목 박스 배경 SVG
-            SvgPicture.asset(
-              'assets/svg/screen3_1/title_box.svg',
+            // 제목 박스 배경 PNG
+            Image.asset(
+              'assets/images/screen3_1/title_box.png',
               fit: BoxFit.fill,
             ),
             // 제목 입력 영역
@@ -476,6 +480,8 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                       decoration: const InputDecoration(
+                        filled: false,
+                        fillColor: Colors.transparent,
                         hintText: '예: 함께 본 옛날 사진',
                         hintStyle: TextStyle(
                           fontSize: 13,
@@ -504,9 +510,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 본문 박스 배경 SVG
-            SvgPicture.asset(
-              'assets/svg/screen3_1/body_input_box.svg',
+            // 본문 박스 배경 PNG
+            Image.asset(
+              'assets/images/screen3_1/body_input_box.png',
               fit: BoxFit.fill,
             ),
             // 본문 입력 영역
@@ -544,6 +550,8 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                         height: 1.5,
                       ),
                       decoration: const InputDecoration(
+                        filled: false,
+                        fillColor: Colors.transparent,
                         hintText: '오늘 있었던 일을 자유롭게 적어보세요',
                         hintStyle: TextStyle(
                           fontSize: 13,
@@ -565,7 +573,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   }
 
   Widget _buildAttachButtons() {
-    // attach_file_button.svg가 3구역 배경, 그 위에 3개 아이콘 오버레이
+    // attach_file_button.png가 3구역 배경, 그 위에 3개 아이콘 오버레이
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: AspectRatio(
@@ -573,9 +581,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 배경: attach_file_button.svg (3구역 구분선 포함)
-            SvgPicture.asset(
-              'assets/svg/screen3_1/attach_file_button.svg',
+            // 배경: attach_file_button.png (3구역 구분선 포함)
+            Image.asset(
+              'assets/images/screen3_1/attach_file_button.png',
               fit: BoxFit.fill,
             ),
             // 오버레이: 3구역에 각 아이콘 배치
@@ -588,11 +596,11 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                     child: Center(
                       child: SvgPicture.asset(
                         'assets/svg/screen3_1/attach_photo.svg',
-                        height: 28,
+                        height: 24,
                         fit: BoxFit.contain,
                         placeholderBuilder: (_) => Image.asset(
                           'assets/images/screen3_1/attach_photo.png',
-                          height: 28,
+                          height: 24,
                           fit: BoxFit.contain,
                           errorBuilder: (e, err, st) => const Icon(
                             Icons.photo_library_outlined,
@@ -611,11 +619,11 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                     child: Center(
                       child: SvgPicture.asset(
                         'assets/svg/screen3_1/attach_video.svg',
-                        height: 28,
+                        height: 24,
                         fit: BoxFit.contain,
                         placeholderBuilder: (_) => Image.asset(
                           'assets/images/screen3_1/attach_video.png',
-                          height: 28,
+                          height: 24,
                           fit: BoxFit.contain,
                           errorBuilder: (e, err, st) => const Icon(
                             Icons.video_library_outlined,
@@ -634,11 +642,11 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                     child: Center(
                       child: SvgPicture.asset(
                         'assets/svg/screen3_1/attach_audio.svg',
-                        height: 28,
+                        height: 24,
                         fit: BoxFit.contain,
                         placeholderBuilder: (_) => Image.asset(
                           'assets/images/screen3_1/attach_audio.png',
-                          height: 28,
+                          height: 24,
                           fit: BoxFit.contain,
                           errorBuilder: (e, err, st) => const Icon(
                             Icons.audiotrack_outlined,
@@ -771,129 +779,33 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     );
   }
 
-  Widget _buildShareToggle() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          // 가족 공유 라벨 SVG
-          SvgPicture.asset(
-            'assets/svg/screen3_1/share_with_family_label.svg',
-            height: 20,
-            fit: BoxFit.contain,
-            placeholderBuilder: (_) => Image.asset(
-              'assets/images/screen3_1/share_with_family_label.png',
-              height: 20,
-              fit: BoxFit.contain,
-              errorBuilder: (e, err, st) => const Text(
-                '가족에게 공개',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF3A3A3A),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-          const Spacer(),
-          // 커스텀 토글 스위치
-          GestureDetector(
-            onTap: () => setState(() => _isPublic = !_isPublic),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // 트랙 배경
-                SvgPicture.asset(
-                  _isPublic
-                      ? 'assets/svg/screen3_1/switch_track_on.svg'
-                      : 'assets/svg/screen3_1/switch_track_off.svg',
-                  width: 52,
-                  height: 30,
-                  fit: BoxFit.contain,
-                  placeholderBuilder: (_) => Image.asset(
-                    _isPublic
-                        ? 'assets/images/screen3_1/switch_track_on.png'
-                        : 'assets/images/screen3_1/switch_track_off.png',
-                    width: 52,
-                    height: 30,
-                    fit: BoxFit.contain,
-                    errorBuilder: (e, err, st) => Container(
-                      width: 52,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: _isPublic ? const Color(0xFF4C7B43) : const Color(0xFFCCCCCC),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                  ),
-                ),
-                // 썸 (토글 버튼)
-                AnimatedAlign(
-                  alignment: _isPublic ? Alignment.centerRight : Alignment.centerLeft,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: SvgPicture.asset(
-                      'assets/svg/screen3_1/switch_thumb.svg',
-                      width: 24,
-                      height: 24,
-                      fit: BoxFit.contain,
-                      placeholderBuilder: (_) => Image.asset(
-                        'assets/images/screen3_1/switch_thumb.png',
-                        width: 24,
-                        height: 24,
-                        fit: BoxFit.contain,
-                        errorBuilder: (e, err, st) => Container(
-                          width: 24,
-                          height: 24,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildNextButton() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-      child: GestureDetector(
-        onTap: _save,
-        child: SvgPicture.asset(
-          _hasContent
-              ? 'assets/svg/screen3_1/next_button_green.svg'
-              : 'assets/svg/screen3_1/next_button_yellow.svg',
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-          placeholderBuilder: (_) => Image.asset(
-            _hasContent
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 48),
+      child: Center(
+        child: GestureDetector(
+          onTap: _save,
+          child: Image.asset(
+            _isFormValid
                 ? 'assets/images/screen3_1/next_button_green.png'
                 : 'assets/images/screen3_1/next_button_yellow.png',
-            width: double.infinity,
-            fit: BoxFit.fitWidth,
+            width: 213,
+            height: 48,
+            fit: BoxFit.contain,
             errorBuilder: (e, err, st) => Container(
-              height: 56,
+              width: 213,
+              height: 48,
               decoration: BoxDecoration(
-                color: _hasContent ? const Color(0xFF4C7B43) : const Color(0xFFE8C84A),
-                borderRadius: BorderRadius.circular(16),
+                color: _isFormValid ? const Color(0xFFA2D97C) : const Color(0xFFFFEFB5),
+                borderRadius: BorderRadius.circular(24),
               ),
-              child: Center(
+              child: const Center(
                 child: Text(
                   '다음',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: _hasContent ? Colors.white : const Color(0xFF4C3A00),
+                    color: Colors.black,
                   ),
                 ),
               ),

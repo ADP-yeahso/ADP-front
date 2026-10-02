@@ -17,7 +17,7 @@ class VideoThumbnailWidget extends StatefulWidget {
     this.height,
     this.borderRadius,
     this.showPlayIcon = true,
-    this.fit = BoxFit.contain,
+    this.fit = BoxFit.cover,
   });
 
   @override
@@ -91,26 +91,29 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
 
     Widget inner;
     if (_isInitialized && _controller != null) {
+      // 안드로이드/스마트폰 영상의 세로 회전(rotationCorrection 90/270도)을 반영하여 정확한 표시 크기 계산
+      final isRotated = _controller!.value.rotationCorrection == 90 ||
+          _controller!.value.rotationCorrection == 270;
+      final rawWidth = _controller!.value.size.width > 0 ? _controller!.value.size.width : 160.0;
+      final rawHeight = _controller!.value.size.height > 0 ? _controller!.value.size.height : 90.0;
+      final videoWidth = isRotated ? rawHeight : rawWidth;
+      final videoHeight = isRotated ? rawWidth : rawHeight;
+
       inner = Stack(
         fit: StackFit.expand,
         children: [
-          // 배경 채움
-          Container(
-            color: const Color(0xFF1E2630),
-          ),
-          // 원본 비율을 유지하며 전체 프레임을 표시 (잘림 방지)
-          Center(
-            child: FittedBox(
-              fit: widget.fit,
-              child: SizedBox(
-                width: _controller!.value.size.width > 0 ? _controller!.value.size.width : 160,
-                height: _controller!.value.size.height > 0 ? _controller!.value.size.height : 90,
-                child: VideoPlayer(_controller!),
-              ),
+          // 회전 보정된 정확한 종횡비로 타일에 꽉 차게 썸네일 렌더링 (과도한 줌 및 좌우 검은 여백 제거)
+          FittedBox(
+            fit: widget.fit,
+            clipBehavior: Clip.hardEdge,
+            child: SizedBox(
+              width: videoWidth,
+              height: videoHeight,
+              child: VideoPlayer(_controller!),
             ),
           ),
           Container(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withOpacity(0.12),
           ),
           if (widget.showPlayIcon)
             const Center(

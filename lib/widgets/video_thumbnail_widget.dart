@@ -17,7 +17,7 @@ class VideoThumbnailWidget extends StatefulWidget {
     this.height,
     this.borderRadius,
     this.showPlayIcon = true,
-    this.fit = BoxFit.cover,
+    this.fit = BoxFit.contain,
   });
 
   @override
@@ -54,8 +54,11 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
   Future<void> _initVideo() async {
     try {
       final file = File(widget.videoPath);
-      if (widget.videoPath.startsWith('http://') || widget.videoPath.startsWith('https://')) {
-        _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoPath));
+      if (widget.videoPath.startsWith('http://') ||
+          widget.videoPath.startsWith('https://')) {
+        _controller = VideoPlayerController.networkUrl(
+          Uri.parse(widget.videoPath),
+        );
       } else if (file.existsSync()) {
         _controller = VideoPlayerController.file(file);
       } else {
@@ -91,30 +94,31 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
 
     Widget inner;
     if (_isInitialized && _controller != null) {
-      // 안드로이드/스마트폰 영상의 세로 회전(rotationCorrection 90/270도)을 반영하여 정확한 표시 크기 계산
-      final isRotated = _controller!.value.rotationCorrection == 90 ||
-          _controller!.value.rotationCorrection == 270;
-      final rawWidth = _controller!.value.size.width > 0 ? _controller!.value.size.width : 160.0;
-      final rawHeight = _controller!.value.size.height > 0 ? _controller!.value.size.height : 90.0;
-      final videoWidth = isRotated ? rawHeight : rawWidth;
-      final videoHeight = isRotated ? rawWidth : rawHeight;
+      final videoSize = _controller!.value.size;
+
+      final videoWidth = videoSize.width > 0 ? videoSize.width : 160.0;
+      final videoHeight = videoSize.height > 0 ? videoSize.height : 90.0;
 
       inner = Stack(
         fit: StackFit.expand,
         children: [
-          // 회전 보정된 정확한 종횡비로 타일에 꽉 차게 썸네일 렌더링 (과도한 줌 및 좌우 검은 여백 제거)
-          FittedBox(
-            fit: widget.fit,
-            clipBehavior: Clip.hardEdge,
-            child: SizedBox(
-              width: videoWidth,
-              height: videoHeight,
-              child: VideoPlayer(_controller!),
+          // 영상 비율이 썸네일과 다를 때 보이는 여백 색상
+          Container(color: const Color(0xFFF5F3EA)),
+
+          // 영상 전체가 잘리지 않도록 표시
+          Center(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: videoWidth,
+                height: videoHeight,
+                child: VideoPlayer(_controller!),
+              ),
             ),
           ),
-          Container(
-            color: Colors.black.withOpacity(0.12),
-          ),
+
+          Container(color: Colors.black.withValues(alpha: 0.12)),
+
           if (widget.showPlayIcon)
             const Center(
               child: Icon(
@@ -152,11 +156,7 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
 
     return ClipRRect(
       borderRadius: borderRadius,
-      child: SizedBox(
-        width: widget.width,
-        height: widget.height,
-        child: inner,
-      ),
+      child: SizedBox(width: widget.width, height: widget.height, child: inner),
     );
   }
 }

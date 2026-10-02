@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/media.dart';
+import '../../widgets/video_thumbnail_widget.dart';
 
 class GalleryMediaTile extends StatelessWidget {
   final Media item;
@@ -319,17 +320,10 @@ class GalleryMediaTile extends StatelessWidget {
     }
 
     if (item.fileType == 'video') {
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.grey[200]!,
-              Colors.grey[400]!,
-            ],
-          ),
-        ),
+      return VideoThumbnailWidget(
+        videoPath: item.fileUrl,
+        showPlayIcon: false,
+        borderRadius: BorderRadius.zero,
       );
     }
 

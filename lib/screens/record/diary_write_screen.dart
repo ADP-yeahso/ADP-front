@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../models/media.dart';
+import '../../widgets/video_thumbnail_widget.dart';
 import 'diary_loading_screen.dart';
 
 class DiaryWriteScreen extends StatefulWidget {
@@ -346,29 +347,11 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                         ),
                       );
                     } else if (media.fileType == 'video') {
-                      content = Container(
+                      content = VideoThumbnailWidget(
+                        videoPath: media.fileUrl,
                         width: 80,
                         height: 80,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2C3E50),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.play_circle_fill, color: Colors.white, size: 28),
-                            const SizedBox(height: 4),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Text(
-                                fileName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white70, fontSize: 9),
-                              ),
-                            ),
-                          ],
-                        ),
+                        borderRadius: BorderRadius.circular(12),
                       );
                     } else if (media.fileType == 'audio') {
                       content = Container(

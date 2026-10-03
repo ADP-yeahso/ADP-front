@@ -3,10 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
+import '../../../data/auth_session.dart';
 import '../../../models/media.dart';
-import 'diary_emotion_explore_screen.dart';
-import 'diary_loading_screen.dart';
+import '../diary_loading_screen.dart';
 
 class DiarySituationScreen extends StatefulWidget {
   const DiarySituationScreen({super.key});
@@ -47,6 +48,35 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
+  }
+
+  void _submitDiary() {
+    final title = _titleController.text.trim();
+    final content = _contentController.text.trim();
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('일기를 저장하려면 먼저 로그인해주세요.')));
+      return;
+    }
+
+    final attachedMedia = _allDeviceMedia
+        .where((media) => _selectedMediaIds.contains(media.id))
+        .toList(growable: false);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DiaryLoadingScreen(
+          date: DateTime.now(),
+          title: title,
+          content: content,
+          tokens: tokens,
+          isPublic: true,
+          mediaList: attachedMedia,
+        ),
+      ),
+    );
   }
 
   // 기기 내 저장소 실제 미디어 전체 스캔 (재귀 탐색)
@@ -853,20 +883,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                       width: 180,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: isFormValid
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const DiaryLoadingScreen(
-                                          nextScreen:
-                                              DiaryEmotionExploreScreen(),
-                                        ),
-                                  ),
-                                );
-                              }
-                            : null,
+                        onPressed: isFormValid ? _submitDiary : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isFormValid
                               ? const Color(0xFFA5DD82)

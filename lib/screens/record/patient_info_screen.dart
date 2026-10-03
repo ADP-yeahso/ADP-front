@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
 import '../../models/media.dart';
+import '../../widgets/asset_text_scrollbar.dart';
 import '../../widgets/video_thumbnail_widget.dart';
 
 class PatientInfoScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class PatientInfoScreen extends StatefulWidget {
 class _PatientInfoScreenState extends State<PatientInfoScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
+  final _contentScrollController = ScrollController();
   DateTime _date = DateTime.now();
   bool _isPublic = true;
   final List<Media> _attachedMedia = [];
@@ -47,6 +49,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _contentScrollController.dispose();
     _titleFocusNode.dispose();
     _contentFocusNode.dispose();
     super.dispose();
@@ -474,32 +477,42 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
             ),
             // 본문 입력 영역
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  // 본문 폰트 라벨 SVG
-                  SvgPicture.asset(
-                    'assets/svg/screen3_1/body_input_font.svg',
-                    height: 16,
-                    fit: BoxFit.contain,
-                    placeholderBuilder: (_) => Image.asset(
-                      'assets/images/screen3_1/body_input_font.png',
-                      height: 16,
-                      fit: BoxFit.contain,
-                      errorBuilder: (e, err, st) => const Text(
-                        '내용',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF6F8962)),
+                  // 빈 입력칸의 안내 문구는 입력을 가로막지 않도록 겹쳐 표시한다.
+                  if (_contentController.text.isEmpty)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      child: IgnorePointer(
+                        child: SvgPicture.asset(
+                          'assets/svg/screen3_1/body_input_font.svg',
+                          height: 16,
+                          fit: BoxFit.contain,
+                          placeholderBuilder: (_) => Image.asset(
+                            'assets/images/screen3_1/body_input_font.png',
+                            height: 16,
+                            fit: BoxFit.contain,
+                            errorBuilder: (e, err, st) => const Text(
+                              '텍스트 입력',
+                              style: TextStyle(fontSize: 13, color: Color(0xFF6F8962)),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
+                  AssetTextScrollbar(
+                    controller: _contentScrollController,
                     child: TextField(
                       controller: _contentController,
+                      scrollController: _contentScrollController,
+                      scrollPhysics: const ClampingScrollPhysics(),
                       focusNode: _contentFocusNode,
                       maxLines: null,
                       expands: true,
+                      textAlignVertical: TextAlignVertical.top,
                       contextMenuBuilder: (context, editableTextState) => const SizedBox.shrink(),
                       style: const TextStyle(
                         fontSize: 14,
@@ -509,11 +522,6 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                       decoration: const InputDecoration(
                         filled: false,
                         fillColor: Colors.transparent,
-                        hintText: '오늘 있었던 일을 자유롭게 적어보세요',
-                        hintStyle: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFFBBBBBB),
-                        ),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,

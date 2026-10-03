@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../models/media.dart';
+import '../../widgets/video_thumbnail_widget.dart';
 
 class GalleryMediaTile extends StatefulWidget {
   final Media item;
@@ -592,6 +593,7 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
       );
     }
 
+<<<<<<< HEAD
     final file = File(item.fileUrl);
 
     if (file.existsSync()) {
@@ -732,6 +734,13 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
             ],
           ),
         ),
+=======
+    if (item.fileType == 'video') {
+      return VideoThumbnailWidget(
+        videoPath: item.fileUrl,
+        showPlayIcon: false,
+        borderRadius: BorderRadius.zero,
+>>>>>>> 9290fc6 (feat: display first frame video thumbnail for attached videos using VideoThumbnailWidget)
       );
     }
 

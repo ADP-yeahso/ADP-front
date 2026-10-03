@@ -152,6 +152,7 @@ packages:
       sha256: f141ea4f277af142a0356955707f6556f37b03947d39d55585981a06ca437bd6
       url: "https://pub.dev"
     source: hosted
+<<<<<<< HEAD
     version: "0.3.5+5"
   crypto:
     dependency: transitive
@@ -161,6 +162,9 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
+=======
+    version: "0.3.5+4"
+>>>>>>> 9290fc6 (feat: display first frame video thumbnail for attached videos using VideoThumbnailWidget)
   csslib:
     dependency: transitive
     description:
@@ -328,7 +332,19 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+<<<<<<< HEAD
   hooks:
+=======
+  html:
+    dependency: transitive
+    description:
+      name: html
+      sha256: "43b67b8f43321ab066817dfac5619596c98bb1b61624e77203bb4351785f9699"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.15.7"
+  http:
+>>>>>>> 9290fc6 (feat: display first frame video thumbnail for attached videos using VideoThumbnailWidget)
     dependency: transitive
     description:
       name: hooks
@@ -849,18 +865,32 @@ packages:
     dependency: transitive
     description:
       name: video_player_android
+<<<<<<< HEAD
       sha256: e229676f8fade3e0124482495aaa2b548872cc4018b6268adfca4868be16aa74
       url: "https://pub.dev"
     source: hosted
     version: "2.12.0"
+=======
+      sha256: d27054dea34d748a44f06d433a57005d2aac69944485b0abbaed3303dbcfa3f1
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.12.2"
+>>>>>>> 9290fc6 (feat: display first frame video thumbnail for attached videos using VideoThumbnailWidget)
   video_player_avfoundation:
     dependency: transitive
     description:
       name: video_player_avfoundation
+<<<<<<< HEAD
       sha256: c238f5f0a26845cd0bcc2956049b63065a4d3c40ddfc22c3414cd170bef7fff9
       url: "https://pub.dev"
     source: hosted
     version: "2.11.0"
+=======
+      sha256: "2fc56e537324a19eb649fca991aa308ac961b5406292876fa657b062de461fd8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.12.0"
+>>>>>>> 9290fc6 (feat: display first frame video thumbnail for attached videos using VideoThumbnailWidget)
   video_player_platform_interface:
     dependency: transitive
     description:

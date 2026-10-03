@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/auth_session.dart';
 import '../../models/media.dart';
+import '../../widgets/video_thumbnail_widget.dart';
 import 'diary_loading_screen.dart';
 
 class DiaryWriteScreen extends StatefulWidget {
@@ -392,9 +393,11 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                         content = _buildPlaceholderIcon(Icons.image, '사진');
                       }
                     } else if (media.fileType == 'video') {
-                      content = Container(
+                      content = VideoThumbnailWidget(
+                        videoPath: media.fileUrl,
                         width: 80,
                         height: 80,
+<<<<<<< HEAD
                         decoration: BoxDecoration(
                           color: const Color(0xFF2C3E50),
                           borderRadius: BorderRadius.circular(12),
@@ -424,6 +427,9 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                             ),
                           ],
                         ),
+=======
+                        borderRadius: BorderRadius.circular(12),
+>>>>>>> 9290fc6 (feat: display first frame video thumbnail for attached videos using VideoThumbnailWidget)
                       );
                     } else if (media.fileType == 'audio') {
                       content = Container(

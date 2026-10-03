@@ -46,7 +46,11 @@ dependencies:
   audioplayers: ^6.8.1
   fc_native_video_thumbnail: ^3.0.1
   file_picker: ^10.3.10
+<<<<<<< HEAD
   http: ^1.2.2
+=======
+  video_player: ^2.9.2
+>>>>>>> 9290fc6 (feat: display first frame video thumbnail for attached videos using VideoThumbnailWidget)
 
   fl_chart: ^1.2.0
  

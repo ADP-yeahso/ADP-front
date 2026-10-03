@@ -23,6 +23,11 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // 디버그 빌드 시 에뮬레이터(x86_64)용만 포함 → APK 크기 대폭 감소
+        ndk {
+            abiFilters += listOf("x86_64")
+        }
     }
 
     buildTypes {

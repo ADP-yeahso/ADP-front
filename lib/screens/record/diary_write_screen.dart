@@ -397,7 +397,7 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                         videoPath: media.fileUrl,
                         width: 80,
                         height: 80,
-<<<<<<< HEAD
+                        borderRadius: BorderRadius.circular(12),
                         decoration: BoxDecoration(
                           color: const Color(0xFF2C3E50),
                           borderRadius: BorderRadius.circular(12),
@@ -427,9 +427,6 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                             ),
                           ],
                         ),
-=======
-                        borderRadius: BorderRadius.circular(12),
->>>>>>> 9290fc6 (feat: display first frame video thumbnail for attached videos using VideoThumbnailWidget)
                       );
                     } else if (media.fileType == 'audio') {
                       content = Container(

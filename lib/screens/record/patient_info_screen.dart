@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -24,6 +26,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   bool _isPublic = true;
   final List<Media> _attachedMedia = [];
   final ImagePicker _picker = ImagePicker();
+  bool _isPickingMedia = false;
 
   // 입력 필드 포커스 노드
   final _titleFocusNode = FocusNode();
@@ -59,169 +62,96 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     if (picked != null) setState(() => _date = picked);
   }
 
-  Future<void> _pickImages() async {
+  bool _isPickerBusyError(Object error) =>
+      error is PlatformException &&
+      (error.code == 'multiple_request' || error.code == 'already_active');
+
+  Future<void> _runMediaPicker(Future<void> Function() pick) async {
+    if (!mounted || _isPickingMedia) return;
+    setState(() => _isPickingMedia = true);
+    FocusScope.of(context).unfocus();
     try {
-      final List<XFile> images = await _picker.pickMultiImage();
-      if (images.isNotEmpty) {
-        setState(() {
-          for (final image in images) {
-            _attachedMedia.add(
-              Media(
-                id: DateTime.now().microsecondsSinceEpoch,
-                memoryId: null,
-                diaryId: null,
-                fileUrl: image.path,
-                fileType: 'image',
-                duration: 0,
-                sortOrder: _attachedMedia.length + 1,
-                createdAt: DateTime.now(),
-              ),
-            );
-          }
-        });
-      }
-    } catch (_) {
-      final result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: true);
-      if (result != null && result.files.isNotEmpty) {
-        setState(() {
-          for (final file in result.files) {
-            if (file.path != null) {
-              _attachedMedia.add(
-                Media(
-                  id: DateTime.now().microsecondsSinceEpoch,
-                  memoryId: null,
-                  diaryId: null,
-                  fileUrl: file.path!,
-                  fileType: 'image',
-                  duration: 0,
-                  sortOrder: _attachedMedia.length + 1,
-                  createdAt: DateTime.now(),
-                ),
-              );
-            }
-          }
-        });
-      }
+      await pick();
+    } on Exception catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isPickerBusyError(error)
+                ? '열려 있는 파일 선택창을 먼저 닫아 주세요.'
+                : '첨부 파일을 선택하지 못했어요. 다시 시도해 주세요.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isPickingMedia = false);
     }
   }
 
-  Future<void> _pickVideo() async {
-    try {
-      final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-      if (video != null) {
-        setState(() {
-          _attachedMedia.add(
-            Media(
-              id: DateTime.now().microsecondsSinceEpoch,
-              memoryId: null,
-              diaryId: null,
-              fileUrl: video.path,
-              fileType: 'video',
-              duration: 0,
-              sortOrder: _attachedMedia.length + 1,
-              createdAt: DateTime.now(),
-            ),
-          );
-        });
+  void _addPickedMedia(Iterable<String> paths, String fileType) {
+    if (!mounted) return;
+    setState(() {
+      for (final path in paths) {
+        _attachedMedia.add(
+          Media(
+            id: DateTime.now().microsecondsSinceEpoch,
+            memoryId: null,
+            diaryId: null,
+            fileUrl: path,
+            fileType: fileType,
+            duration: 0,
+            sortOrder: _attachedMedia.length + 1,
+            createdAt: DateTime.now(),
+          ),
+        );
       }
-    } catch (_) {
+    });
+  }
+
+  Future<void> _pickImages() => _runMediaPicker(() async {
+    try {
+      final images = await _picker.pickMultiImage();
+      _addPickedMedia(images.map((image) => image.path), 'image');
+    } catch (error) {
+      // A busy picker must finish before another picker can be opened.
+      if (_isPickerBusyError(error) || !mounted) rethrow;
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
+      );
+      if (result != null) {
+        _addPickedMedia(result.paths.whereType<String>(), 'image');
+      }
+    }
+  });
+
+  Future<void> _pickVideo() => _runMediaPicker(() async {
+    try {
+      final video = await _picker.pickVideo(source: ImageSource.gallery);
+      if (video != null) _addPickedMedia([video.path], 'video');
+    } catch (error) {
+      if (_isPickerBusyError(error) || !mounted) rethrow;
       final result = await FilePicker.platform.pickFiles(type: FileType.video);
-      if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
-        setState(() {
-          _attachedMedia.add(
-            Media(
-              id: DateTime.now().microsecondsSinceEpoch,
-              memoryId: null,
-              diaryId: null,
-              fileUrl: result.files.single.path!,
-              fileType: 'video',
-              duration: 0,
-              sortOrder: _attachedMedia.length + 1,
-              createdAt: DateTime.now(),
-            ),
-          );
-        });
+      if (result != null) {
+        _addPickedMedia(result.paths.whereType<String>(), 'video');
       }
     }
-  }
+  });
 
-  Future<void> _pickAudio() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.audio,
-        allowMultiple: true,
-      );
-      if (result != null && result.files.isNotEmpty) {
-        setState(() {
-          for (final file in result.files) {
-            if (file.path != null) {
-              _attachedMedia.add(
-                Media(
-                  id: DateTime.now().microsecondsSinceEpoch,
-                  memoryId: null,
-                  diaryId: null,
-                  fileUrl: file.path!,
-                  fileType: 'audio',
-                  duration: 0,
-                  sortOrder: _attachedMedia.length + 1,
-                  createdAt: DateTime.now(),
-                ),
-              );
-            }
-          }
-        });
-      }
-    } catch (_) {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-        allowMultiple: true,
-      );
-      if (result != null && result.files.isNotEmpty) {
-        setState(() {
-          for (final file in result.files) {
-            if (file.path != null) {
-              _attachedMedia.add(
-                Media(
-                  id: DateTime.now().microsecondsSinceEpoch,
-                  memoryId: null,
-                  diaryId: null,
-                  fileUrl: file.path!,
-                  fileType: 'audio',
-                  duration: 0,
-                  sortOrder: _attachedMedia.length + 1,
-                  createdAt: DateTime.now(),
-                ),
-              );
-            }
-          }
-        });
-      }
+  Future<void> _pickAudio() => _runMediaPicker(() async {
+    // On iOS FileType.audio opens the music library. Use Files for attachments.
+    final useFiles = defaultTargetPlatform == TargetPlatform.iOS;
+    final result = await FilePicker.platform.pickFiles(
+      type: useFiles ? FileType.custom : FileType.audio,
+      allowedExtensions: useFiles
+          ? ['mp3', 'm4a', 'wav', 'aac', 'caf', 'aiff', 'flac']
+          : null,
+      allowMultiple: true,
+    );
+    if (result != null) {
+      _addPickedMedia(result.paths.whereType<String>(), 'audio');
     }
-  }
-
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
-    if (result != null && result.files.isNotEmpty) {
-      setState(() {
-        for (final file in result.files) {
-          if (file.path != null) {
-            _attachedMedia.add(
-              Media(
-                id: DateTime.now().microsecondsSinceEpoch,
-                memoryId: null,
-                diaryId: null,
-                fileUrl: file.path!,
-                fileType: 'file',
-                duration: 0,
-                sortOrder: _attachedMedia.length + 1,
-                createdAt: DateTime.now(),
-              ),
-            );
-          }
-        }
-      });
-    }
-  }
+  });
 
   void _removeMedia(int index) {
     setState(() {
@@ -619,7 +549,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                 // 구역 1: 사진
                 Expanded(
                   child: GestureDetector(
-                    onTap: _pickImages,
+                    onTap: _isPickingMedia ? null : _pickImages,
                     child: Center(
                       child: SvgPicture.asset(
                         'assets/svg/screen3_1/attach_photo.svg',
@@ -642,7 +572,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                 // 구역 2: 동영상
                 Expanded(
                   child: GestureDetector(
-                    onTap: _pickVideo,
+                    onTap: _isPickingMedia ? null : _pickVideo,
                     child: Center(
                       child: SvgPicture.asset(
                         'assets/svg/screen3_1/attach_video.svg',
@@ -665,7 +595,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                 // 구역 3: 음성
                 Expanded(
                   child: GestureDetector(
-                    onTap: _pickAudio,
+                    onTap: _isPickingMedia ? null : _pickAudio,
                     child: Center(
                       child: SvgPicture.asset(
                         'assets/svg/screen3_1/attach_audio.svg',
@@ -825,4 +755,3 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     );
   }
 }
-

@@ -8,13 +8,18 @@ let flowerMeshes = []; // Not used for clones anymore, but we can keep for backw
 let flowerData = [];
 let worldTree;
 let isFocusing = false;
+let gardenLoadId = 0;
+let isAssetPreview = false;
 
 // Default camera position
 const defaultCameraPos = new THREE.Vector3(0, 35, 50);
 const origin = new THREE.Vector3(0, 0, 0);
 
+let renderQueued = false;
+let renderRunning = false;
+
 init();
-animate();
+requestRender();
 
 function init() {
   const container = document.getElementById('canvas-container');
@@ -33,7 +38,9 @@ function init() {
 
   // Renderer setup
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio || 1, 2)
+  );
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -78,6 +85,7 @@ function init() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
   controls.target.copy(origin);
+  controls.addEventListener('change', requestRender);
 
   // 핀치 줌 완벽 지원 (너무 뚫고 가거나 나가지 않게 제한)
   controls.enableZoom = true;
@@ -134,10 +142,13 @@ function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  requestRender();
 }
 
 // Function called from Flutter to initialize models
-window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
+window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPreview = false) {
+  const currentLoadId = ++gardenLoadId;
+  isAssetPreview = assetPreview;
   document.getElementById('loading').style.display = 'block';
   let diaries = JSON.parse(diariesJson);
   let flowerUrlsMap = JSON.parse(flowerUrlsMapJson);
@@ -145,6 +156,10 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
 
   // Load Tree
   loader.load(treeUrl, (gltf) => {
+    if (currentLoadId !== gardenLoadId) {
+      disposeObject3D(gltf.scene, new Set());
+      return;
+    }
     worldTree = gltf.scene;
     worldTree.position.set(0, 0, 0);
     // Apply soft material override for healing vibe
@@ -158,6 +173,7 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
     // scale tree if needed
     worldTree.scale.set(1.5, 1.5, 1.5);
     scene.add(worldTree);
+    requestRender();
 
     const numFlowers = diaries.length;
     if (numFlowers === 0) {
@@ -169,14 +185,23 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
     let diariesByUrl = {};
     
     diaries.forEach(diary => {
-      let emotion = diary.emotion ? diary.emotion.toLowerCase() : 'joy';
-      let urls = flowerUrlsMap[emotion];
-      if (!urls || urls.length === 0) {
-        urls = flowerUrlsMap['joy']; // fallback
+      const emotion = typeof diary.emotion === 'string' && diary.emotion.trim() !== ''
+      ? diary.emotion.toLowerCase()
+      : null;
+
+      if (!emotion) {
+        return;
+      }
+
+      const urls = flowerUrlsMap[emotion];
+
+      if (!Array.isArray(urls) || urls.length === 0) {
+        console.warn(`No flower mapping for emotion: ${emotion}`);
+        return;
       }
       // Stable random using diary.id
-      let urlIndex = diary.id % urls.length;
-      let url = urls[urlIndex];
+      const urlIndex = diary.id % urls.length;
+      const url = urls[urlIndex];
       
       if (!diariesByUrl[url]) {
         diariesByUrl[url] = [];
@@ -199,6 +224,15 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
     });
 
     Promise.all(loadPromises).then(results => {
+      if (currentLoadId !== gardenLoadId) {
+        const textures = new Set();
+
+        results.forEach(({ gltf }) => {
+          disposeObject3D(gltf.scene, textures);
+        });
+
+        return;
+      }
       document.getElementById('loading').style.display = 'none';
       
       flowerData = [];
@@ -243,8 +277,14 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
 
         for (let i = 0; i < numInstances; i++) {
           const diary = assignedDiaries[i];
-          const angle = Math.random() * Math.PI * 2;
-          const r = 10 + Math.random() * 20;
+          // Keep preview flowers separated and in the same place on every run.
+          const previewIndex = diary.previewIndex;
+          const ringIndex = previewIndex < 8 ? previewIndex : previewIndex - 8;
+          const ringCount = previewIndex < 8 ? 8 : diaries.length - 8;
+          const angle = assetPreview
+            ? (ringIndex / ringCount) * Math.PI * 2
+            : Math.random() * Math.PI * 2;
+          const r = assetPreview ? (previewIndex < 8 ? 10 : 18) : 10 + Math.random() * 20;
 
           dummy.position.x = Math.cos(angle) * r;
           dummy.position.z = Math.sin(angle) * r;
@@ -259,7 +299,11 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
             // Currently flowerData is a flat array, but raycaster uses instanceId (0 to numInstances-1).
             // To fix raycasting with multiple InstancedMeshes, we must store a mapping per imesh!
             if (!imesh.userData.diaryMapping) imesh.userData.diaryMapping = [];
-            imesh.userData.diaryMapping[i] = { diaryId: diary.id, position: dummy.position.clone() };
+            imesh.userData.diaryMapping[i] = {
+              diaryId: diary.id,
+              position: dummy.position.clone(),
+              previewLabel: diary.previewLabel,
+            };
           });
         }
 
@@ -267,12 +311,19 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson) {
           imesh.instanceMatrix.needsUpdate = true;
         });
       });
+      requestRender();
     }).catch(error => {
+      if (currentLoadId !== gardenLoadId) {
+        return;
+      }
       if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_FLOWER_BATCH: ' + error.message);
       document.getElementById('loading').style.display = 'none';
     });
 
   }, undefined, function (error) {
+    if (currentLoadId !== gardenLoadId) {
+      return;
+    }
     if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_TREE: ' + error.message);
     document.getElementById('loading').style.display = 'none';
   });
@@ -298,6 +349,11 @@ function onClick(event) {
       if (instanceId !== undefined) {
         const data = object.userData.diaryMapping ? object.userData.diaryMapping[instanceId] : undefined;
         if (data) {
+          if (data.previewLabel) {
+            showPreviewSelection(data.previewLabel);
+            focusOnFlower(data);
+            break;
+          }
           if (String(data.diaryId).startsWith('dummy')) {
             break; // Ignore dummy clicks
           }
@@ -314,6 +370,7 @@ function onClick(event) {
     }
 
     if (parent && parent.userData?.isTree) {
+      if (isAssetPreview) break;
       focusOnTree(parent);
       break;
     }
@@ -337,10 +394,7 @@ function focusOnFlower(fData) {
     z: targetCamPos.z,
     duration: 1.5,
     ease: "power3.inOut",
-    onUpdate: () => {
-      // Ensure controls target updates smoothly
-      controls.update();
-    }
+    onUpdate: requestRender,
   });
 
   // Tween Controls Target (LookAt)
@@ -350,9 +404,10 @@ function focusOnFlower(fData) {
     z: fData.position.z,
     duration: 1.5,
     ease: "power3.inOut",
+    onUpdate: requestRender,
     onComplete: () => {
       // Notify Flutter
-      if (window.FlutterChannel) {
+      if (window.FlutterChannel && !fData.previewLabel) {
         window.FlutterChannel.postMessage(fData.diaryId);
       }
     }
@@ -372,9 +427,7 @@ function focusOnTree(treeObj) {
     z: targetCamPos.z,
     duration: 1.5,
     ease: "power3.inOut",
-    onUpdate: () => {
-      controls.update();
-    }
+    onUpdate: requestRender,
   });
 
   gsap.to(controls.target, {
@@ -383,6 +436,7 @@ function focusOnTree(treeObj) {
     z: origin.z,
     duration: 1.5,
     ease: "power3.inOut",
+    onUpdate: requestRender,
     onComplete: () => {
       if (window.FlutterChannel) {
         window.FlutterChannel.postMessage('tree');
@@ -398,7 +452,8 @@ window.resetCamera = function () {
     y: defaultCameraPos.y,
     z: defaultCameraPos.z,
     duration: 1.5,
-    ease: "power3.inOut"
+    ease: "power3.inOut",
+    onUpdate: requestRender,
   });
 
   gsap.to(controls.target, {
@@ -407,82 +462,157 @@ window.resetCamera = function () {
     z: origin.z,
     duration: 1.5,
     ease: "power3.inOut",
+    onUpdate: requestRender,
     onComplete: () => {
       isFocusing = false;
       controls.enabled = true;
 }
 
-function animate() {
-  requestAnimationFrame(animate);
-  controls.update();
-  renderer.render(scene, camera);
+function requestRender() {
+  if (renderQueued || renderRunning) return;
+
+  renderQueued = true;
+
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    renderRunning = true;
+
+    const controlsChanged = controls.update();
+    renderer.render(scene, camera);
+
+    renderRunning = false;
+
+    // OrbitControls damping이 끝날 때까지 계속 렌더링
+    if (controlsChanged) {
+      requestRender();
+    }
+  });
+}
+
+const textureKeys = [
+  'map',
+  'normalMap',
+  'roughnessMap',
+  'metalnessMap',
+  'emissiveMap',
+  'aoMap',
+  'alphaMap',
+  'bumpMap',
+  'displacementMap',
+  'lightMap',
+  'clearcoatMap',
+  'clearcoatNormalMap',
+  'clearcoatRoughnessMap',
+  'transmissionMap',
+  'thicknessMap',
+];
+
+function disposeObject3D(root, textures) {
+  root.traverse((child) => {
+    if (!child.isMesh) return;
+
+    child.geometry?.dispose();
+
+    const materials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
+
+    materials.forEach((material) => {
+      if (!material) return;
+
+      textureKeys.forEach((key) => {
+        const texture = material[key];
+
+        if (texture && !textures.has(texture)) {
+          textures.add(texture);
+          texture.dispose();
+        }
+      });
+
+      material.dispose();
+    });
+  });
+
+  scene.remove(root);
 }
 
 window.disposeGarden = function() {
+  gardenLoadId++;
+  gsap.killTweensOf(camera.position);
+  gsap.killTweensOf(controls.target);
+
+  isFocusing = false;
+  controls.enabled = true;
+
+  const textures = new Set();
+
   if (worldTree) {
-    scene.remove(worldTree);
-    worldTree.traverse((child) => {
-      if (child.isMesh) {
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) {
-          if (Array.isArray(child.material)) {
-            child.material.forEach(m => {
-               if(m.map) m.map.dispose();
-               m.dispose();
-            });
-          } else {
-            if(child.material.map) child.material.map.dispose();
-            child.material.dispose();
-          }
-        }
-      }
-    });
+    disposeObject3D(worldTree, textures);
     worldTree = null;
   }
 
-  if (flowerMeshes && flowerMeshes.length > 0) {
-    flowerMeshes.forEach(imesh => {
-      scene.remove(imesh);
-      if (imesh.geometry) imesh.geometry.dispose();
-      if (imesh.material) {
-          if (Array.isArray(imesh.material)) {
-            imesh.material.forEach(m => {
-               if(m.map) m.map.dispose();
-               m.dispose();
-            });
-          } else {
-            if(imesh.material.map) imesh.material.map.dispose();
-            imesh.material.dispose();
-          }
-      }
+  flowerMeshes.forEach((mesh) => {
+    disposeObject3D(mesh, textures);
+  });
+
+  flowerMeshes = [];
+  flowerData = [];
+
+  renderer.renderLists?.dispose();
+
+  requestRender();
+};
+
+function showPreviewSelection(label) {
+  let panel = document.getElementById('preview-selection');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'preview-selection';
+    panel.style.cssText = 'position:fixed;bottom:60px;left:16px;right:16px;padding:12px;background:rgba(255,255,255,.95);border-radius:12px;font:14px sans-serif;color:#333;text-align:center;z-index:2';
+    const text = document.createElement('div');
+    text.id = 'preview-label';
+    panel.appendChild(text);
+    const button = document.createElement('button');
+    button.textContent = '전체 정원으로 돌아가기';
+    button.style.marginTop = '8px';
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      panel.style.display = 'none';
+      window.resetCamera();
     });
-    flowerMeshes = [];
-    flowerData = [];
+    // UI taps should not trigger the scene raycaster.
+    panel.addEventListener('touchstart', event => event.stopPropagation(), { passive: true });
+    panel.addEventListener('touchend', event => event.stopPropagation());
+    panel.addEventListener('click', event => event.stopPropagation());
+    document.body.appendChild(panel);
   }
+  document.getElementById('preview-label').textContent = label;
+  panel.style.display = 'block';
 }
 
-// --- Local Simulator Test Code ---
-// Flutter 환경이 아닐 경우(웹 브라우저에서 직접 실행 시) mid 꽃 파일로 시뮬레이터를 자동 실행합니다.
-setTimeout(() => {
-  if (!window.FlutterChannel) {
-    console.log("Running in local simulator. Initializing with mid flower...");
-    const dummyDiaries = JSON.stringify([
-      { id: "1", emotion: "joy" }, 
-      { id: "2", emotion: "guilt" }, 
-      { id: "3", emotion: "anger" }, 
-      { id: "4", emotion: "sadness" }, 
-      { id: "5", emotion: "guilt" }
-    ]);
-    const dummyMap = JSON.stringify({
-      "joy": ["../images/flower/Affection_lisian_low.glb"],
-      "guilt": ["../images/flower/Guilt_Canna.glb", "../images/flower/Guilt_Clematis.glb"],
-      "anger": ["../images/flower/Anger_Phlox.glb"],
-      "sadness": ["../images/flower/Sadness_ebw.glb"]
+window.previewGarden = async function () {
+  try {
+    const response = await fetch('flower_catalog.json');
+    if (!response.ok) throw new Error(`Flower catalog: HTTP ${response.status}`);
+    const catalog = await response.json();
+    const flowerMap = {};
+    const diaries = catalog.map((flower, index) => {
+      const emotion = `preview_${index}`;
+      flowerMap[emotion] = [`../images/flower/${flower.file}`];
+      return {
+        id: index,
+        emotion,
+        previewIndex: index,
+        previewLabel: `${flower.file} · ${flower.triangles.toLocaleString()} 삼각형 · ${(flower.bytes / 1024).toFixed(0)}KiB${flower.mapped ? '' : ' · 현재 미사용'}`,
+      };
     });
-    window.initGarden(
-      '../images/worldtree.glb',
-      dummyMap,
-      dummyDiaries
-    );
+    window.disposeGarden();
+    window.initGarden('../images/worldtree.glb', JSON.stringify(flowerMap), JSON.stringify(diaries), true);
+  } catch (error) {
+    document.getElementById('loading').textContent = `미리보기 로딩 실패: ${error.message}`;
+    document.getElementById('loading').style.display = 'block';
   }
-}, 500);
+};
+
+// Opening the viewer directly in a browser uses the same complete asset preview.
+if (!window.FlutterChannel) window.previewGarden();

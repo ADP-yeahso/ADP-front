@@ -106,6 +106,79 @@ void main() {
     expect(requests.map((request) => request.method), ['PATCH', 'GET']);
   });
 
+  testWidgets('감정 모델 응답이 20초를 넘어도 순서대로 추천을 받는다', (tester) async {
+    final client = MockClient((request) async {
+      if (request.method == 'PATCH') return http.Response('{}', 200);
+      expectSync(
+        request.url.path,
+        '/api/v1/diaries/42/emotion-tag-suggestions',
+      );
+      await Future<void>.delayed(const Duration(seconds: 25));
+      return http.Response.bytes(
+        utf8.encode(
+          jsonEncode([
+            {
+              'display_name': '죄책감/자책',
+              'tags': [
+                {'id': 1, 'tag_name': '미안함'},
+                {'id': 2, 'tag_name': '후회'},
+              ],
+            },
+            {
+              'display_name': '슬픔/소진',
+              'tags': [
+                {'id': 3, 'tag_name': '슬픔'},
+              ],
+            },
+          ]),
+        ),
+        200,
+        headers: const {'content-type': 'application/json; charset=utf-8'},
+      );
+    });
+    final result = DiaryService(client: client).saveAnswerAndGetSuggestions(
+      tokens: tokens,
+      diaryId: 42,
+      answer: '미안하고 후회돼요.',
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 25));
+    final tags = await result;
+    expect(tags.map((tag) => tag.emotionName).toSet().toList(), [
+      '죄책감/자책',
+      '슬픔/소진',
+    ]);
+    client.close();
+  });
+
+  test('AI 1순위 감정과 사용자 다수결 정답을 구분한다', () async {
+    final client = MockClient((request) async {
+      if (request.method == 'PUT') {
+        expect(jsonDecode(request.body)['emotion_tag_ids'], [1, 6, 7]);
+        return http.Response('{}', 200);
+      }
+      expect(request.url.path, '/api/v1/diaries/42/finalize');
+      return http.Response.bytes(
+        utf8.encode(
+          jsonEncode({
+            'emotion': {'id': 1, 'display_name': '죄책감/자책'},
+            'correct_emotion': {'id': 2, 'display_name': '슬픔/소진'},
+            'flower': {'flower_name': '꽃', 'sentence': '위로'},
+          }),
+        ),
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
+    });
+    final result = await DiaryService(
+      client: client,
+    ).saveTagsAndFinalize(tokens: tokens, diaryId: 42, tagIds: [1, 6, 7]);
+    expect(result.emotionId, 1);
+    expect(result.emotionName, '죄책감/자책');
+    expect(result.correctEmotionName, '슬픔/소진');
+    client.close();
+  });
+
   test('확정 감정의 timestamp를 기준으로 월간 일기를 가져온다', () async {
     final client = MockClient((request) async {
       expect(request.method, 'GET');

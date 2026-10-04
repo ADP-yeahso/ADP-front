@@ -139,6 +139,18 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
         )
       else ...[
         Text(
+          _tags
+              .map((tag) => tag.emotionName)
+              .toSet()
+              .toList()
+              .asMap()
+              .entries
+              .map((entry) => '${entry.key + 1}순위: ${entry.value}')
+              .join(' · '),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Text(
           '감정 태그를 3개 선택해주세요 (${_selectedTagIds.length}/3)',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
@@ -188,6 +200,11 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
         ),
         const SizedBox(height: 8),
         Text(result.flowerName, style: const TextStyle(fontSize: 20)),
+        if (result.correctEmotionName != null) ...[
+          const SizedBox(height: 12),
+          Text('AI 1순위 감정: ${result.emotionName}'),
+          Text('내 선택으로 확정한 정답 감정: ${result.correctEmotionName}'),
+        ],
         if (result.flowerSentence.isNotEmpty) ...[
           const SizedBox(height: 14),
           Text(result.flowerSentence, textAlign: TextAlign.center),

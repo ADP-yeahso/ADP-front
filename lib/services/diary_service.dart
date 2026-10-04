@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -36,12 +37,14 @@ class DiaryFinalization {
     required this.emotionName,
     required this.flowerName,
     required this.flowerSentence,
+    this.correctEmotionName,
   });
 
   final int? emotionId;
   final String emotionName;
   final String flowerName;
   final String flowerSentence;
+  final String? correctEmotionName;
 }
 
 /// Calendar-only projection of a finalized diary.
@@ -182,6 +185,7 @@ class DiaryService {
     final response = await _get(
       '/diaries/$diaryId/emotion-tag-suggestions',
       tokens,
+      timeout: const Duration(seconds: 75),
     );
     if (response is! List) {
       throw const DiaryException('감정 태그 추천 응답 형식이 올바르지 않습니다.');
@@ -223,6 +227,7 @@ class DiaryService {
     final result = await _post('/diaries/$diaryId/finalize', tokens, const {});
     final emotion = result['emotion'];
     final flower = result['flower'];
+    final correctEmotion = result['correct_emotion'];
     final emotionMap = emotion is Map<String, dynamic>
         ? emotion
         : const <String, dynamic>{};
@@ -230,6 +235,10 @@ class DiaryService {
         ? flower
         : const <String, dynamic>{};
     return DiaryFinalization(
+      correctEmotionName: correctEmotion is Map<String, dynamic>
+          ? (correctEmotion['display_name'] ?? correctEmotion['emotion'])
+                as String?
+          : null,
       emotionId: emotionMap['id'] as int?,
       emotionName:
           (emotionMap['display_name'] ?? emotionMap['emotion'] ?? '오늘의 감정')
@@ -239,9 +248,14 @@ class DiaryService {
     );
   }
 
-  Future<dynamic> _get(String path, AuthTokens tokens) async {
+  Future<dynamic> _get(
+    String path,
+    AuthTokens tokens, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
     final response = await _send(
       () => _client.get(_uri(path), headers: _headers(tokens)),
+      timeout: timeout,
     );
     return _bodyOrThrow(response);
   }
@@ -302,6 +316,8 @@ class DiaryService {
   }) async {
     try {
       return await request().timeout(timeout);
+    } on TimeoutException {
+      throw const DiaryException('서버 응답 대기 시간이 초과됐습니다. 잠시 후 다시 시도해주세요.');
     } on Exception {
       throw const DiaryException('서버에 연결할 수 없습니다. 네트워크와 서버 주소를 확인해주세요.');
     }

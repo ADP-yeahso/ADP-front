@@ -397,39 +397,7 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                         videoPath: media.fileUrl,
                         width: 80,
                         height: 80,
-<<<<<<< HEAD
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2C3E50),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.play_circle_fill,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                            const SizedBox(height: 4),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: Text(
-                                fileName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 9,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-=======
                         borderRadius: BorderRadius.circular(12),
->>>>>>> origin/front-develop
                       );
                     } else if (media.fileType == 'audio') {
                       content = Container(

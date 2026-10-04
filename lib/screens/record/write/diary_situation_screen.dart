@@ -875,7 +875,6 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-<<<<<<< HEAD
                                     builder: (_) => DiaryLoadingScreen(
                                       loadNext: () async {
                                         final draft = await DiaryService()
@@ -893,13 +892,6 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                                         );
                                       },
                                     ),
-=======
-                                    builder: (context) =>
-                                        const DiaryLoadingScreen(
-                                          nextScreen:
-                                              DiaryEmotionExploreScreen(),
-                                        ),
->>>>>>> 2b868bf (3번 에셋 수정 및 하위감정 토글 조립)
                                   ),
                                 );
                               }

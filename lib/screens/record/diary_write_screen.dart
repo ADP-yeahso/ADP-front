@@ -393,18 +393,25 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                         content = _buildPlaceholderIcon(Icons.image, '사진');
                       }
                     } else if (media.fileType == 'video') {
-                      content = VideoThumbnailWidget(
-                        videoPath: media.fileUrl,
-                        width: 80,
-                        height: 80,
+                      content = ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2C3E50),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
+                        child: SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                            VideoThumbnailWidget(
+                              videoPath: media.fileUrl,
+                              width: 80,
+                              height: 80,
+                              borderRadius: BorderRadius.circular(12),
+                              showPlayIcon: false,
+                          ),
+                          Container(color: const Color(0x66000000)),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
                             const Icon(
                               Icons.play_circle_fill,
                               color: Colors.white,
@@ -412,9 +419,7 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                             ),
                             const SizedBox(height: 4),
                             Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
                               child: Text(
                                 fileName,
                                 maxLines: 1,
@@ -427,8 +432,11 @@ class _DiaryWriteScreenState extends State<DiaryWriteScreen> {
                             ),
                           ],
                         ),
-                      );
-                    } else if (media.fileType == 'audio') {
+                      ],
+                    ),
+                  ),
+                );
+                } else if (media.fileType == 'audio') {
                       content = Container(
                         width: 80,
                         height: 80,

@@ -6,7 +6,6 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../models/media.dart';
-import '../../widgets/video_thumbnail_widget.dart';
 
 class GalleryMediaTile extends StatefulWidget {
   final Media item;
@@ -127,13 +126,13 @@ class _AudioPlayerDialogState extends State<_AudioPlayerDialog> {
         position: _position,
       );
     } catch (e) {
-      debugPrint('음성 재생 오류: $e');
+      debugPrint('?뚯꽦 ?ъ깮 ?ㅻ쪟: $e');
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('음성을 재생하지 못했습니다.')));
+      ).showSnackBar(const SnackBar(content: Text('?뚯꽦???ъ깮?섏? 紐삵뻽?듬땲??')));
     } finally {
       if (mounted) {
         setState(() {
@@ -180,7 +179,7 @@ class _AudioPlayerDialogState extends State<_AudioPlayerDialog> {
               children: [
                 const Expanded(
                   child: Text(
-                    '음성 재생',
+                    '?뚯꽦 ?ъ깮',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -534,7 +533,7 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
-                        tooltip: '닫기',
+                        tooltip: '?リ린',
                         onPressed: () {
                           Navigator.pop(dialogContext);
                         },
@@ -593,7 +592,6 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
       );
     }
 
-<<<<<<< HEAD
     final file = File(item.fileUrl);
 
     if (file.existsSync()) {
@@ -667,7 +665,7 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
         _initialized = true;
       });
     } catch (e) {
-      debugPrint('동영상 초기화 오류: $e');
+      debugPrint('?숈쁺??珥덇린???ㅻ쪟: $e');
 
       if (!mounted) return;
 
@@ -717,7 +715,7 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
             children: [
               const Center(
                 child: Text(
-                  '동영상을 재생하지 못했습니다.',
+                  '?숈쁺?곸쓣 ?ъ깮?섏? 紐삵뻽?듬땲??',
                   style: TextStyle(color: Colors.white),
                 ),
               ),
@@ -734,13 +732,6 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
             ],
           ),
         ),
-=======
-    if (item.fileType == 'video') {
-      return VideoThumbnailWidget(
-        videoPath: item.fileUrl,
-        showPlayIcon: false,
-        borderRadius: BorderRadius.zero,
->>>>>>> 9290fc6 (feat: display first frame video thumbnail for attached videos using VideoThumbnailWidget)
       );
     }
 
@@ -861,3 +852,5 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
     );
   }
 }
+
+

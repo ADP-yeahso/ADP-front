@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../models/emotion_model.dart';
 import '../../../services/diary_service.dart';
 import 'diary_loading_screen.dart';
 
@@ -8,9 +9,10 @@ class DiaryEmotionSelectScreen extends StatefulWidget {
   final List<EmotionModel>? subEmotionsB;
   final dynamic emotionLabelA;
   final dynamic emotionLabelB;
-
+  final List<EmotionTagOption>? tags;
   const DiaryEmotionSelectScreen({
     super.key,
+    this.tags,
     this.subEmotionsA,
     this.subEmotionsB,
     this.emotionLabelA,
@@ -77,6 +79,25 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     super.initState();
     List<EmotionModel>? listA = widget.subEmotionsA;
     List<EmotionModel>? listB = widget.subEmotionsB;
+    final tags = widget.tags;
+    final tagEmotions = tags?.map((tag) {
+      final categoryEmotions =
+          EmotionCategories.getSubEmotionsForCategory(tag.emotionName) ??
+          <EmotionModel>[];
+      final match = categoryEmotions.where(
+        (emotion) => emotion.name == tag.name,
+      );
+      return match.isNotEmpty
+          ? match.first
+          : EmotionModel(name: tag.name, color: const Color(0xFF5EA7FF));
+    }).toList();
+
+    if ((listA == null || listB == null) &&
+        tagEmotions != null &&
+        tagEmotions.isNotEmpty) {
+      listA = [for (var i = 0; i < tagEmotions.length; i += 2) tagEmotions[i]];
+      listB = [for (var i = 1; i < tagEmotions.length; i += 2) tagEmotions[i]];
+    }
 
     if (listA == null && widget.emotionLabelA != null) {
       listA = EmotionCategories.getSubEmotionsForCategory(widget.emotionLabelA);

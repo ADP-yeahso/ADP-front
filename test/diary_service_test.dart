@@ -123,4 +123,41 @@ void main() {
     ).saveTags(tokens: tokens, diaryId: 42, tagIds: [1, 6, 7]);
     client.close();
   });
+
+  test('선택 태그 저장 후 최종 확정 API를 순서대로 호출한다', () async {
+    final paths = <String>[];
+    final client = MockClient((request) async {
+      paths.add(request.url.path);
+      if (request.method == 'PUT') {
+        expect(jsonDecode(request.body)['emotion_tag_ids'], [1, 6, 7]);
+        return http.Response(jsonEncode({'correct_emotion_id': 6}), 200);
+      }
+      if (request.method == 'POST') {
+        expect(jsonDecode(request.body), isEmpty);
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode({
+              'emotion': {'id': 6, 'display_name': '애틋함'},
+              'flower': {'flower_name': '은방울꽃', 'sentence': '행복이 찾아옵니다.'},
+            }),
+          ),
+          200,
+          headers: const {'content-type': 'application/json; charset=utf-8'},
+        );
+      }
+      return http.Response('{}', 404);
+    });
+
+    final result = await DiaryService(
+      client: client,
+    ).saveTagsAndFinalize(tokens: tokens, diaryId: 42, tagIds: [1, 6, 7]);
+
+    expect(paths, [
+      '/api/v1/diaries/42/emotion-tags',
+      '/api/v1/diaries/42/finalize',
+    ]);
+    expect(result.emotionId, 6);
+    expect(result.flowerName, '은방울꽃');
+    client.close();
+  });
 }

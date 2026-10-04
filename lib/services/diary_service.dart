@@ -172,6 +172,19 @@ class DiaryService {
     );
   }
 
+  /// 선택 태그를 먼저 저장한 뒤, 저장된 태그를 기준으로 일기를 최종 확정한다.
+  ///
+  /// 두 요청을 호출하는 순서를 한 곳에서 보장해 `selected_tag_count = 0`
+  /// 상태로 finalize 되는 것을 방지한다.
+  Future<DiaryFinalization> saveTagsAndFinalize({
+    required AuthTokens tokens,
+    required int diaryId,
+    required List<int> tagIds,
+  }) async {
+    await saveTags(tokens: tokens, diaryId: diaryId, tagIds: tagIds);
+    return finalizeDiary(tokens: tokens, diaryId: diaryId);
+  }
+
   Future<dynamic> _get(String path, AuthTokens tokens) async {
     final response = await _send(
       () => _client.get(_uri(path), headers: _headers(tokens)),

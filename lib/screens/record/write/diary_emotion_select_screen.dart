@@ -133,9 +133,9 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
 
     setState(() => _isSaving = true);
     try {
-      // The API derives the majority parent emotion from these three tag IDs
-      // and persists it as correct_emotion_id before this screen advances.
-      await DiaryService().saveTags(
+      // Persist the three tags before finalizing so the backend can calculate
+      // correct_emotion_id from the selected tags.
+      await DiaryService().saveTagsAndFinalize(
         tokens: widget.tokens,
         diaryId: widget.draft.id,
         tagIds: tagIds.cast<int>(),

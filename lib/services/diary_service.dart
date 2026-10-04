@@ -152,8 +152,14 @@ class DiaryService {
   Future<DiaryFinalization> finalizeDiary({
     required AuthTokens tokens,
     required int diaryId,
+    required List<int> tagIds,
   }) async {
-    final result = await _post('/diaries/$diaryId/finalize', tokens, const {});
+    if (tagIds.length != 3) {
+      throw const DiaryException('감정 태그를 정확히 3개 선택해주세요.');
+    }
+    final result = await _post('/diaries/$diaryId/finalize', tokens, {
+      'emotion_tag_ids': tagIds,
+    });
     final emotion = result['emotion'];
     final flower = result['flower'];
     final emotionMap = emotion is Map<String, dynamic>
@@ -182,7 +188,7 @@ class DiaryService {
     required List<int> tagIds,
   }) async {
     await saveTags(tokens: tokens, diaryId: diaryId, tagIds: tagIds);
-    return finalizeDiary(tokens: tokens, diaryId: diaryId);
+    return finalizeDiary(tokens: tokens, diaryId: diaryId, tagIds: tagIds);
   }
 
   Future<dynamic> _get(String path, AuthTokens tokens) async {

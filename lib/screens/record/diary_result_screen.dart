@@ -90,6 +90,7 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
       final result = await _service.finalizeDiary(
         tokens: widget.tokens,
         diaryId: widget.draft.id,
+        tagIds: _selectedTagIds.toList(),
       );
       if (mounted) setState(() => _finalization = result);
     } on DiaryException catch (error) {

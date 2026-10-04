@@ -133,7 +133,7 @@ void main() {
         return http.Response(jsonEncode({'correct_emotion_id': 6}), 200);
       }
       if (request.method == 'POST') {
-        expect(jsonDecode(request.body), isEmpty);
+        expect(jsonDecode(request.body)['emotion_tag_ids'], [1, 6, 7]);
         return http.Response.bytes(
           utf8.encode(
             jsonEncode({

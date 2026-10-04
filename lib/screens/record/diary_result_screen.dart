@@ -26,6 +26,7 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
   List<EmotionTagOption> _tags = const [];
   final Set<int> _selectedTagIds = {};
   bool _isSubmitting = false;
+  bool _tagsSaved = false;
   DiaryFinalization? _finalization;
 
   @override
@@ -64,16 +65,31 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
     setState(() => _selectedTagIds.add(id));
   }
 
-  Future<void> _finalize() async {
+  Future<void> _saveTagsAndContinue() async {
     if (_selectedTagIds.length != 3) {
       return _showMessage('감정 태그를 정확히 3개 선택해주세요.');
     }
     setState(() => _isSubmitting = true);
     try {
-      final result = await _service.saveTagsAndFinalize(
+      await _service.saveTags(
         tokens: widget.tokens,
         diaryId: widget.draft.id,
         tagIds: _selectedTagIds.toList(),
+      );
+      if (mounted) setState(() => _tagsSaved = true);
+    } on DiaryException catch (error) {
+      _showMessage(error.message);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _finalizeDiary() async {
+    setState(() => _isSubmitting = true);
+    try {
+      final result = await _service.finalizeDiary(
+        tokens: widget.tokens,
+        diaryId: widget.draft.id,
       );
       if (mounted) setState(() => _finalization = result);
     } on DiaryException catch (error) {
@@ -94,12 +110,22 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
   Widget build(BuildContext context) {
     final finalization = _finalization;
     return Scaffold(
-      appBar: AppBar(title: Text(finalization == null ? 'AI 감정 질문' : '오늘의 감정')),
+      appBar: AppBar(
+        title: Text(
+          finalization != null
+              ? '오늘의 감정'
+              : _tagsSaved
+              ? '오늘의 꽃'
+              : 'AI 감정 질문',
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: finalization == null
-            ? _buildQuestionStep()
-            : _buildCompleteStep(finalization),
+        child: finalization != null
+            ? _buildCompleteStep(finalization)
+            : _tagsSaved
+            ? _buildFlowerStep()
+            : _buildQuestionStep(),
       ),
     );
   }
@@ -160,9 +186,9 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: _isSubmitting ? null : _finalize,
-            icon: const Icon(Icons.local_florist),
-            label: Text(_isSubmitting ? '저장 중...' : '꽃으로 저장하기'),
+            onPressed: _isSubmitting ? null : _saveTagsAndContinue,
+            icon: const Icon(Icons.arrow_forward),
+            label: Text(_isSubmitting ? '저장 중...' : '다음'),
           ),
         ),
       ],
@@ -173,6 +199,27 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
           style: const TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
+    ],
+  );
+
+  Widget _buildFlowerStep() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        '선택한 감정을 저장했어요.',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 10),
+      const Text('이제 AI 1순위 감정에 맞는 오늘의 꽃을 저장할 수 있어요.'),
+      const SizedBox(height: 28),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          onPressed: _isSubmitting ? null : _finalizeDiary,
+          icon: const Icon(Icons.local_florist),
+          label: Text(_isSubmitting ? '꽃을 저장 중...' : '꽃으로 저장하기'),
+        ),
+      ),
     ],
   );
 

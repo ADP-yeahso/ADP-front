@@ -149,6 +149,17 @@ class DiaryService {
     });
   }
 
+  Future<Map<String, dynamic>> getDiaryDetail({
+    required AuthTokens tokens,
+    required int diaryId,
+  }) async {
+    final result = await _get('/diaries/$diaryId', tokens);
+    if (result is! Map<String, dynamic>) {
+      throw const DiaryException('일기 상세 응답 형식이 올바르지 않습니다.');
+    }
+    return result;
+  }
+
   Future<DiaryFinalization> finalizeDiary({
     required AuthTokens tokens,
     required int diaryId,
@@ -188,6 +199,16 @@ class DiaryService {
     required List<int> tagIds,
   }) async {
     await saveTags(tokens: tokens, diaryId: diaryId, tagIds: tagIds);
+
+    // PUT이 성공해도 운영 DB의 RPC/마이그레이션이 누락되면 실제 선택 태그가
+    // 저장되지 않을 수 있다. finalize 전에 DB에 3개가 반영됐는지 확인한다.
+    final detail = await getDiaryDetail(tokens: tokens, diaryId: diaryId);
+    final selectedTags = detail['selected_emotion_tags'];
+    if (selectedTags is! List || selectedTags.length != 3) {
+      throw const DiaryException(
+        '선택한 감정 태그가 서버에 저장되지 않았습니다. 백엔드 DB 마이그레이션을 확인해주세요.',
+      );
+    }
     return finalizeDiary(tokens: tokens, diaryId: diaryId, tagIds: tagIds);
   }
 

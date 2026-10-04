@@ -145,6 +145,18 @@ void main() {
           headers: const {'content-type': 'application/json; charset=utf-8'},
         );
       }
+      if (request.method == 'GET') {
+        return http.Response(
+          jsonEncode({
+            'selected_emotion_tags': [
+              {'id': 1},
+              {'id': 6},
+              {'id': 7},
+            ],
+          }),
+          200,
+        );
+      }
       return http.Response('{}', 404);
     });
 
@@ -154,6 +166,7 @@ void main() {
 
     expect(paths, [
       '/api/v1/diaries/42/emotion-tags',
+      '/api/v1/diaries/42',
       '/api/v1/diaries/42/finalize',
     ]);
     expect(result.emotionId, 6);

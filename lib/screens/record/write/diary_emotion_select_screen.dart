@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../models/emotion_model.dart';
+import '../../../services/auth_service.dart';
 import '../../../services/diary_service.dart';
 import 'diary_loading_screen.dart';
 
 class DiaryEmotionSelectScreen extends StatefulWidget {
-  final List<EmotionModel>? subEmotionsA;
-  final List<EmotionModel>? subEmotionsB;
-  final dynamic emotionLabelA;
-  final dynamic emotionLabelB;
-  final List<EmotionTagOption>? tags;
+  final List<EmotionTagOption> tags;
+  final DiaryDraft draft;
+  final AuthTokens tokens;
+
   const DiaryEmotionSelectScreen({
     super.key,
-    this.tags,
-    this.subEmotionsA,
-    this.subEmotionsB,
-    this.emotionLabelA,
-    this.emotionLabelB,
+    required this.tags,
+    required this.draft,
+    required this.tokens,
   });
 
   /// AI가 추출한 상위 감정 2개의 하위 감정 각각 5개(총 10개)를
@@ -52,6 +50,7 @@ class DiaryEmotionSelectScreen extends StatefulWidget {
 class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
   final List<EmotionModel> _selectedEmotions = [];
   static const int _maxSelection = 3;
+  bool _isSaving = false;
 
   late List<List<EmotionModel>> _scatteredEmotions;
 
@@ -77,34 +76,27 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
   @override
   void initState() {
     super.initState();
-    List<EmotionModel>? listA = widget.subEmotionsA;
-    List<EmotionModel>? listB = widget.subEmotionsB;
-    final tags = widget.tags;
-    final tagEmotions = tags?.map((tag) {
+    final emotionsByCategory = <String, List<EmotionModel>>{};
+    for (final tag in widget.tags) {
       final categoryEmotions =
-          EmotionCategories.getSubEmotionsForCategory(tag.emotionName) ??
+          EmotionCategories.getSubEmotionsForCategory(
+            tag.emotionId ?? tag.emotionName,
+          ) ??
           <EmotionModel>[];
       final match = categoryEmotions.where(
         (emotion) => emotion.name == tag.name,
       );
-      return match.isNotEmpty
-          ? match.first
-          : EmotionModel(name: tag.name, color: const Color(0xFF5EA7FF));
-    }).toList();
-
-    if ((listA == null || listB == null) &&
-        tagEmotions != null &&
-        tagEmotions.isNotEmpty) {
-      listA = [for (var i = 0; i < tagEmotions.length; i += 2) tagEmotions[i]];
-      listB = [for (var i = 1; i < tagEmotions.length; i += 2) tagEmotions[i]];
+      final emotion = EmotionModel(
+        name: tag.name,
+        color: match.isNotEmpty ? match.first.color : const Color(0xFF5EA7FF),
+        tagId: tag.id,
+      );
+      emotionsByCategory.putIfAbsent(tag.emotionName, () => []).add(emotion);
     }
 
-    if (listA == null && widget.emotionLabelA != null) {
-      listA = EmotionCategories.getSubEmotionsForCategory(widget.emotionLabelA);
-    }
-    if (listB == null && widget.emotionLabelB != null) {
-      listB = EmotionCategories.getSubEmotionsForCategory(widget.emotionLabelB);
-    }
+    final categories = emotionsByCategory.values.toList(growable: false);
+    final listA = categories.isNotEmpty ? categories.first : null;
+    final listB = categories.length > 1 ? categories[1] : null;
 
     if (listA != null &&
         listB != null &&
@@ -120,6 +112,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
   }
 
   void _toggleEmotion(EmotionModel emotion) {
+    if (_isSaving) return;
     setState(() {
       if (_selectedEmotions.contains(emotion)) {
         _selectedEmotions.remove(emotion);
@@ -129,6 +122,40 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
         }
       }
     });
+  }
+
+  Future<void> _saveSelectionAndContinue() async {
+    final tagIds = _selectedEmotions.map((emotion) => emotion.tagId).toList();
+    if (tagIds.length != _maxSelection || tagIds.any((id) => id == null)) {
+      _showMessage('감정 태그를 정확히 3개 선택해주세요.');
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      // The API derives the majority parent emotion from these three tag IDs
+      // and persists it as correct_emotion_id before this screen advances.
+      await DiaryService().saveTags(
+        tokens: widget.tokens,
+        diaryId: widget.draft.id,
+        tagIds: tagIds.cast<int>(),
+      );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DiaryLoadingScreen()),
+      );
+    } on DiaryException catch (error) {
+      _showMessage(error.message);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildAssetWidget({
@@ -444,16 +471,8 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                       width: 180,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: isComplete
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const DiaryLoadingScreen(),
-                                  ),
-                                );
-                              }
+                        onPressed: isComplete && !_isSaving
+                            ? _saveSelectionAndContinue
                             : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isComplete
@@ -467,9 +486,9 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                             borderRadius: BorderRadius.circular(26),
                           ),
                         ),
-                        child: const Text(
-                          '다음',
-                          style: TextStyle(
+                        child: Text(
+                          _isSaving ? '저장 중...' : '다음',
+                          style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
                           ),

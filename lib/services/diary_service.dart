@@ -26,11 +26,13 @@ class EmotionTagOption {
     required this.id,
     required this.name,
     required this.emotionName,
+    this.emotionId,
   });
 
   final int id;
   final String name;
   final String emotionName;
+  final int? emotionId;
 }
 
 class DiaryFinalization {
@@ -118,7 +120,12 @@ class DiaryService {
         final name = tag['tag_name'];
         if (id is int && name is String) {
           tags.add(
-            EmotionTagOption(id: id, name: name, emotionName: emotionName),
+            EmotionTagOption(
+              id: id,
+              name: name,
+              emotionName: emotionName,
+              emotionId: item['emotion_id'] as int?,
+            ),
           );
         }
       }

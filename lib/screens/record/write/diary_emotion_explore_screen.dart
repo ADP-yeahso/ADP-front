@@ -206,6 +206,8 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                                             );
                                         return DiaryEmotionSelectScreen(
                                           tags: tags,
+                                          draft: widget.draft,
+                                          tokens: widget.tokens,
                                         );
                                       },
                                     ),

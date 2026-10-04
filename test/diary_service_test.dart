@@ -105,4 +105,22 @@ void main() {
     expect(tags.first.emotionName, '불안');
     expect(requests.map((request) => request.method), ['PATCH', 'GET']);
   });
+
+  test('선택한 세 감정 태그를 다음 단계에서 저장한다', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'PUT');
+      expect(request.url.path, '/api/v1/diaries/42/emotion-tags');
+      expect(jsonDecode(request.body)['emotion_tag_ids'], [1, 6, 7]);
+      return http.Response(
+        jsonEncode({'correct_emotion_id': 6}),
+        200,
+        headers: const {'content-type': 'application/json; charset=utf-8'},
+      );
+    });
+
+    await DiaryService(
+      client: client,
+    ).saveTags(tokens: tokens, diaryId: 42, tagIds: [1, 6, 7]);
+    client.close();
+  });
 }

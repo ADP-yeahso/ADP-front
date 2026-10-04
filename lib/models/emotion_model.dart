@@ -4,10 +4,10 @@ class EmotionModel {
   final String name;
   final Color color;
 
-  const EmotionModel({
-    required this.name,
-    required this.color,
-  });
+  /// Server-side emotion-tag ID. It is null for static preview assets.
+  final int? tagId;
+
+  const EmotionModel({required this.name, required this.color, this.tagId});
 }
 
 class EmotionCategory {
@@ -104,4 +104,3 @@ class EmotionData {
     EmotionModel(name: '애틋/수용', color: Color(0xFFFF9EAA)),
   ];
 }
-

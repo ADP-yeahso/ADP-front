@@ -287,11 +287,11 @@ class _TopBar extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+                child: SvgPicture.asset(
+                    'assets/page2/title.svg',
+                    width: 145,
+                    height: 50,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../models/emotion_model.dart';
@@ -133,31 +135,34 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
 
     setState(() => _isSaving = true);
     try {
-      // Persist the three tags before finalizing so the backend can calculate
-      // correct_emotion_id from the selected tags.
-      await DiaryService().saveTagsAndFinalize(
+      // Save the selection, then continue without waiting for flower mapping.
+      await DiaryService().saveTags(
         tokens: widget.tokens,
         diaryId: widget.draft.id,
         tagIds: tagIds.cast<int>(),
       );
       if (!mounted) return;
       _continueToLoadingScreen();
+      unawaited(_finalizeInBackground(tagIds.cast<int>()));
     } catch (error) {
-      // Finalization may fail when no flower card is mapped for the emotion.
-      // The selected tags are already saved, so allow the user to continue.
-      final message = error is DiaryException
-          ? error.message.toLowerCase()
-          : error.toString().toLowerCase();
-      if (message.contains('flower') && message.contains('not found')) {
-        if (!mounted) return;
-        _continueToLoadingScreen();
-        return;
-      }
       _showMessage(
         error is DiaryException ? error.message : error.toString(),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _finalizeInBackground(List<int> tagIds) async {
+    try {
+      await DiaryService().finalizeDiary(
+        tokens: widget.tokens,
+        diaryId: widget.draft.id,
+        tagIds: tagIds,
+      );
+    } catch (error) {
+      // Missing flower mappings must not block the next screen.
+      debugPrint('Diary finalization skipped: $error');
     }
   }
 

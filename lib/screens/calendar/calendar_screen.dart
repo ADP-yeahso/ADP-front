@@ -608,12 +608,44 @@ class _DayGrid extends StatelessWidget {
                   ),
                 ),
               ),
-              child: Center(
-                child: SvgPicture.asset(
-                  'assets/page2/title.svg',
-                  width: 145,
-                  height: 50,
-                  fit: BoxFit.contain,
+              child: SizedBox(
+                width: double.infinity,
+                height: 60,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Center(
+                      child: SvgPicture.asset(
+                        'assets/page2/title.svg',
+                        width: 145,
+                        height: 50,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    Positioned(
+                      left: 10,
+                      top: 0,
+                      bottom: 0,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          onBackToYear();
+                        },
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Center(
+                            child: SvgPicture.asset(
+                              'assets/page2/record_detail/back_button.svg',
+                              width: 24,
+                              height: 24,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -652,17 +684,6 @@ class _DayGrid extends StatelessWidget {
                       onPressed: () => onMonthChange(1),
                     ),
                   ],
-                ),
-                Positioned(
-                  left: 0,
-                  child: IconButton(
-                    icon: SvgPicture.asset(
-                      'assets/page2/record_detail/back_button.svg',
-                      width: 12,
-                      height: 22,
-                    ),
-                    onPressed: onBackToYear,
-                  ),
                 ),
               ],
             ),

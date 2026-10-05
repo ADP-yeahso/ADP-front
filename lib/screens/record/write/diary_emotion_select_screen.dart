@@ -141,15 +141,26 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
         tagIds: tagIds.cast<int>(),
       );
       if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const DiaryLoadingScreen()),
-      );
+      _continueToLoadingScreen();
     } on DiaryException catch (error) {
+      // Finalization may fail when no flower card is mapped for the emotion.
+      // The selected tags are already saved, so allow the user to continue.
+      final message = error.message.toLowerCase();
+      if (message.contains('flower') && message.contains('not found')) {
+        _continueToLoadingScreen();
+        return;
+      }
       _showMessage(error.message);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  void _continueToLoadingScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DiaryLoadingScreen()),
+    );
   }
 
   void _showMessage(String message) {

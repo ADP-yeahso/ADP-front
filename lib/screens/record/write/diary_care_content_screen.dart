@@ -35,38 +35,28 @@ class DiaryCareContentScreen extends StatelessWidget {
                       ],
                     ),
                     padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 타이틀 ("이런 활동은 어떤가요?")
-                        const Text(
-                          '이런 활동은 어떤가요?',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF222222),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final fontSize =
+                            (constraints.maxWidth / 10).clamp(24.0, 36.0);
 
-                        // 4개의 딥그린 솔루션 미니 박스 (2x2 그리드)
-                        Expanded(
-                          child: GridView.count(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            physics: const NeverScrollableScrollPhysics(),
-                            children: List.generate(4, (index) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF386629), // 시안 딥 그린
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                              );
-                            }),
+                        return Center(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Text(
+                              '도와주셔서 감사합니다!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'OngleipMimi',
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.w700,
+                                height: 1.5,
+                                color: const Color(0xFF2A4225),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ),

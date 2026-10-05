@@ -7,7 +7,16 @@ class ApiConfig {
 
   static String get baseUrl {
     if (_configuredBaseUrl.isNotEmpty) {
-      return _configuredBaseUrl.replaceFirst(RegExp(r'/+$'), '');
+      final configuredUri = Uri.parse(_configuredBaseUrl);
+      final resolvedUri = configuredUri.hasScheme
+          ? configuredUri
+          : Uri.base.resolveUri(configuredUri);
+      return resolvedUri.toString().replaceFirst(RegExp(r'/+$'), '');
+    }
+
+    // Release web deployments route API requests through their same-origin proxy.
+    if (kIsWeb && kReleaseMode) {
+      return Uri.base.resolve('/api/v1').toString();
     }
 
     // Android 에뮬레이터에서 호스트 컴퓨터의 localhost에 접근하는 주소입니다.

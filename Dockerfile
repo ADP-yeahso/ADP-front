@@ -3,7 +3,7 @@ FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
 
-ARG API_BASE_URL=https://adp-back-production.up.railway.app/api/v1
+ARG API_BASE_URL=/api/v1
 
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get

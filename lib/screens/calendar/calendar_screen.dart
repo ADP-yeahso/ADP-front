@@ -591,7 +591,7 @@ class _DayGrid extends StatelessWidget {
     return Container(
       color: const Color(0xFFFFFBF0),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 28),
         children: [
 
           Container(
@@ -862,16 +862,16 @@ class _DayCell extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            width: 55,
-            height: 46,
+            width: 78,
+            height: 60,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 if (moodAssetPath != null)
                   SvgPicture.asset(
                     moodAssetPath,
-                    width: 55,
-                    height: 46,
+                    width: 78,
+                    height: 65,
                     fit: BoxFit.contain,
                   ),
                 SvgPicture.asset(

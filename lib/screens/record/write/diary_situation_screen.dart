@@ -845,12 +845,12 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 하단 다음 버튼 (제목 및 텍스트 모두 입력 시 연두색으로 변경 및 클릭 가능)
+              // 제목은 선택 사항이며, 본문을 입력하면 다음 단계로 진행할 수 있습니다.
               Builder(
                 builder: (context) {
-                  final bool isFormValid =
-                      _titleController.text.trim().isNotEmpty &&
-                      _contentController.text.trim().isNotEmpty;
+                  final bool isFormValid = _contentController.text
+                      .trim()
+                      .isNotEmpty;
                   return Center(
                     child: SizedBox(
                       width: 180,

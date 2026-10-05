@@ -32,9 +32,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   final _titleFocusNode = FocusNode();
   final _contentFocusNode = FocusNode();
 
-  bool get _isFormValid =>
-      _titleController.text.trim().isNotEmpty &&
-      _contentController.text.trim().isNotEmpty;
+  bool get _isFormValid => _contentController.text.trim().isNotEmpty;
 
   @override
   void initState() {
@@ -162,7 +160,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   void _save() {
     if (!_isFormValid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('제목과 내용을 입력해 주세요.')),
+        const SnackBar(content: Text('내용을 입력해 주세요.')),
       );
       return;
     }

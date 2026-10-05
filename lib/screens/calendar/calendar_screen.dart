@@ -254,8 +254,9 @@ class _TopBar extends StatelessWidget {
            Text(
               title,
               style: const TextStyle(
+                fontFamily: 'Meetme',
                 color: Colors.black,
-                fontSize: 16,
+                fontSize: 26,
                 fontWeight: FontWeight.w500,
               ),
             ),

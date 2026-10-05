@@ -155,3 +155,6 @@ flutter:
           weight: 600
         - asset: assets/fonts/Pretendard-Bold.ttf
           weight: 700
+    - family: Meetme
+      fonts:
+        - asset: assets/fonts/Ongeulip-Meetme.ttf

@@ -51,7 +51,8 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     if (!_titleFocusNode.hasFocus && !_contentFocusNode.hasFocus) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final targetContext = _contentFocusNode.hasFocus
+      final targetContext =
+          _titleFocusNode.hasFocus || _contentFocusNode.hasFocus
           ? _contentFieldKey.currentContext
           : null;
       if (targetContext != null) {
@@ -62,7 +63,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
           curve: Curves.easeOut,
         );
       }
-      _scheduleContentScroll();
+      if (_contentFocusNode.hasFocus || _titleFocusNode.hasFocus) {
+        _scheduleContentScroll();
+      }
     });
   }
 

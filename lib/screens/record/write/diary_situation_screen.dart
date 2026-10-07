@@ -23,6 +23,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   final TextEditingController _contentController = TextEditingController();
   final _formScrollController = ScrollController();
   final _contentFieldKey = GlobalKey();
+  final _titleFocusNode = FocusNode();
   final _contentFocusNode = FocusNode();
 
   // 하단 미디어 선택 타일의 노출 여부 (최초 진입 시 false로 설정되어 타일이 뜨지 않음)
@@ -45,14 +46,15 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   @override
   void initState() {
     super.initState();
-    _contentFocusNode.addListener(_handleContentFocus);
+    _titleFocusNode.addListener(_handleInputFocus);
+    _contentFocusNode.addListener(_handleInputFocus);
     _scanDeviceMediaFiles();
   }
 
-  void _handleContentFocus() {
+  void _handleInputFocus() {
     if (!mounted) return;
     setState(() {});
-    if (!_contentFocusNode.hasFocus) return;
+    if (!_titleFocusNode.hasFocus && !_contentFocusNode.hasFocus) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _contentFieldKey.currentContext == null) return;
       Scrollable.ensureVisible(
@@ -86,10 +88,12 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
 
   @override
   void dispose() {
-    _contentFocusNode.removeListener(_handleContentFocus);
+    _titleFocusNode.removeListener(_handleInputFocus);
+    _contentFocusNode.removeListener(_handleInputFocus);
     _titleController.dispose();
     _contentController.dispose();
     _formScrollController.dispose();
+    _titleFocusNode.dispose();
     _contentFocusNode.dispose();
     super.dispose();
   }
@@ -730,6 +734,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                 // 제목 입력창 (선택)
                 TextField(
                   controller: _titleController,
+                  focusNode: _titleFocusNode,
                   onChanged: (_) => setState(() {}),
                   style: const TextStyle(fontSize: 15, color: Colors.black87),
                   decoration: InputDecoration(
@@ -763,48 +768,44 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                 const SizedBox(height: 12),
 
                 // 본문 텍스트 입력창 + 최근 미디어 타일 퀵 선택 바
-                SizedBox(
+                Container(
                   height: 280,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.shade300, width: 1),
-                    ),
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            key: _contentFieldKey,
-                            controller: _contentController,
-                            focusNode: _contentFocusNode,
-                            maxLines: null,
-                            expands: true,
-                            textAlignVertical: TextAlignVertical.top,
-                            onChanged: (_) => setState(() {}),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.black87,
-                            ),
-                            decoration: const InputDecoration(
-                              hintText: '텍스트 입력',
-                              hintStyle: TextStyle(
-                                fontSize: 15,
-                                color: Colors.grey,
-                              ),
-                              filled: false,
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      TextField(
+                        key: _contentFieldKey,
+                        controller: _contentController,
+                        focusNode: _contentFocusNode,
+                        minLines: 8,
+                        maxLines: 12,
+                        textAlignVertical: TextAlignVertical.top,
+                        onChanged: (_) => setState(() {}),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Colors.black87,
                         ),
-                        // 사진/영상/음성 첨부 누를 때만 보여지는 최근 미디어 타일 바
-                        _buildInlinePreviewRow(),
-                      ],
-                    ),
+                        decoration: const InputDecoration(
+                          hintText: '텍스트 입력',
+                          hintStyle: TextStyle(
+                            fontSize: 15,
+                            color: Colors.grey,
+                          ),
+                          filled: false,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      // 사진/영상/음성 첨부 누를 때만 보여지는 최근 미디어 타일 바
+                      _buildInlinePreviewRow(),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 20),

@@ -46,6 +46,8 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   }
 
   void _handleInputFocus() {
+    if (!mounted) return;
+    setState(() {});
     if (!_titleFocusNode.hasFocus && !_contentFocusNode.hasFocus) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -60,7 +62,27 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
           curve: Curves.easeOut,
         );
       }
+      _scheduleContentScroll();
     });
+  }
+
+  void _scheduleContentScroll() {
+    if (!_contentFocusNode.hasFocus) return;
+    for (final delay in const [
+      Duration(milliseconds: 120),
+      Duration(milliseconds: 360),
+      Duration(milliseconds: 700),
+    ]) {
+      Future.delayed(delay, () {
+        if (!mounted || !_contentFocusNode.hasFocus) return;
+        if (!_formScrollController.hasClients) return;
+        _formScrollController.animateTo(
+          _formScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      });
+    }
   }
 
   @override
@@ -267,6 +289,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                       _buildMediaList(),
                     ],
                     const SizedBox(height: 32),
+                    if (_contentFocusNode.hasFocus) const SizedBox(height: 360),
                   ],
                 ),
               ),

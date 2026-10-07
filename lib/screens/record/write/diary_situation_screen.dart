@@ -50,6 +50,8 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   }
 
   void _handleContentFocus() {
+    if (!mounted) return;
+    setState(() {});
     if (!_contentFocusNode.hasFocus) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _contentFieldKey.currentContext == null) return;
@@ -59,7 +61,27 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
       );
+      _scheduleContentScroll();
     });
+  }
+
+  void _scheduleContentScroll() {
+    if (!_contentFocusNode.hasFocus) return;
+    for (final delay in const [
+      Duration(milliseconds: 120),
+      Duration(milliseconds: 360),
+      Duration(milliseconds: 700),
+    ]) {
+      Future.delayed(delay, () {
+        if (!mounted || !_contentFocusNode.hasFocus) return;
+        if (!_formScrollController.hasClients) return;
+        _formScrollController.animateTo(
+          _formScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      });
+    }
   }
 
   @override
@@ -865,6 +887,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   },
                 ),
                 const SizedBox(height: 10),
+                if (_contentFocusNode.hasFocus) const SizedBox(height: 360),
               ],
             ),
           ),

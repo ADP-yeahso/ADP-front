@@ -26,6 +26,9 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   final _titleFocusNode = FocusNode();
   final _contentFocusNode = FocusNode();
 
+  bool get _isInputFocused =>
+      _titleFocusNode.hasFocus || _contentFocusNode.hasFocus;
+
   // 하단 미디어 선택 타일의 노출 여부 (최초 진입 시 false로 설정되어 타일이 뜨지 않음)
   bool _isTileRowVisible = false;
 
@@ -54,32 +57,18 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   void _handleInputFocus() {
     if (!mounted) return;
     setState(() {});
-    if (!_titleFocusNode.hasFocus && !_contentFocusNode.hasFocus) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _contentFieldKey.currentContext == null) return;
-      Scrollable.ensureVisible(
-        _contentFieldKey.currentContext!,
-        alignment: 0.15,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-      _scheduleContentScroll();
-    });
-  }
-
-  void _scheduleContentScroll() {
-    if (!_contentFocusNode.hasFocus) return;
+    if (!_isInputFocused) return;
     for (final delay in const [
-      Duration(milliseconds: 120),
-      Duration(milliseconds: 360),
-      Duration(milliseconds: 700),
+      Duration.zero,
+      Duration(milliseconds: 180),
+      Duration(milliseconds: 420),
     ]) {
       Future.delayed(delay, () {
-        if (!mounted || !_contentFocusNode.hasFocus) return;
+        if (!mounted || !_isInputFocused) return;
         if (!_formScrollController.hasClients) return;
         _formScrollController.animateTo(
-          _formScrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 220),
+          0,
+          duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
         );
       });
@@ -664,6 +653,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   @override
   Widget build(BuildContext context) {
     const backgroundColor = Color(0xFFFFFBF0);
+    final isKeyboardLayout = _isInputFocused;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -671,6 +661,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 0,
+        toolbarHeight: isKeyboardLayout ? 40 : kToolbarHeight,
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new,
@@ -682,33 +673,40 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            isKeyboardLayout ? 0 : 10,
+            20,
+            isKeyboardLayout ? 0 : 10,
+          ),
           child: SingleChildScrollView(
             controller: _formScrollController,
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 다람쥐 캐릭터 (150x150)
-                Center(
-                  child: SizedBox(
-                    width: 150,
-                    height: 150,
-                    child: _buildAssetWidget(
-                      candidatePaths: const [
-                        'assets/record/choice/svg/3-2-1.svg/svg/3-2-1 다람쥐2.svg',
-                        'assets/record/choice/png/3-2-1.png/png/3-2-1 다람쥐2.png',
-                      ],
-                      fallback: Container(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFDCDCDC),
-                          shape: BoxShape.circle,
+                if (!isKeyboardLayout) ...[
+                  // 키보드가 닫혀 있을 때만 캐릭터를 표시한다.
+                  Center(
+                    child: SizedBox(
+                      width: 150,
+                      height: 150,
+                      child: _buildAssetWidget(
+                        candidatePaths: const [
+                          'assets/record/choice/svg/3-2-1.svg/svg/3-2-1 다람쥐2.svg',
+                          'assets/record/choice/png/3-2-1.png/png/3-2-1 다람쥐2.png',
+                        ],
+                        fallback: Container(
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFDCDCDC),
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
+                ],
 
                 // 헤드라인 ("오늘은 무슨 일이 있으셨나요?")
                 Center(
@@ -729,12 +727,16 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: isKeyboardLayout ? 12 : 20),
 
                 // 제목 입력창 (선택)
                 TextField(
                   controller: _titleController,
                   focusNode: _titleFocusNode,
+                  scrollPadding: EdgeInsets.zero,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _contentFocusNode.requestFocus(),
+                  onTapOutside: (_) => FocusScope.of(context).unfocus(),
                   onChanged: (_) => setState(() {}),
                   style: const TextStyle(fontSize: 15, color: Colors.black87),
                   decoration: InputDecoration(
@@ -769,7 +771,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
 
                 // 본문 텍스트 입력창 + 최근 미디어 타일 퀵 선택 바
                 Container(
-                  height: 280,
+                  height: isKeyboardLayout ? 210 : 280,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
@@ -782,8 +784,10 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                         key: _contentFieldKey,
                         controller: _contentController,
                         focusNode: _contentFocusNode,
-                        minLines: 8,
-                        maxLines: 12,
+                        scrollPadding: EdgeInsets.zero,
+                        minLines: isKeyboardLayout ? 6 : 8,
+                        maxLines: isKeyboardLayout ? 8 : 12,
+                        onTapOutside: (_) => FocusScope.of(context).unfocus(),
                         textAlignVertical: TextAlignVertical.top,
                         onChanged: (_) => setState(() {}),
                         style: const TextStyle(
@@ -804,91 +808,94 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                         ),
                       ),
                       // 사진/영상/음성 첨부 누를 때만 보여지는 최근 미디어 타일 바
-                      _buildInlinePreviewRow(),
+                      if (!isKeyboardLayout) _buildInlinePreviewRow(),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                if (!isKeyboardLayout) ...[
+                  const SizedBox(height: 20),
 
-                // 제목은 선택 사항이며, 본문을 입력하면 다음 단계로 진행할 수 있습니다.
-                Builder(
-                  builder: (context) {
-                    final bool isFormValid = _contentController.text
-                        .trim()
-                        .isNotEmpty;
-                    return Center(
-                      child: SizedBox(
-                        width: 180,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: isFormValid
-                              ? () {
-                                  final tokens = context
-                                      .read<AuthSession>()
-                                      .tokens;
-                                  if (tokens == null) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          '다이어리를 작성하려면 먼저 로그인해주세요.',
+                  // 제목은 선택 사항이며, 본문을 입력하면 다음 단계로 진행할 수 있습니다.
+                  Builder(
+                    builder: (context) {
+                      final bool isFormValid = _contentController.text
+                          .trim()
+                          .isNotEmpty;
+                      return Center(
+                        child: SizedBox(
+                          width: 180,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: isFormValid
+                                ? () {
+                                    final tokens = context
+                                        .read<AuthSession>()
+                                        .tokens;
+                                    if (tokens == null) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            '다이어리를 작성하려면 먼저 로그인해주세요.',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    final title = _titleController.text.trim();
+                                    final situation = _contentController.text
+                                        .trim();
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => DiaryLoadingScreen(
+                                          loadNext: () async {
+                                            final draft = await DiaryService()
+                                                .createDraftAndQuestion(
+                                                  tokens: tokens,
+                                                  title: title.isEmpty
+                                                      ? null
+                                                      : title,
+                                                  situationText: situation,
+                                                  recordDate: DateTime.now(),
+                                                );
+                                            return DiaryEmotionExploreScreen(
+                                              draft: draft,
+                                              tokens: tokens,
+                                            );
+                                          },
                                         ),
                                       ),
                                     );
-                                    return;
                                   }
-                                  final title = _titleController.text.trim();
-                                  final situation = _contentController.text
-                                      .trim();
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DiaryLoadingScreen(
-                                        loadNext: () async {
-                                          final draft = await DiaryService()
-                                              .createDraftAndQuestion(
-                                                tokens: tokens,
-                                                title: title.isEmpty
-                                                    ? null
-                                                    : title,
-                                                situationText: situation,
-                                                recordDate: DateTime.now(),
-                                              );
-                                          return DiaryEmotionExploreScreen(
-                                            draft: draft,
-                                            tokens: tokens,
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  );
-                                }
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isFormValid
-                                ? const Color(0xFFA5DD82)
-                                : const Color(0xFFFFF2B2),
-                            disabledBackgroundColor: const Color(0xFFFFF2B2),
-                            foregroundColor: Colors.black87,
-                            disabledForegroundColor: Colors.black45,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(26),
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isFormValid
+                                  ? const Color(0xFFA5DD82)
+                                  : const Color(0xFFFFF2B2),
+                              disabledBackgroundColor: const Color(0xFFFFF2B2),
+                              foregroundColor: Colors.black87,
+                              disabledForegroundColor: Colors.black45,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(26),
+                              ),
                             ),
-                          ),
-                          child: const Text(
-                            '다음',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
+                            child: const Text(
+                              '다음',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                if (_contentFocusNode.hasFocus) const SizedBox(height: 360),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
               ],
             ),
           ),

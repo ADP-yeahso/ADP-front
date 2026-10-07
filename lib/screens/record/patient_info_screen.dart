@@ -22,6 +22,8 @@ class PatientInfoScreen extends StatefulWidget {
 class _PatientInfoScreenState extends State<PatientInfoScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
+  final _formScrollController = ScrollController();
+  final _contentFieldKey = GlobalKey();
   DateTime _date = DateTime.now();
   bool _isPublic = true;
   final List<Media> _attachedMedia = [];
@@ -39,12 +41,35 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     super.initState();
     _titleController.addListener(() => setState(() {}));
     _contentController.addListener(() => setState(() {}));
+    _titleFocusNode.addListener(_handleInputFocus);
+    _contentFocusNode.addListener(_handleInputFocus);
+  }
+
+  void _handleInputFocus() {
+    if (!_titleFocusNode.hasFocus && !_contentFocusNode.hasFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final targetContext = _contentFocusNode.hasFocus
+          ? _contentFieldKey.currentContext
+          : null;
+      if (targetContext != null) {
+        Scrollable.ensureVisible(
+          targetContext,
+          alignment: 0.18,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
+    _titleFocusNode.removeListener(_handleInputFocus);
+    _contentFocusNode.removeListener(_handleInputFocus);
     _titleController.dispose();
     _contentController.dispose();
+    _formScrollController.dispose();
     _titleFocusNode.dispose();
     _contentFocusNode.dispose();
     super.dispose();
@@ -159,9 +184,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
 
   void _save() {
     if (!_isFormValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('내용을 입력해 주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('내용을 입력해 주세요.')));
       return;
     }
     final appData = context.read<AppData>();
@@ -173,9 +198,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
       isPublic: _isPublic,
     );
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('나무에 새 잎이 달렸어요 🌿')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('나무에 새 잎이 달렸어요 🌿')));
   }
 
   Widget _buildPlaceholderIcon(IconData icon, String label) {
@@ -192,7 +217,10 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
         children: [
           Icon(icon, color: Colors.black45, size: 24),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: Colors.black54),
+          ),
         ],
       ),
     );
@@ -202,6 +230,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
           children: [
@@ -210,6 +239,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
             // ── 스크롤 가능한 메인 영역 ──
             Expanded(
               child: SingleChildScrollView(
+                controller: _formScrollController,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 physics: const ClampingScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -323,10 +355,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
             errorBuilder: (e, err, st) => const Text(
               '오늘 있었던 일을 기록해 보세요',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF6F8962),
-              ),
+              style: TextStyle(fontSize: 13, color: Color(0xFF6F8962)),
             ),
           ),
         ),
@@ -365,7 +394,10 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                         fit: BoxFit.contain,
                         errorBuilder: (e, err, st) => const Text(
                           '날짜',
-                          style: TextStyle(fontSize: 13, color: Color(0xFF6F8962)),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF6F8962),
+                          ),
                         ),
                       ),
                     ),
@@ -379,7 +411,11 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF6F8962)),
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 16,
+                      color: Color(0xFF6F8962),
+                    ),
                   ],
                 ),
               ),
@@ -419,7 +455,10 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                       fit: BoxFit.contain,
                       errorBuilder: (e, err, st) => const Text(
                         '제목',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF6F8962)),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF6F8962),
+                        ),
                       ),
                     ),
                   ),
@@ -428,7 +467,8 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                     child: TextField(
                       controller: _titleController,
                       focusNode: _titleFocusNode,
-                      contextMenuBuilder: (context, editableTextState) => const SizedBox.shrink(),
+                      contextMenuBuilder: (context, editableTextState) =>
+                          const SizedBox.shrink(),
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF3A3A3A),
@@ -487,18 +527,23 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                       fit: BoxFit.contain,
                       errorBuilder: (e, err, st) => const Text(
                         '내용',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF6F8962)),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF6F8962),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
                     child: TextField(
+                      key: _contentFieldKey,
                       controller: _contentController,
                       focusNode: _contentFocusNode,
                       maxLines: null,
                       expands: true,
-                      contextMenuBuilder: (context, editableTextState) => const SizedBox.shrink(),
+                      contextMenuBuilder: (context, editableTextState) =>
+                          const SizedBox.shrink(),
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF3A3A3A),
@@ -687,7 +732,10 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                 ),
               );
             } else {
-              content = _buildPlaceholderIcon(Icons.insert_drive_file, media.fileType);
+              content = _buildPlaceholderIcon(
+                Icons.insert_drive_file,
+                media.fileType,
+              );
             }
 
             return Stack(
@@ -704,7 +752,11 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                         color: Colors.black54,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.close, color: Colors.white, size: 14),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -733,7 +785,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
               width: 213,
               height: 48,
               decoration: BoxDecoration(
-                color: _isFormValid ? const Color(0xFFA2D97C) : const Color(0xFFFFEFB5),
+                color: _isFormValid
+                    ? const Color(0xFFA2D97C)
+                    : const Color(0xFFFFEFB5),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: const Center(

@@ -66,11 +66,21 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
       Future.delayed(delay, () {
         if (!mounted || !_isInputFocused) return;
         if (!_formScrollController.hasClients) return;
-        _formScrollController.animateTo(
-          0,
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-        );
+        if (_contentFocusNode.hasFocus &&
+            _contentFieldKey.currentContext != null) {
+          Scrollable.ensureVisible(
+            _contentFieldKey.currentContext!,
+            alignment: 0.12,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+          );
+        } else {
+          _formScrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+          );
+        }
       });
     }
   }
@@ -654,6 +664,8 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   Widget build(BuildContext context) {
     const backgroundColor = Color(0xFFFFFBF0);
     final isKeyboardLayout = _isInputFocused;
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final keyboardScrollSpace = keyboardInset > 0 ? keyboardInset + 24 : 320.0;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -812,90 +824,87 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                     ],
                   ),
                 ),
-                if (!isKeyboardLayout) ...[
-                  const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-                  // 제목은 선택 사항이며, 본문을 입력하면 다음 단계로 진행할 수 있습니다.
-                  Builder(
-                    builder: (context) {
-                      final bool isFormValid = _contentController.text
-                          .trim()
-                          .isNotEmpty;
-                      return Center(
-                        child: SizedBox(
-                          width: 180,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: isFormValid
-                                ? () {
-                                    final tokens = context
-                                        .read<AuthSession>()
-                                        .tokens;
-                                    if (tokens == null) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            '다이어리를 작성하려면 먼저 로그인해주세요.',
-                                          ),
-                                        ),
-                                      );
-                                      return;
-                                    }
-                                    final title = _titleController.text.trim();
-                                    final situation = _contentController.text
-                                        .trim();
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => DiaryLoadingScreen(
-                                          loadNext: () async {
-                                            final draft = await DiaryService()
-                                                .createDraftAndQuestion(
-                                                  tokens: tokens,
-                                                  title: title.isEmpty
-                                                      ? null
-                                                      : title,
-                                                  situationText: situation,
-                                                  recordDate: DateTime.now(),
-                                                );
-                                            return DiaryEmotionExploreScreen(
-                                              draft: draft,
-                                              tokens: tokens,
-                                            );
-                                          },
+                // 제목은 선택 사항이며, 본문을 입력하면 다음 단계로 진행할 수 있습니다.
+                Builder(
+                  builder: (context) {
+                    final bool isFormValid = _contentController.text
+                        .trim()
+                        .isNotEmpty;
+                    return Center(
+                      child: SizedBox(
+                        width: 180,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: isFormValid
+                              ? () {
+                                  final tokens = context
+                                      .read<AuthSession>()
+                                      .tokens;
+                                  if (tokens == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          '다이어리를 작성하려면 먼저 로그인해주세요.',
                                         ),
                                       ),
                                     );
+                                    return;
                                   }
-                                : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isFormValid
-                                  ? const Color(0xFFA5DD82)
-                                  : const Color(0xFFFFF2B2),
-                              disabledBackgroundColor: const Color(0xFFFFF2B2),
-                              foregroundColor: Colors.black87,
-                              disabledForegroundColor: Colors.black45,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(26),
-                              ),
+                                  final title = _titleController.text.trim();
+                                  final situation = _contentController.text
+                                      .trim();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => DiaryLoadingScreen(
+                                        loadNext: () async {
+                                          final draft = await DiaryService()
+                                              .createDraftAndQuestion(
+                                                tokens: tokens,
+                                                title: title.isEmpty
+                                                    ? null
+                                                    : title,
+                                                situationText: situation,
+                                                recordDate: DateTime.now(),
+                                              );
+                                          return DiaryEmotionExploreScreen(
+                                            draft: draft,
+                                            tokens: tokens,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isFormValid
+                                ? const Color(0xFFA5DD82)
+                                : const Color(0xFFFFF2B2),
+                            disabledBackgroundColor: const Color(0xFFFFF2B2),
+                            foregroundColor: Colors.black87,
+                            disabledForegroundColor: Colors.black45,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(26),
                             ),
-                            child: const Text(
-                              '다음',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          ),
+                          child: const Text(
+                            '다음',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                if (isKeyboardLayout) SizedBox(height: keyboardScrollSpace),
               ],
             ),
           ),

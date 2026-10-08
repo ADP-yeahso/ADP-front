@@ -542,6 +542,8 @@ class _FlowerRecordCard extends StatelessWidget {
   }
 }
 
+const double _referenceDetailWidth = 334.0;
+
 class _DetailTitleBlock extends StatelessWidget {
   final String? title;
 
@@ -551,50 +553,55 @@ class _DetailTitleBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasTitle = title != null && title!.trim().isNotEmpty;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scale = constraints.maxWidth / _referenceDetailWidth;
+        final titleWidth = 248 * scale;
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: SizedBox(
-        width: 248,
-        height: 29,
-        child: Stack(
-          children: [
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: SvgPicture.asset(
-                'assets/page2/record_detail/title_line.svg',
-                width: 248,
-                height: 3,
-                fit: BoxFit.fill,
-              ),
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: titleWidth,
+            height: 29 * scale,
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 10 * scale,
+                  right: 0,
+                  bottom: 0,
+                  child: SvgPicture.asset(
+                    'assets/page2/record_detail/title_line.svg',
+                    width: titleWidth,
+                    height: 3 * scale,
+                    fit: BoxFit.fill,
+                  ),
+                ),
+                Positioned(
+                  left: 10 * scale,
+                  right: 0,
+                  bottom: 8 * scale,
+                  child: title != null && title!.trim().isNotEmpty
+                      ? Text(
+                          title!.trim(),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16 * scale,
+                            color: Colors.black54,
+                          ),
+                        )
+                      : SvgPicture.asset(
+                          'assets/page2/record_detail/record_title.svg',
+                          width: 30 * scale,
+                          height: 18 * scale,
+                        ),
+                ),
+              ],
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 8,
-              child: hasTitle
-                  ? Text(
-                      title!.trim(),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.black54,
-                      ),
-                    )
-                  : SvgPicture.asset(
-                      'assets/page2/record_detail/record_title.svg',
-                      width: 30,
-                      height: 18,
-                    ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -611,47 +618,54 @@ class _DetailContentLines extends StatelessWidget {
     const lineCount = 6;
     const lineHeight = 36.0;
 
-    return SizedBox(
-      width: double.infinity,
-      height: lineCount * lineHeight,
-      child: Stack(
-        children: [
-          Column(
-            children: List.generate(
-              lineCount,
-              (index) => SizedBox(
-                height: lineHeight,
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: SvgPicture.asset(
-                    'assets/page2/record_detail/content_line.svg',
-                    width: double.infinity,
-                    height: 3,
-                    fit: BoxFit.fill,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        debugPrint('기록 카드 내부 폭: ${constraints.maxWidth}');
+        final scale = constraints.maxWidth / _referenceDetailWidth;
+
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: lineCount * lineHeight * scale,
+          child: Stack(
+            children: [
+              Column(
+                children: List.generate(
+                  lineCount,
+                  (index) => SizedBox(
+                    height: lineHeight * scale,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: SvgPicture.asset(
+                        'assets/page2/record_detail/content_line.svg',
+                        width: constraints.maxWidth,
+                        height: 3 * scale,
+                        fit: BoxFit.fill,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
 
-          if (text != null && text!.trim().isNotEmpty)
-            Positioned(
-              left: 12,
-              right: 12,
-              top: 2,
-              child: Text(
-                text!.trim(),
-                maxLines: lineCount,
-                overflow: TextOverflow.clip,
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 2.57,
-                  color: Colors.black87,
+              if (text != null && text!.trim().isNotEmpty)
+                Positioned(
+                  left: 12 * scale,
+                  right: 12 * scale,
+                  top: 2 * scale,
+                  child: Text(
+                    text!.trim(),
+                    maxLines: lineCount,
+                    overflow: TextOverflow.clip,
+                    style: TextStyle(
+                      fontSize: 14 * scale,
+                      height: 2.57,
+                      color: Colors.black87,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-        ],
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

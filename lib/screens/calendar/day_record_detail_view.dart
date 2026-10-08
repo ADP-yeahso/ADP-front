@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:full_svg_flutter/full_svg_flutter.dart' as full_svg;
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
@@ -107,7 +108,7 @@ class _RecordTypeSelector extends StatelessWidget {
       height: 42,
       child: Stack(
         children: [
-          SvgPicture.asset(
+          full_svg.SvgPicture.asset(
             'assets/page2/record_detail/record_tabs.svg',
             width: 162,
             height: 42,
@@ -117,7 +118,7 @@ class _RecordTypeSelector extends StatelessWidget {
             duration: const Duration(milliseconds: 180),
             left: isTreeSelected ? 2 : 83,
             top: 2,
-            child: SvgPicture.asset(
+            child: full_svg.SvgPicture.asset(
               'assets/page2/record_detail/selected_tab.svg',
               width: 77,
               height: 37,

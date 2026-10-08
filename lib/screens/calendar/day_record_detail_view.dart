@@ -38,7 +38,75 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
       _selectedType = _RecordViewType.flower;
     }
   }
+  void _showMoreMenu(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black26,
+      builder: (dialogContext) {
+        final screenSize = MediaQuery.sizeOf(dialogContext);
+        return Dialog(
+          alignment: Alignment.topRight,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: EdgeInsets.only(
+            top: screenSize.height * 0.15,
+            right: screenSize.width * 0.05,
+          ),
+          child: Align(
+            alignment: Alignment.topRight,
+            child: SizedBox(
+              width: 184,
+              height: 141,
+              child: Stack(
+                children: [
+                  full_svg.SvgPicture.asset(
+                    'assets/page2/record_detail/more_frame.svg',
+                    width: 184,
+                    height: 141,
+                    fit: BoxFit.contain,
+                  ),
 
+                  Positioned(
+                    left: 34,
+                    top: 35,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        Navigator.of(dialogContext).pop();
+                        //편집 기능 추가하기
+                      },
+                      child: full_svg.SvgPicture.asset(
+                        'assets/page2/record_detail/edit.svg',
+                        width: 62,
+                        height: 21,
+                      ),
+                    ),
+                  ),
+
+                  Positioned(
+                    left: 34,
+                    top: 85,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        Navigator.of(dialogContext).pop();
+                        // 삭제 기능 추가하기
+                      },
+                      child: full_svg.SvgPicture.asset(
+                        'assets/page2/record_detail/delete.svg',
+                        width: 62,
+                        height: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
@@ -68,6 +136,7 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
                 _selectedType = type;
               });
             },
+            onMore: () => _showMoreMenu(context),
           ),
           const SizedBox(height: 18),
           Expanded(
@@ -93,10 +162,12 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
 class _RecordTypeSelector extends StatelessWidget {
   final _RecordViewType selectedType;
   final ValueChanged<_RecordViewType> onChanged;
+  final VoidCallback onMore;
 
   const _RecordTypeSelector({
     required this.selectedType,
     required this.onChanged,
+    required this.onMore,
   });
 
   @override
@@ -104,54 +175,85 @@ class _RecordTypeSelector extends StatelessWidget {
     final isTreeSelected = selectedType == _RecordViewType.tree;
 
     return SizedBox(
-      width: 162,
+      width: double.infinity,
       height: 42,
       child: Stack(
         children: [
-          full_svg.SvgPicture.asset(
-            'assets/page2/record_detail/record_tabs.svg',
-            width: 162,
-            height: 42,
-          ),
+          Center(
+            child: SizedBox(
+              width: 162,
+              height: 42,
+              child: Stack(
+                children: [
+                  full_svg.SvgPicture.asset(
+                    'assets/page2/record_detail/record_tabs.svg',
+                    width: 162,
+                    height: 42,
+                  ),
 
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 180),
-            left: isTreeSelected ? 2 : 83,
-            top: 2,
-            child: full_svg.SvgPicture.asset(
-              'assets/page2/record_detail/selected_tab.svg',
-              width: 77,
-              height: 37,
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 180),
+                    left: isTreeSelected ? 2 : 83,
+                    top: 2,
+                    child: full_svg.SvgPicture.asset(
+                      'assets/page2/record_detail/selected_tab.svg',
+                      width: 77,
+                      height: 37,
+                    ),
+                  ),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => onChanged(_RecordViewType.tree),
+                          child: Center(
+                            child: full_svg.SvgPicture.asset(
+                              'assets/page2/record_detail/tree_record_label.svg',
+                              width: 57,
+                              height: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => onChanged(_RecordViewType.flower),
+                          child: Center(
+                            child: full_svg.SvgPicture.asset(
+                              'assets/page2/record_detail/flower_record_label.svg',
+                              width: 58,
+                              height: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => onChanged(_RecordViewType.tree),
-                  child: Center(
-                    child: SvgPicture.asset(
-                      'assets/page2/record_detail/tree_record_label.svg',
-                      width: 57,
-                      height: 16,
-                    ),
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onMore,
+              child: SizedBox(
+                width: 32,
+                height: 42,
+                child: Center(
+                  child: full_svg.SvgPicture.asset(
+                    'assets/page2/record_detail/more_icon.svg',
+                    width: 24,
+                    height: 24,
                   ),
                 ),
               ),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => onChanged(_RecordViewType.flower),
-                  child: Center(
-                    child: SvgPicture.asset(
-                      'assets/page2/record_detail/flower_record_label.svg',
-                      width: 58,
-                      height: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),

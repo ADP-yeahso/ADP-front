@@ -10,10 +10,12 @@ import '../../models/diary.dart';
 import '../../models/memory.dart';
 import '../../models/media.dart';
 import '../garden/entry_detail_sheet.dart';
+import 'record_text_edit_screen.dart';
 
 import 'package:audioplayers/audioplayers.dart';
 
 enum _RecordViewType { tree, flower }
+enum _MoreAction { edit, delete }
 
 class DayRecordDetailView extends StatefulWidget {
   final DateTime day;
@@ -38,8 +40,8 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
       _selectedType = _RecordViewType.flower;
     }
   }
-  void _showMoreMenu(BuildContext context) {
-    showDialog<void>(
+  Future<void> _showMoreMenu(BuildContext context) async {
+    final action = await showDialog<_MoreAction>(
       context: context,
       barrierColor: Colors.black26,
       builder: (dialogContext) {
@@ -72,8 +74,7 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () {
-                        Navigator.of(dialogContext).pop();
-                        //편집 기능 추가하기
+                        Navigator.of(dialogContext).pop(_MoreAction.edit);
                       },
                       child: full_svg.SvgPicture.asset(
                         'assets/page2/record_detail/edit.svg',
@@ -89,8 +90,7 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () {
-                        Navigator.of(dialogContext).pop();
-                        // 삭제 기능 추가하기
+                        Navigator.of(dialogContext).pop(_MoreAction.delete);
                       },
                       child: full_svg.SvgPicture.asset(
                         'assets/page2/record_detail/delete.svg',
@@ -106,20 +106,130 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
         );
       },
     );
+    if (!mounted || action == null) return;
+    await _applyMoreAction(action);
   }
+
+  Future<int?> _pickRecordId() async {
+    final data = context.read<AppData>();
+    final options = <({int id, String title})>[];
+
+    if (_selectedType == _RecordViewType.tree) {
+      final records = widget.selectedMemory == null
+          ? data.memories.where((m) => isSameDay(m.recordDate, widget.day),)
+          : data.memories.where((m) => m.id == widget.selectedMemory!.id,);
+
+    for (final record in records) {
+      options.add((
+        id: record.id,
+        title: record.title ?? '나무 기록',
+      ));
+    }
+    } else {
+      final records = widget.selectedDiary == null
+          ? data.diaries.where(
+              (d) => isSameDay(d.recordDate, widget.day),
+            )
+          : data.diaries.where(
+              (d) => d.id == widget.selectedDiary!.id,
+            );
+
+      for (final record in records) {
+        options.add((
+          id: record.id,
+          title: record.title ?? '꽃 기록',
+        ));
+      }
+    }
+
+    if (options.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이 탭에는 기록이 없어요.')),
+      );
+      return null;
+    }
+
+    if (options.length == 1) return options.single.id;
+
+    // 같은 날짜에 기록이 여러 개일 때는 선택
+    return showDialog<int>(
+      context: context,
+      builder: (pickContext) => SimpleDialog(
+        title: const Text('어느 기록인가요?'),
+        children: [
+          for (final option in options)
+            SimpleDialogOption(
+              onPressed: () =>
+                  Navigator.of(pickContext).pop(option.id),
+              child: Text('${option.title} (#${option.id})'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _applyMoreAction(_MoreAction action) async {
+    final id = await _pickRecordId();
+    if (!mounted || id == null) return;
+
+    final data = context.read<AppData>();
+    final isTree = _selectedType == _RecordViewType.tree;
+
+    if (action == _MoreAction.delete) {
+      if (isTree) {
+        data.deleteMemory(id);
+      } else {
+        data.deleteDiary(id);
+      }
+      return;
+    }
+
+    if (isTree) {
+      final matches = data.memories.where((m) => m.id == id).toList();
+      if (matches.isEmpty) return;
+
+      final record = matches.single;
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => RecordTextEditScreen(
+            recordId: record.id,
+            isTree: true,
+            initialTitle: record.title ?? '',
+            initialContent: record.contextText ?? '',
+          ),
+        ),
+      );
+    } else {
+      final matches = data.diaries.where((d) => d.id == id).toList();
+      if (matches.isEmpty) return;
+
+      final record = matches.single;
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => RecordTextEditScreen(
+            recordId: record.id,
+            isTree: false,
+            initialTitle: record.title ?? '',
+            initialContent: record.context,
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
 
     final treeRecords = widget.selectedMemory != null
-      ? [widget.selectedMemory!]
+      ? appData.memories.where((memory) => memory.id == widget.selectedMemory!.id).toList()
       : appData.memories
             .where((memory) => isSameDay(memory.recordDate, widget.day))
             .toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final flowerRecords = widget.selectedDiary != null
-        ? [widget.selectedDiary!]
+        ? appData.diaries.where((diary) => diary.id == widget.selectedDiary!.id).toList()
         : appData.diaries
             .where((diary) => isSameDay(diary.recordDate, widget.day))
             .toList()

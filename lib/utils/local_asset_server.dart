@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -16,7 +17,7 @@ class LocalAssetServer {
   Future<void> start() async {
     final handler = const Pipeline().addHandler(_handleRequest);
     _server = await io.serve(handler, InternetAddress.loopbackIPv4, port);
-    print('LocalAssetServer listening on http://localhost:\${_server!.port}');
+    debugPrint('LocalAssetServer listening on http://localhost:${_server!.port}');
   }
 
   Future<void> stop() async {

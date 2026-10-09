@@ -410,7 +410,9 @@ window.resetCamera = function () {
     onComplete: () => {
       isFocusing = false;
       controls.enabled = true;
-}
+    }
+  });
+};
 
 function animate() {
   requestAnimationFrame(animate);

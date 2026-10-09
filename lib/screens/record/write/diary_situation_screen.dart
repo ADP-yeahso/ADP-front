@@ -468,9 +468,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                       _buildMediaThumbnail(item),
                       // 선택 완료 표시 체크 아이콘
                       if (!isFourthSlot && isSelected) ...[
-                        Container(
-                          color: Colors.black.withValues(alpha: 0.25),
-                        ),
+                        Container(color: Colors.black.withValues(alpha: 0.25)),
                         const Center(
                           child: Icon(
                             Icons.check_circle,
@@ -581,6 +579,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
               Center(
                 child: _buildAssetWidget(
                   candidatePaths: const [
+                    'assets/record/choice/svg/3-0,3-2-1~3-2-5대제목 수정.svg/svg/3-2-1 메인 헤드라인.svg',
                     'assets/record/choice/svg/3-2-1.svg/svg/3-2-1 메인 헤드라인.svg',
                     'assets/record/choice/png/3-2-1.png/png/3-2-1 메인 헤드라인.png',
                   ],

@@ -54,17 +54,17 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
   static const List<List<EmotionModel>> _defaultEmotions = [
     [
       EmotionModel(name: '미안함', color: Color(0xFFD09ED7)),
-      EmotionModel(name: '안쓰러움', color: Color(0xFFFFE367)),
+      EmotionModel(name: '안쓰러움', color: Color(0xFFFF9131)),
       EmotionModel(name: '속상함', color: Color(0xFFE36887)),
     ],
     [
       EmotionModel(name: '억울함', color: Color(0xFFE36887)),
       EmotionModel(name: '고마움', color: Color(0xFFFFE367)),
-      EmotionModel(name: '후회스러움', color: Color(0xFF5EA7FF)),
+      EmotionModel(name: '후회스러움', color: Color(0xFFD09ED7)),
       EmotionModel(name: '자책감', color: Color(0xFFD09ED7)),
     ],
     [
-      EmotionModel(name: '사랑스러움', color: Color(0xFFE36887)),
+      EmotionModel(name: '사랑스러움', color: Color(0xFFFF9131)),
       EmotionModel(name: '다행스러움', color: Color(0xFFFFE367)),
       EmotionModel(name: '무력감', color: Color(0xFF5EA7FF)),
     ],

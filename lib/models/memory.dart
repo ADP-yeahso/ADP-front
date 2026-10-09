@@ -4,6 +4,7 @@ class Memory {
   final int id;
   final int patientId;
   final int userId;
+  final String? title;
   final String? contextText;
   final List<Media> mediaList;
   final bool isPublic;
@@ -16,6 +17,7 @@ class Memory {
     required this.id,
     required this.patientId,
     required this.userId,
+    this.title,
     this.contextText,
     required this.mediaList,
     required this.isPublic,

@@ -353,7 +353,7 @@ function focusOnFlower(fData) {
     onComplete: () => {
       // Notify Flutter
       if (window.FlutterChannel) {
-        window.FlutterChannel.postMessage(fData.diaryId);
+        window.FlutterChannel.postMessage(String(fData.diaryId));
       }
     }
   });

@@ -71,7 +71,7 @@ extension EmotionInfo on Emotion {
         return const Color(0xFFE36887); // 분노/답답함 - 임시 핑크
 
       case 2:
-        return const Color(0xFFF5F5F5); // 불안/초조 - 임시 연회색
+        return const Color(0xFFAEAEAE); // 불안/초조 - 임시 연회색
 
       case 3:
         return const Color(0xFF5EA7FF); // 슬픔/소진 - 임시 파랑

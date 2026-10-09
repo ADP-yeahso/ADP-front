@@ -265,14 +265,6 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
     super.dispose();
   }
 
-  String _formatDuration(Duration duration) {
-    final totalSeconds = duration.inSeconds;
-    final min = totalSeconds ~/ 60;
-    final sec = totalSeconds % 60;
-
-    return '$min:${sec.toString().padLeft(2, '0')}';
-  }
-
   void _handleTap() {
     if (widget.item.fileType == 'image') {
       _showImageViewer(context);
@@ -415,13 +407,13 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
       videoContent = Image.network(
         widget.item.fileUrl,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildFallbackImage(),
+        errorBuilder: (_, _, _) => _buildFallbackImage(),
       );
     } else if (File(widget.item.fileUrl).existsSync()) {
       videoContent = Image.file(
         File(widget.item.fileUrl),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildFallbackImage(),
+        errorBuilder: (_, _, _) => _buildFallbackImage(),
       );
     } else {
       videoContent = _buildFallbackImage();
@@ -431,7 +423,7 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
       fit: StackFit.expand,
       children: [
         videoContent,
-        Container(color: Colors.black.withOpacity(0.08)),
+        Container(color: Colors.black.withValues(alpha: 0.08)),
         Center(
           child: SvgPicture.asset(
             'assets/gallery/screen4/4_video_play_button.svg',
@@ -484,7 +476,7 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
   void _showVideoViewer(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.92),
+      barrierColor: Colors.black.withValues(alpha: 0.92),
       builder: (dialogContext) {
         return _VideoPlayerDialog(filePath: widget.item.fileUrl);
       },
@@ -494,7 +486,7 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
   void _showAudioViewer(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.45),
+      barrierColor: Colors.black.withValues(alpha: 0.45),
       builder: (dialogContext) {
         return _AudioPlayerDialog(
           filePath: widget.item.fileUrl,
@@ -508,7 +500,7 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
   void _showImageViewer(BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.92),
+      barrierColor: Colors.black.withValues(alpha: 0.92),
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: Colors.transparent,

@@ -4,6 +4,7 @@ import 'media.dart';
 class Diary {
   final int id;
   final int userId;
+  final String? title;
   final String context;
   final Flower flowerType;
   final List<Media> mediaList;
@@ -15,6 +16,7 @@ class Diary {
   Diary({
     required this.id,
     required this.userId,
+    this.title,
     required this.context,
     required this.flowerType,
     required this.mediaList,

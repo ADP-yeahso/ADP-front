@@ -193,6 +193,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  es_compression:
+    dependency: transitive
+    description:
+      name: es_compression
+      sha256: c1ff7af54802631cf5c3942cb67bb99daadcc087f573ca99a9de91002d1a7ece
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.15"
   fake_async:
     dependency: transitive
     description:
@@ -328,6 +336,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  full_svg_flutter:
+    dependency: "direct main"
+    description:
+      name: full_svg_flutter
+      sha256: "65c0546d5e5ad060b6f8a5654500beedb5728e1c25013fe4f038fb3c2b986239"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.2"
   hooks:
     dependency: transitive
     description:
@@ -704,6 +720,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.1"
+  quickjs_engine:
+    dependency: transitive
+    description:
+      name: quickjs_engine
+      sha256: "7915cd1698b3ceac0db48913c84305167458c3f3ae29a3add8d1b81340450ccb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.6"
   record_use:
     dependency: transitive
     description:
@@ -765,6 +789,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  sync_http:
+    dependency: transitive
+    description:
+      name: sync_http
+      sha256: "7f0cd72eca000d2e026bcd6f990b81d0ca06022ef4e32fb257b30d3d1014a961"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.1"
   synchronized:
     dependency: transitive
     description:
@@ -933,6 +965,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.15.0"
+  woff2:
+    dependency: transitive
+    description:
+      name: woff2
+      sha256: a2dd1505feb0f28b12df27e59ae7fa0a13eb2fe6cd6a715d9073e446eab03bfe
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0"
   xdg_directories:
     dependency: transitive
     description:

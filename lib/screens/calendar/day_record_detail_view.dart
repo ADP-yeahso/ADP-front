@@ -1,25 +1,31 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:full_svg_flutter/full_svg_flutter.dart' as full_svg;
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
 import '../../models/diary.dart';
 import '../../models/memory.dart';
-import '../../widgets/emotion_chip.dart';
+import '../../models/media.dart';
 import '../garden/entry_detail_sheet.dart';
+import 'record_text_edit_screen.dart';
+
+import 'package:audioplayers/audioplayers.dart';
 
 enum _RecordViewType { tree, flower }
+enum _MoreAction { edit, delete }
 
 class DayRecordDetailView extends StatefulWidget {
   final DateTime day;
+  final Memory? selectedMemory;
+  final Diary? selectedDiary;
 
-  const DayRecordDetailView({
-    super.key,
-    required this.day,
-  });
+  const DayRecordDetailView({super.key, required this.day, this.selectedMemory, this.selectedDiary});
 
   @override
-  State<DayRecordDetailView> createState() =>
-      _DayRecordDetailViewState();
+  State<DayRecordDetailView> createState() => _DayRecordDetailViewState();
 }
 
 class _DayRecordDetailViewState extends State<DayRecordDetailView> {
@@ -27,18 +33,207 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
   _RecordViewType _selectedType = _RecordViewType.tree;
 
   @override
+  void initState() {
+   super.initState();
+
+    if (widget.selectedDiary != null) {
+      _selectedType = _RecordViewType.flower;
+    }
+  }
+  Future<void> _showMoreMenu(BuildContext context) async {
+    final action = await showDialog<_MoreAction>(
+      context: context,
+      barrierColor: Colors.black26,
+      builder: (dialogContext) {
+        final screenSize = MediaQuery.sizeOf(dialogContext);
+        return Dialog(
+          alignment: Alignment.topRight,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: EdgeInsets.only(
+            top: screenSize.height * 0.15,
+            right: screenSize.width * 0.05,
+          ),
+          child: Align(
+            alignment: Alignment.topRight,
+            child: SizedBox(
+              width: 184,
+              height: 141,
+              child: Stack(
+                children: [
+                  full_svg.SvgPicture.asset(
+                    'assets/page2/record_detail/more_frame.svg',
+                    width: 184,
+                    height: 141,
+                    fit: BoxFit.contain,
+                  ),
+
+                  Positioned(
+                    left: 34,
+                    top: 35,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        Navigator.of(dialogContext).pop(_MoreAction.edit);
+                      },
+                      child: full_svg.SvgPicture.asset(
+                        'assets/page2/record_detail/edit.svg',
+                        width: 62,
+                        height: 21,
+                      ),
+                    ),
+                  ),
+
+                  Positioned(
+                    left: 34,
+                    top: 85,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        Navigator.of(dialogContext).pop(_MoreAction.delete);
+                      },
+                      child: full_svg.SvgPicture.asset(
+                        'assets/page2/record_detail/delete.svg',
+                        width: 62,
+                        height: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    if (!mounted || action == null) return;
+    await _applyMoreAction(action);
+  }
+
+  Future<int?> _pickRecordId() async {
+    final data = context.read<AppData>();
+    final options = <({int id, String title})>[];
+
+    if (_selectedType == _RecordViewType.tree) {
+      final records = widget.selectedMemory == null
+          ? data.memories.where((m) => isSameDay(m.recordDate, widget.day),)
+          : data.memories.where((m) => m.id == widget.selectedMemory!.id,);
+
+    for (final record in records) {
+      options.add((
+        id: record.id,
+        title: record.title ?? '나무 기록',
+      ));
+    }
+    } else {
+      final records = widget.selectedDiary == null
+          ? data.diaries.where(
+              (d) => isSameDay(d.recordDate, widget.day),
+            )
+          : data.diaries.where(
+              (d) => d.id == widget.selectedDiary!.id,
+            );
+
+      for (final record in records) {
+        options.add((
+          id: record.id,
+          title: record.title ?? '꽃 기록',
+        ));
+      }
+    }
+
+    if (options.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이 탭에는 기록이 없어요.')),
+      );
+      return null;
+    }
+
+    if (options.length == 1) return options.single.id;
+
+    // 같은 날짜에 기록이 여러 개일 때는 선택
+    return showDialog<int>(
+      context: context,
+      builder: (pickContext) => SimpleDialog(
+        title: const Text('어느 기록인가요?'),
+        children: [
+          for (final option in options)
+            SimpleDialogOption(
+              onPressed: () =>
+                  Navigator.of(pickContext).pop(option.id),
+              child: Text('${option.title} (#${option.id})'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _applyMoreAction(_MoreAction action) async {
+    final id = await _pickRecordId();
+    if (!mounted || id == null) return;
+
+    final data = context.read<AppData>();
+    final isTree = _selectedType == _RecordViewType.tree;
+
+    if (action == _MoreAction.delete) {
+      if (isTree) {
+        data.deleteMemory(id);
+      } else {
+        data.deleteDiary(id);
+      }
+      return;
+    }
+
+    if (isTree) {
+      final matches = data.memories.where((m) => m.id == id).toList();
+      if (matches.isEmpty) return;
+
+      final record = matches.single;
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => RecordTextEditScreen(
+            recordId: record.id,
+            isTree: true,
+            initialTitle: record.title ?? '',
+            initialContent: record.contextText ?? '',
+          ),
+        ),
+      );
+    } else {
+      final matches = data.diaries.where((d) => d.id == id).toList();
+      if (matches.isEmpty) return;
+
+      final record = matches.single;
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => RecordTextEditScreen(
+            recordId: record.id,
+            isTree: false,
+            initialTitle: record.title ?? '',
+            initialContent: record.context,
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
 
-    final treeRecords = appData.memories
-        .where((memory) => isSameDay(memory.recordDate, widget.day))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final treeRecords = widget.selectedMemory != null
+      ? appData.memories.where((memory) => memory.id == widget.selectedMemory!.id).toList()
+      : appData.memories
+            .where((memory) => isSameDay(memory.recordDate, widget.day))
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final flowerRecords = appData.diaries
-        .where((diary) => isSameDay(diary.recordDate, widget.day))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final flowerRecords = widget.selectedDiary != null
+        ? appData.diaries.where((diary) => diary.id == widget.selectedDiary!.id).toList()
+        : appData.diaries
+            .where((diary) => isSameDay(diary.recordDate, widget.day))
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -51,6 +246,7 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
                 _selectedType = type;
               });
             },
+            onMore: () => _showMoreMenu(context),
           ),
           const SizedBox(height: 18),
           Expanded(
@@ -76,76 +272,175 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
 class _RecordTypeSelector extends StatelessWidget {
   final _RecordViewType selectedType;
   final ValueChanged<_RecordViewType> onChanged;
+  final VoidCallback onMore;
 
   const _RecordTypeSelector({
     required this.selectedType,
     required this.onChanged,
+    required this.onMore,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
+    final isTreeSelected = selectedType == _RecordViewType.tree;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 42,
+      child: Stack(
         children: [
-          _button(
-            type: _RecordViewType.tree,
-            label: '나무 기록',
-            icon: Icons.park_outlined,
+          Center(
+            child: SizedBox(
+              width: 162,
+              height: 42,
+              child: Stack(
+                children: [
+                  full_svg.SvgPicture.asset(
+                    'assets/page2/record_detail/record_tabs.svg',
+                    width: 162,
+                    height: 42,
+                  ),
+
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 180),
+                    left: isTreeSelected ? 2 : 83,
+                    top: 2,
+                    child: full_svg.SvgPicture.asset(
+                      'assets/page2/record_detail/selected_tab.svg',
+                      width: 77,
+                      height: 37,
+                    ),
+                  ),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => onChanged(_RecordViewType.tree),
+                          child: Center(
+                            child: full_svg.SvgPicture.asset(
+                              'assets/page2/record_detail/tree_record_label.svg',
+                              width: 57,
+                              height: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => onChanged(_RecordViewType.flower),
+                          child: Center(
+                            child: full_svg.SvgPicture.asset(
+                              'assets/page2/record_detail/flower_record_label.svg',
+                              width: 58,
+                              height: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-          _button(
-            type: _RecordViewType.flower,
-            label: '꽃 기록',
-            icon: Icons.local_florist_outlined,
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onMore,
+              child: SizedBox(
+                width: 32,
+                height: 42,
+                child: Center(
+                  child: full_svg.SvgPicture.asset(
+                    'assets/page2/record_detail/more_icon.svg',
+                    width: 24,
+                    height: 24,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _button({
-    required _RecordViewType type,
-    required String label,
-    required IconData icon,
-  }) {
-    final selected = selectedType == type;
+class _TreeRecordList extends StatelessWidget {
+  final List<Memory> records;
 
-    return Expanded(
+  const _TreeRecordList({super.key, required this.records});
+
+  @override
+  Widget build(BuildContext context) {
+    if (records.isEmpty) {
+      return const _EmptyRecordView(
+        message: '이 날짜에는 나무 기록이 없어요.',
+      );
+    }
+
+    return ListView.separated(
+      itemCount: records.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
+      itemBuilder: (context, index) {
+        final memory = records[index];
+
+        return _TreeRecordCard(
+          memory: memory,
+          onTap: () {
+            showMemoryDetailSheet(context, memory);
+          },
+        );
+      },
+    );
+  }
+}
+
+class _TreeRecordCard extends StatelessWidget {
+  final Memory memory;
+  final VoidCallback onTap;
+
+  const _TreeRecordCard({required this.memory, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final audioMedia = memory.mediaList
+      .where((item) => item.fileType == 'audio')
+      .toList();
+
+    final hasAudio = audioMedia.isNotEmpty;
+  
+    return Card(
+      color: const Color(0xFFFFFBF0),
+      elevation: 0,
       child: InkWell(
-        onTap: () => onChanged(type),
-        borderRadius: BorderRadius.circular(20),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          decoration: BoxDecoration(
-            color: selected
-                ? const Color(0xFF7CE3B8)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 16, 10, 20),
+          child: Column(
             children: [
-              Icon(
-                icon,
-                size: 17,
-                color: selected
-                    ? const Color(0xFF12281F)
-                    : Colors.white60,
+              _DetailTitleBlock(
+                title: memory.title,
               ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: selected
-                      ? const Color(0xFF12281F)
-                      : Colors.white60,
+              const SizedBox(height: 18),
+
+              _MediaImageRow(media: memory.mediaList),
+
+              if (hasAudio) ...[
+                const SizedBox(height: 12),
+                _DetailAudioBar(
+                  media: audioMedia.first,
                 ),
+              ],
+
+              const SizedBox(height: 22),
+              _DetailContentLines(
+                text: memory.contextText,
               ),
             ],
           ),
@@ -155,191 +450,154 @@ class _RecordTypeSelector extends StatelessWidget {
   }
 }
 
-class _TreeRecordList extends StatelessWidget {
-  final List<Memory> records;
-
-  const _TreeRecordList({
-    super.key,
-    required this.records,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (records.isEmpty) {
-      return const _EmptyRecordView(
-        icon: Icons.park_outlined,
-        message: '이 날짜에는 나무 기록이 없어요.',
-      );
-    }
-
-    final appData = context.read<AppData>();
-
-    return ListView.separated(
-      itemCount: records.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 14),
-      itemBuilder: (context, index) {
-        final memory = records[index];
-        final author = appData.userById(memory.userId);
-
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () {
-              showMemoryDetailSheet(context, memory);
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.eco,
-                        color: Color(0xFF5C9271),
-                      ),
-                      const SizedBox(width: 7),
-                      const Text(
-                        '나무 기록',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        memory.isPublic ? '가족 공개' : '비공개',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black45,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  if (memory.mediaList.isNotEmpty) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F1E9),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.photo_library_outlined,
-                            color: Colors.black45,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '첨부 파일 ${memory.mediaList.length}개',
-                            style: const TextStyle(
-                              color: Colors.black54,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                  ],
-                  Text(
-                    memory.contextText ?? '',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      height: 1.55,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    '작성자 ${author.name}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black45,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
 class _FlowerRecordList extends StatelessWidget {
   final List<Diary> records;
 
-  const _FlowerRecordList({
-    super.key,
-    required this.records,
-  });
+  const _FlowerRecordList({super.key, required this.records});
 
   @override
   Widget build(BuildContext context) {
     if (records.isEmpty) {
       return const _EmptyRecordView(
-        icon: Icons.local_florist_outlined,
         message: '이 날짜에는 꽃 기록이 없어요.',
       );
     }
-
-    final appData = context.read<AppData>();
 
     return ListView.separated(
       itemCount: records.length,
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         final diary = records[index];
-        final author = appData.userById(diary.userId);
-        final emotion = diary.flowerType.emotionId;
 
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () {
-              showDiaryDetailSheet(context, diary);
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.local_florist,
-                        color: Color(0xFFCB7DA8),
-                      ),
-                      const SizedBox(width: 7),
-                      const Text(
-                        '꽃 기록',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const Spacer(),
-                      EmotionChip(emotion: emotion),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    diary.context,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      height: 1.55,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    '작성자 ${author.name}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black45,
-                    ),
-                  ),
-                ],
+        return _FlowerRecordCard(
+          diary: diary,
+          onTap: () {
+            showDiaryDetailSheet(context, diary);
+          },
+        );
+      },
+    );
+  }
+}
+
+class _FlowerRecordCard extends StatelessWidget {
+  final Diary diary;
+  final VoidCallback onTap;
+
+  const _FlowerRecordCard({
+    required this.diary,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final audioMedia = diary.mediaList
+      .where((item) => item.fileType == 'audio')
+      .toList();
+
+    final hasAudio = audioMedia.isNotEmpty;
+
+    return Card(
+      color: const Color(0xFFFFFBF0),
+      elevation: 0,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 16, 10, 20),
+          child: Column(
+            children: [
+              _DetailTitleBlock(
+                title: diary.title,
               ),
+              const SizedBox(height: 18),
+
+              _MediaImageRow(media: diary.mediaList),
+
+              if (hasAudio) ...[
+                const SizedBox(height: 12),
+                _DetailAudioBar(
+                  media: audioMedia.first,
+                ),
+              ],
+
+              if (diary.mediaList.any((item) => item.fileType == 'image'))
+                const SizedBox(height: 14),
+
+              _FlowerInfoCard(
+                diary: diary,
+                compact: diary.mediaList.any(
+                  (item) => item.fileType == 'image' || item.fileType == 'video',
+                ),
+              ),
+              
+              const SizedBox(height: 22),
+              _DetailContentLines(
+                text: diary.context,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+const double _referenceDetailWidth = 334.0;
+
+class _DetailTitleBlock extends StatelessWidget {
+  final String? title;
+
+  const _DetailTitleBlock({
+    this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scale = constraints.maxWidth / _referenceDetailWidth;
+        final titleWidth = 248 * scale;
+
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: titleWidth,
+            height: 29 * scale,
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 10 * scale,
+                  right: 0,
+                  bottom: 0,
+                  child: SvgPicture.asset(
+                    'assets/page2/record_detail/title_line.svg',
+                    width: titleWidth,
+                    height: 3 * scale,
+                    fit: BoxFit.fill,
+                  ),
+                ),
+                Positioned(
+                  left: 10 * scale,
+                  right: 0,
+                  bottom: 8 * scale,
+                  child: title != null && title!.trim().isNotEmpty
+                      ? Text(
+                          title!.trim(),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16 * scale,
+                            color: Colors.black54,
+                          ),
+                        )
+                      : SvgPicture.asset(
+                          'assets/page2/record_detail/record_title.svg',
+                          width: 30 * scale,
+                          height: 18 * scale,
+                        ),
+                ),
+              ],
             ),
           ),
         );
@@ -348,26 +606,193 @@ class _FlowerRecordList extends StatelessWidget {
   }
 }
 
-class _EmptyRecordView extends StatelessWidget {
-  final IconData icon;
-  final String message;
+class _DetailContentLines extends StatelessWidget {
+  final String? text;
 
-  const _EmptyRecordView({
-    required this.icon,
-    required this.message,
+  const _DetailContentLines({
+    this.text,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    const lineCount = 6;
+    const lineHeight = 36.0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        debugPrint('기록 카드 내부 폭: ${constraints.maxWidth}');
+        final scale = constraints.maxWidth / _referenceDetailWidth;
+
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: lineCount * lineHeight * scale,
+          child: Stack(
+            children: [
+              Column(
+                children: List.generate(
+                  lineCount,
+                  (index) => SizedBox(
+                    height: lineHeight * scale,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: SvgPicture.asset(
+                        'assets/page2/record_detail/content_line.svg',
+                        width: constraints.maxWidth,
+                        height: 3 * scale,
+                        fit: BoxFit.fill,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              if (text != null && text!.trim().isNotEmpty)
+                Positioned(
+                  left: 12 * scale,
+                  right: 12 * scale,
+                  top: 2 * scale,
+                  child: Text(
+                    text!.trim(),
+                    maxLines: lineCount,
+                    overflow: TextOverflow.clip,
+                    style: TextStyle(
+                      fontSize: 14 * scale,
+                      height: 2.57,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DetailAudioBar extends StatefulWidget {
+  final Media media;
+
+  const _DetailAudioBar({
+    required this.media,
+  });
+
+  @override
+  State<_DetailAudioBar> createState() => _DetailAudioBarState();
+}
+
+class _DetailAudioBarState extends State<_DetailAudioBar> {
+  final AudioPlayer _player = AudioPlayer();
+
+  bool _isPlaying = false;
+  Duration _position = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _player.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
+
+      setState(() {
+        _isPlaying = state == PlayerState.playing;
+      });
+    });
+
+    _player.onPositionChanged.listen((position) {
+      if (!mounted) return;
+
+      setState(() {
+        _position = position;
+      });
+    });
+
+    _player.onPlayerComplete.listen((_) {
+      if (!mounted) return;
+
+      setState(() {
+        _isPlaying = false;
+        _position = Duration.zero;
+      });
+    });
+  }
+
+  Future<void> _togglePlay() async {
+    if (_isPlaying) {
+      await _player.pause();
+      return;
+    }
+
+    final filePath = widget.media.fileUrl;
+
+    if (filePath.startsWith('http')) {
+      await _player.play(UrlSource(filePath));
+    } else {
+      await _player.play(DeviceFileSource(filePath));
+    }
+  }
+
+  String _formatTime(Duration duration) {
+    final minutes = duration.inMinutes.toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+
+    return '$minutes:$seconds';
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Icon(icon, size: 52, color: Colors.white30),
-          const SizedBox(height: 12),
-          Text(
-            message,
-            style: const TextStyle(color: Colors.white54),
+          SvgPicture.asset(
+            'assets/page2/record_detail/audio_frame.svg',
+            width: double.infinity,
+            height: 56,
+            fit: BoxFit.fill,
+          ),
+
+          Positioned(
+            left: 14,
+            child: Text(
+              _formatTime(_position),
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+
+          Positioned(
+            left: 70,
+            right: 48,
+            top: 26,
+            child: SvgPicture.asset(
+              'assets/page2/record_detail/audio_dotted_line.svg',
+              width: double.infinity,
+              height: 2,
+              fit: BoxFit.fill,
+            ),
+          ),
+
+          Positioned(
+            right: 6,
+            child: GestureDetector(
+              onTap: _togglePlay,
+              child: SvgPicture.asset(
+                'assets/page2/record_detail/play_button.svg',
+                width: 34,
+                height: 34,
+              ),
+            ),
           ),
         ],
       ),
@@ -375,3 +800,142 @@ class _EmptyRecordView extends StatelessWidget {
   }
 }
 
+class _EmptyRecordView extends StatelessWidget {
+  final String message;
+
+  const _EmptyRecordView({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(message, style: const TextStyle(fontSize: 13, color: Colors.black38, fontWeight: FontWeight.w400,)),
+    );
+  }
+}
+
+class _MediaImageRow extends StatelessWidget {
+  final List<Media> media;
+
+  const _MediaImageRow({required this.media});
+
+  @override
+  Widget build(BuildContext context) {
+    final images = media
+        .where((item) => item.fileType == 'image')
+        .take(2)
+        .toList();
+
+    if (images.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      children: [
+        for (int i = 0; i < images.length; i++)
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: i == 0 && images.length > 1 ? 8 : 0,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: _MediaImage(media: images[i]),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MediaImage extends StatelessWidget {
+  final Media media;
+
+  const _MediaImage({required this.media});
+
+  @override
+  Widget build(BuildContext context) {
+    if (media.fileUrl.startsWith('http')) {
+      return Image.network(media.fileUrl, height: 190, fit: BoxFit.cover);
+    }
+
+    return Image.file(
+      File(media.fileUrl),
+      height: 190,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) {
+        return Image.asset(
+          'assets/images/flower.png',
+          height: 190,
+          fit: BoxFit.cover,
+        );
+      },
+    );
+  }
+}
+
+class _FlowerInfoCard extends StatelessWidget {
+  final Diary diary;
+  final bool compact;
+
+  const _FlowerInfoCard({
+    required this.diary,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final flower = diary.flowerType;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        14,
+        compact ? 8 : 14,
+        14,
+        compact ? 8 : 14,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 100,
+            height: 140,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFF6B9FBD), width: 2),
+            ),
+            child: Image.asset('assets/images/flower.png', fit: BoxFit.contain),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Text(
+                  '꽃 이름',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF365B45),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '꽃말',
+                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

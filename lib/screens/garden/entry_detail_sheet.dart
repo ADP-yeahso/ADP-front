@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
+import '../../models/comment.dart';
 import '../../models/diary.dart';
 import '../../models/memory.dart';
 import '../../widgets/emotion_chip.dart';
@@ -357,50 +358,208 @@ void showMemoryDetailSheet(BuildContext context, Memory memory) {
     backgroundColor: Colors.transparent,
     builder: (ctx) => _SheetScaffold(
       title: '나무 기록',
-      child: Consumer<AppData>(
-        builder: (context, appData, _) {
-          final author = appData.userById(memory.userId);
-          final isOwner = memory.userId == appData.me.id;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_fmtDate(memory.recordDate), style: const TextStyle(color: Colors.black54)),
-              const SizedBox(height: 8),
-              const Text('가족 기록', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              if (memory.mediaList.isNotEmpty)
-                Container(
-                  height: 140,
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFEAE0),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.photo_outlined, size: 32, color: Colors.black38),
-                      SizedBox(height: 4),
-                      Text('사진이 첨부되었어요', style: TextStyle(color: Colors.black45, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              Text(memory.contextText ?? '', style: const TextStyle(fontSize: 15, height: 1.5)),
-              const SizedBox(height: 20),
-              _AuthorAndVisibility(
-                nickname: author.name,
-                isPublic: memory.isPublic,
-                isOwner: isOwner,
-                onToggle: () => appData.toggleMemoryPublic(memory.id),
-              ),
-            ],
-          );
-        },
-      ),
+      child: _MemoryDetailContent(memory: memory),
     ),
   );
+}
+
+class _MemoryDetailContent extends StatefulWidget {
+  final Memory memory;
+  const _MemoryDetailContent({required this.memory});
+
+  @override
+  State<_MemoryDetailContent> createState() => _MemoryDetailContentState();
+}
+
+class _MemoryDetailContentState extends State<_MemoryDetailContent> {
+  final TextEditingController _commentController = TextEditingController();
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final diff = DateTime.now().difference(dateTime);
+    if (diff.inMinutes < 1) return '방금 전';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
+    if (diff.inHours < 24) return '${diff.inHours}시간 전';
+    return '${diff.inDays}일 전';
+  }
+
+  void _submitComment(AppData appData) {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+    appData.addMemoryComment(memoryRecordId: widget.memory.id, commentText: text);
+    _commentController.clear();
+    FocusScope.of(context).unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AppData>(
+      builder: (context, appData, _) {
+        final memory = widget.memory;
+        final author = appData.userById(memory.userId);
+        final isOwner = memory.userId == appData.me.id;
+        final comments = appData.commentsForMemory(memory.id);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_fmtDate(memory.recordDate), style: const TextStyle(color: Colors.black54)),
+            const SizedBox(height: 8),
+            const Text('가족 기록', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            if (memory.mediaList.isNotEmpty)
+              Container(
+                height: 140,
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFEAE0),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                alignment: Alignment.center,
+                child: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.photo_outlined, size: 32, color: Colors.black38),
+                    SizedBox(height: 4),
+                    Text('사진이 첨부되었어요', style: TextStyle(color: Colors.black45, fontSize: 12)),
+                  ],
+                ),
+              ),
+            Text(memory.contextText ?? '', style: const TextStyle(fontSize: 15, height: 1.5)),
+            const SizedBox(height: 16),
+            _AuthorAndVisibility(
+              nickname: author.name,
+              isPublic: memory.isPublic,
+              isOwner: isOwner,
+              onToggle: () => appData.toggleMemoryPublic(memory.id),
+            ),
+            const SizedBox(height: 24),
+            const Divider(color: Colors.black12, height: 1),
+            const SizedBox(height: 20),
+
+            // ── 댓글 섹션 ──
+            const Text(
+              '댓글',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF333333)),
+            ),
+            const SizedBox(height: 14),
+
+            // ── 댓글 목록 ──
+            if (comments.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('첫 댓글을 남겨보세요.', style: TextStyle(fontSize: 13, color: Colors.black38)),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: comments.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 14),
+                itemBuilder: (context, index) {
+                  final comment = comments[index];
+                  final commentAuthor = appData.userById(comment.userId);
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF4A6B8A), width: 1.5),
+                        ),
+                        child: const Icon(Icons.person_outline, size: 20, color: Color(0xFF4A6B8A)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              commentAuthor.name,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF333333)),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              comment.commentText,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF444444)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatTimeAgo(comment.createdAt),
+                        style: const TextStyle(fontSize: 11, color: Colors.black38),
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+            const SizedBox(height: 20),
+
+            // ── 댓글 입력창 ──
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF4A6B8A), width: 1.5),
+                  ),
+                  child: const Icon(Icons.person_outline, size: 20, color: Color(0xFF4A6B8A)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFF4A6B8A), width: 1.2),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _commentController,
+                            decoration: const InputDecoration(
+                              hintText: '댓글을 입력하세요...',
+                              hintStyle: TextStyle(fontSize: 13, color: Colors.black38),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 10),
+                            ),
+                            style: const TextStyle(fontSize: 13),
+                            onSubmitted: (_) => _submitComment(appData),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.send_rounded, size: 18, color: Color(0xFF4A6B8A)),
+                          onPressed: () => _submitComment(appData),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+        );
+      },
+    );
+  }
 }
 
 Future<void> showDiaryDetailSheet(BuildContext context, Diary diary) {
@@ -485,9 +644,10 @@ class _SheetScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      maxChildSize: 0.92,
+      initialChildSize: 0.75,
+      maxChildSize: 0.95,
       minChildSize: 0.3,
       expand: false,
       builder: (context, scrollController) => Container(
@@ -495,7 +655,7 @@ class _SheetScaffold extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + bottomInset),
         child: ListView(
           controller: scrollController,
           children: [
@@ -516,4 +676,5 @@ class _SheetScaffold extends StatelessWidget {
     );
   }
 }
+
 

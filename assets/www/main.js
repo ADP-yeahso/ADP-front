@@ -468,7 +468,7 @@ window.resetCamera = function () {
       controls.enabled = true;
     }
   });
-}
+};
 
 function requestRender() {
   if (renderQueued || renderRunning) return;

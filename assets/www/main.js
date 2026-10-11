@@ -2,6 +2,60 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+const diagnosticsEnabled =
+  new URLSearchParams(window.location.search).get('diagnostics') === '1';
+
+const diagnosticSessionId = diagnosticsEnabled
+  ? (globalThis.crypto?.randomUUID?.() ?? `garden-${Date.now()}`)
+  : null;
+
+const diagnosticState = {
+  activeLoads: 0,
+  peakActiveLoads: 0,
+  diaryCount: 0,
+  ownedEventListeners: 0,
+};
+
+let pendingDiagnosticReason = null;
+
+function beginDiagnosticLoad() {
+  if (!diagnosticsEnabled) return;
+
+  diagnosticState.activeLoads += 1;
+  diagnosticState.peakActiveLoads = Math.max(
+    diagnosticState.peakActiveLoads,
+    diagnosticState.activeLoads,
+  );
+}
+
+function endDiagnosticLoad() {
+  if (!diagnosticsEnabled) return;
+
+  diagnosticState.activeLoads = Math.max(
+    0,
+    diagnosticState.activeLoads - 1,
+  );
+}
+
+function addTrackedEventListener(target, type, listener, options) {
+  target.addEventListener(type, listener, options);
+
+  if (diagnosticsEnabled) {
+    diagnosticState.ownedEventListeners += 1;
+  }
+}
+
+function queueDiagnosticReport(reason) {
+  if (diagnosticsEnabled) {
+    pendingDiagnosticReason = reason;
+  }
+}
+
+function seededUnit(seed) {
+  const value = Math.sin(Number(seed) * 12.9898) * 43758.5453;
+  return value - Math.floor(value);
+}
+
 let scene, camera, renderer, controls;
 let raycaster, mouse;
 let flowerMeshes = []; // Not used for clones anymore, but we can keep for backwards compat or remove.
@@ -19,6 +73,7 @@ let renderQueued = false;
 let renderRunning = false;
 
 init();
+queueDiagnosticReport('viewer_initialized');
 requestRender();
 
 function init() {
@@ -85,7 +140,7 @@ function init() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
   controls.target.copy(origin);
-  controls.addEventListener('change', requestRender);
+  addTrackedEventListener(controls, 'change', requestRender);
 
   // 핀치 줌 완벽 지원 (너무 뚫고 가거나 나가지 않게 제한)
   controls.enableZoom = true;
@@ -101,8 +156,8 @@ function init() {
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
 
-  window.addEventListener('resize', onWindowResize);
-  window.addEventListener('click', onClick);
+  addTrackedEventListener(window, 'resize', onWindowResize);
+  addTrackedEventListener(window, 'click', onClick);
 
   // ── 모바일 터치 지원 ──
   // iOS WebView에서는 click 이벤트가 제대로 발생하지 않으므로
@@ -110,7 +165,7 @@ function init() {
   let touchStartX = 0, touchStartY = 0;
   let touchStartTime = 0;
 
-  window.addEventListener('touchstart', (e) => {
+  addTrackedEventListener(window, 'touchstart', (e) => {
     if (e.touches.length === 1) {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
@@ -118,7 +173,7 @@ function init() {
     }
   }, { passive: true });
 
-  window.addEventListener('touchend', (e) => {
+  addTrackedEventListener(window, 'touchend', (e) => {
     if (e.changedTouches.length !== 1) return;
     const touch = e.changedTouches[0];
     const dx = touch.clientX - touchStartX;
@@ -152,10 +207,15 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
   document.getElementById('loading').style.display = 'block';
   let diaries = JSON.parse(diariesJson);
   let flowerUrlsMap = JSON.parse(flowerUrlsMapJson);
+  diagnosticState.diaryCount = diaries.length;
   const loader = new GLTFLoader();
 
   // Load Tree
+  beginDiagnosticLoad();
+  queueDiagnosticReport('tree_load_started');
+  requestRender();
   loader.load(treeUrl, (gltf) => {
+    endDiagnosticLoad();
     if (currentLoadId !== gardenLoadId) {
       disposeObject3D(gltf.scene, new Set());
       return;
@@ -178,6 +238,8 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
     const numFlowers = diaries.length;
     if (numFlowers === 0) {
       document.getElementById('loading').style.display = 'none';
+      queueDiagnosticReport('garden_ready_zero');
+      requestRender();
       return;
     }
 
@@ -213,15 +275,21 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
     
     // Load all required flowers in parallel
     let loadPromises = uniqueUrls.map(url => {
+      beginDiagnosticLoad();
       return new Promise((resolve, reject) => {
         loader.load(url, (fgltf) => {
-           resolve({ url: url, gltf: fgltf });
-        }, undefined, (error) => {
-           console.error("Error loading flower: " + url, error);
-           reject(error);
+          endDiagnosticLoad();
+          resolve({ url: url, gltf: fgltf });
+        },
+        undefined, (error) => {
+          endDiagnosticLoad();
+          console.error("Error loading flower: " + url, error);
+          reject(error);
         });
       });
     });
+    queueDiagnosticReport('flower_loads_started');
+    requestRender();
 
     Promise.all(loadPromises).then(results => {
       if (currentLoadId !== gardenLoadId) {
@@ -281,10 +349,16 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
           const previewIndex = diary.previewIndex;
           const ringIndex = previewIndex < 8 ? previewIndex : previewIndex - 8;
           const ringCount = previewIndex < 8 ? 8 : diaries.length - 8;
+          const angleRandom = diagnosticsEnabled
+            ? seededUnit(diary.id * 2 + 1)
+            : Math.random();
+          const radiusRandom = diagnosticsEnabled
+            ? seededUnit(diary.id * 2 + 2)
+            : Math.random();
           const angle = assetPreview
             ? (ringIndex / ringCount) * Math.PI * 2
-            : Math.random() * Math.PI * 2;
-          const r = assetPreview ? (previewIndex < 8 ? 10 : 18) : 10 + Math.random() * 20;
+            : angleRandom * Math.PI * 2;
+          const r = assetPreview ? (previewIndex < 8 ? 10 : 18) : 10 + radiusRandom * 20;
 
           dummy.position.x = Math.cos(angle) * r;
           dummy.position.z = Math.sin(angle) * r;
@@ -311,6 +385,7 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
           imesh.instanceMatrix.needsUpdate = true;
         });
       });
+      queueDiagnosticReport('garden_ready');
       requestRender();
     }).catch(error => {
       if (currentLoadId !== gardenLoadId) {
@@ -318,14 +393,19 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
       }
       if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_FLOWER_BATCH: ' + error.message);
       document.getElementById('loading').style.display = 'none';
+      queueDiagnosticReport('flower_batch_error');
+      requestRender();
     });
 
   }, undefined, function (error) {
+    endDiagnosticLoad();
     if (currentLoadId !== gardenLoadId) {
       return;
     }
     if (window.FlutterChannel) window.FlutterChannel.postMessage('ERROR_TREE: ' + error.message);
     document.getElementById('loading').style.display = 'none';
+    queueDiagnosticReport('tree_load_error');
+    requestRender();
   });
 }
 
@@ -484,6 +564,12 @@ function requestRender() {
 
     renderRunning = false;
 
+    if (pendingDiagnosticReason !== null) {
+      const reason = pendingDiagnosticReason;
+      pendingDiagnosticReason = null;
+      emitDiagnosticReport(reason);
+    }
+
     // OrbitControls damping이 끝날 때까지 계속 렌더링
     if (controlsChanged) {
       requestRender();
@@ -508,6 +594,116 @@ const textureKeys = [
   'transmissionMap',
   'thicknessMap',
 ];
+
+function collectDiagnosticResources() {
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
+  const bitmaps = new Set();
+
+  let meshes = 0;
+  let instancedMeshes = 0;
+  let instanceSlots = 0;
+
+  scene?.traverse((object) => {
+    if (!object.isMesh) return;
+
+    meshes += 1;
+
+    if (object.geometry) {
+      geometries.add(object.geometry);
+    }
+
+    const objectMaterials = Array.isArray(object.material)
+      ? object.material
+      : [object.material];
+
+    objectMaterials.forEach((material) => {
+      if (!material) return;
+
+      materials.add(material);
+
+      textureKeys.forEach((key) => {
+        const texture = material[key];
+
+        if (!texture?.isTexture) return;
+
+        textures.add(texture);
+
+        const image = texture.source?.data;
+
+        if (
+          typeof ImageBitmap !== 'undefined' &&
+          image instanceof ImageBitmap
+        ) {
+          bitmaps.add(image);
+        }
+      });
+    });
+
+    if (object.isInstancedMesh) {
+      instancedMeshes += 1;
+      instanceSlots += object.count;
+    }
+  });
+
+  return {
+    meshes,
+    geometries: geometries.size,
+    materials: materials.size,
+    textures: textures.size,
+    bitmaps: bitmaps.size,
+    instancedMeshes,
+    instanceSlots,
+  };
+}
+
+function emitDiagnosticReport(reason) {
+  if (!diagnosticsEnabled || !renderer || !scene) return;
+
+  const resources = collectDiagnosticResources();
+  const rendererMemory = renderer.info.memory;
+  const rendererRender = renderer.info.render;
+
+  const report = {
+    type: 'garden_diagnostics',
+    reason,
+    sessionId: diagnosticSessionId,
+    generation: gardenLoadId,
+    diaryCount: diagnosticState.diaryCount,
+    loading: {
+      active: diagnosticState.activeLoads,
+      waiting: 0,
+      peakActive: diagnosticState.peakActiveLoads,
+    },
+    resources,
+    renderer: {
+      geometries: rendererMemory.geometries,
+      textures: rendererMemory.textures,
+      programs: renderer.info.programs?.length ?? 0,
+      drawCalls: rendererRender.calls,
+      triangles: rendererRender.triangles,
+    },
+    activity: {
+      eventListeners: diagnosticState.ownedEventListeners,
+      timers: Number(window.__gardenPendingInitTimers || 0),
+      rafQueued: Number(renderQueued),
+      rafRunning: Number(renderRunning),
+      tweens: gsap.getTweensOf([
+        camera.position,
+        controls.target,
+      ]).length,
+    },
+  };
+
+  const message = `GARDEN_DIAGNOSTICS:${JSON.stringify(report)}`;
+
+  console.log(message);
+
+  if (window.FlutterChannel) {
+    window.FlutterChannel.postMessage(message);
+  }
+}
 
 function disposeObject3D(root, textures) {
   root.traverse((child) => {
@@ -577,15 +773,15 @@ function showPreviewSelection(label) {
     const button = document.createElement('button');
     button.textContent = '전체 정원으로 돌아가기';
     button.style.marginTop = '8px';
-    button.addEventListener('click', (event) => {
+    addTrackedEventListener(button, 'click', (event) => {
       event.stopPropagation();
       panel.style.display = 'none';
       window.resetCamera();
     });
     // UI taps should not trigger the scene raycaster.
-    panel.addEventListener('touchstart', event => event.stopPropagation(), { passive: true });
-    panel.addEventListener('touchend', event => event.stopPropagation());
-    panel.addEventListener('click', event => event.stopPropagation());
+    addTrackedEventListener(panel, 'touchstart', event => event.stopPropagation(), { passive: true });
+    addTrackedEventListener(panel, 'touchend', event => event.stopPropagation());
+    addTrackedEventListener(panel, 'click', event => event.stopPropagation());
     document.body.appendChild(panel);
   }
   document.getElementById('preview-label').textContent = label;

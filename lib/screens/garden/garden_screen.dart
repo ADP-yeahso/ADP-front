@@ -31,6 +31,16 @@ class _GardenScreenState extends State<GardenScreen> {
   late final WebViewController _webViewController;
   late final LocalAssetServer _localhostServer;
 
+  // (메모리 01-B) 진단 플래그 추가
+  static const bool _gardenDiagnosticsEnabled = bool.fromEnvironment(
+    'GARDEN_DIAGNOSTICS',
+    defaultValue: false,
+  );
+  static const String _gardenScenario = String.fromEnvironment(
+    'GARDEN_SCENARIO',
+    defaultValue: 'real',
+  );
+
   bool _isFocusing = false;
   bool _isServerStarted = false;
 
@@ -53,6 +63,12 @@ class _GardenScreenState extends State<GardenScreen> {
         'FlutterChannel',
         onMessageReceived: (JavaScriptMessage message) {
           final msgId = message.message;
+          if (msgId.startsWith('GARDEN_DIAGNOSTICS:')) {
+            if (_gardenDiagnosticsEnabled) {
+              debugPrint(msgId);
+            }
+            return;
+          }
           if (kDebugMode) {
             print('JS Message: $msgId');
           }
@@ -71,9 +87,12 @@ class _GardenScreenState extends State<GardenScreen> {
         ),
       );
 
+    final diagnosticsQuery = _gardenDiagnosticsEnabled ? '&diagnostics=1' : '';
+
     await _webViewController.loadRequest(
       Uri.parse(
-        'http://localhost:8080/www/index.html?v=\${DateTime.now().millisecondsSinceEpoch}',
+        'http://localhost:8080/www/index.html'
+        '?v=flower-mapping-v1$diagnosticsQuery',
       ),
     );
 
@@ -107,6 +126,69 @@ class _GardenScreenState extends State<GardenScreen> {
     }
   });
 
+  // (메모리 01-B)테스트 진단 데이터 생성 함수
+  List<Map<String, Object>> _buildDiagnosticDiaries(String scenario) {
+    switch (scenario) {
+      case 'zero':
+        return const [];
+
+      case 'mixed-30':
+        return _buildMixedDiagnosticDiaries(30);
+
+      case 'mixed-60':
+        return _buildMixedDiagnosticDiaries(60);
+
+      case 'heavy-60':
+        // affection 배열의 2번 인덱스:
+        // Affection_Marigold.glb를 반복 선택하도록 ID를 구성
+        return List.generate(
+          60,
+          (index) => {'id': index * 4 + 2, 'emotion': 'affection'},
+        );
+
+      default:
+        throw StateError('Unknown garden diagnostic scenario: $scenario');
+    }
+  }
+
+  List<Map<String, Object>> _buildMixedDiagnosticDiaries(int count) {
+    const emotions = [
+      'anger',
+      'anxiety',
+      'guilt',
+      'sadness',
+      'affection',
+      'gratitude',
+      'neutral',
+    ];
+
+    const variantCounts = {
+      'anger': 4,
+      'anxiety': 4,
+      'guilt': 3,
+      'sadness': 3,
+      'affection': 4,
+      'gratitude': 1,
+      'neutral': 1,
+    };
+
+    final occurrences = <String, int>{};
+
+    return List.generate(count, (index) {
+      final emotion = emotions[index % emotions.length];
+      final occurrence = occurrences[emotion] ?? 0;
+      occurrences[emotion] = occurrence + 1;
+
+      final variantIndex = occurrence % variantCounts[emotion]!;
+
+      // 12는 3과 4의 공배수이므로 현재 URL 선택식
+      // diary.id % urls.length에서 원하는 variantIndex가 나옴
+      final id = (index + 1) * 12 + variantIndex;
+
+      return {'id': id, 'emotion': emotion};
+    });
+  }
+
   /// 달이 변경될 때마다 3D Scene의 데이터를 다시 주입
   void _reload3DScene() {
     if (widget.assetPreview) {
@@ -125,13 +207,24 @@ class _GardenScreenState extends State<GardenScreen> {
     final appData = context.read<AppData>();
     final diaries = appData.diariesForMonth(_currentMonth);
 
-    final diariesJson = jsonEncode(
-      diaries
-          .map((e) => {'id': e.id, 'emotion': e.flowerType.emotionId.name})
-          .toList(),
-    );
+    final realDiaryPayload = diaries
+        .map(
+          (diary) => <String, Object>{
+            'id': diary.id,
+            'emotion': diary.flowerType.emotionId.name,
+          },
+        )
+        .toList();
+
+    final diaryPayload = _gardenDiagnosticsEnabled && _gardenScenario != 'real'
+        ? _buildDiagnosticDiaries(_gardenScenario)
+        : realDiaryPayload;
+
+    final diariesJson = jsonEncode(diaryPayload);
+
     const assetVersion = 'flower-mapping-v1';
-    final treeUrl = 'http://localhost:8080/images/worldtree.glb?v=$assetVersion';
+    final treeUrl =
+        'http://localhost:8080/images/worldtree.glb?v=$assetVersion';
 
     final flowerBaseUrl = 'http://localhost:8080/images/flower';
     final placeholderFlowerUrl =
@@ -178,7 +271,11 @@ class _GardenScreenState extends State<GardenScreen> {
           if (typeof window.disposeGarden === 'function') window.disposeGarden();
           window.initGarden('$treeUrl', '$flowerUrlsMapJson', '$diariesJson');
         } else {
-          setTimeout(tryInitGarden, 100);
+          window.__gardenPendingInitTimers = (window.__gardenPendingInitTimers || 0) + 1;
+          setTimeout(() => {
+            window.__gardenPendingInitTimers = Math.max(0, (window.__gardenPendingInitTimers || 1) - 1);
+            tryInitGarden();
+          }, 100);
         }
       }
       tryInitGarden();

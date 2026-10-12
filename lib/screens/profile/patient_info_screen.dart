@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
+import '../../data/auth_session.dart';
+import '../../services/api_service.dart';
 
 class PatientInfoScreen extends StatefulWidget {
   const PatientInfoScreen({super.key});
@@ -120,7 +122,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     });
   }
 
-  void _savePatientInfo() {
+  Future<void> _savePatientInfo() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -135,6 +137,34 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     final relation = _selectedRelation == '기타'
         ? _customRelationController.text.trim()
         : _selectedRelation;
+
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인이 만료되었습니다. 다시 로그인해주세요.')),
+      );
+      return;
+    }
+
+    try {
+      final appData = context.read<AppData>();
+      await PatientApi(ApiService()).update(tokens, appData.patient.id, {
+        'patient_name': _patientNameController.text.trim(),
+        'patient_birth_date': _selectedBirthDate!.toIso8601String().split('T').first,
+      });
+      await GroupApi(ApiService()).updateMembership(
+        tokens,
+        appData.group.id,
+        patientsNickname: relation,
+      );
+      if (!mounted) return;
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+      return;
+    }
 
     context.read<AppData>().updatePatientInfo(
       patientName: _patientNameController.text.trim(),

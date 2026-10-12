@@ -2,6 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Care Garden (Android Emulator)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "emulator-5554"
+    },
+    {
+      "name": "Care Garden (Default Device)",
+      "request": "launch",
+      "type": "dart"
+    },
+    {
       "name": "Flutter Web (localhost:5173)",
       "request": "launch",
       "type": "dart",

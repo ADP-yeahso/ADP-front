@@ -412,7 +412,7 @@ window.resetCamera = function () {
       controls.enabled = true;
     }
   });
-}
+};
 
 function animate() {
   requestAnimationFrame(animate);

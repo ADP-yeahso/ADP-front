@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../models/media.dart';
+import '../../widgets/video_thumbnail_widget.dart';
 
 class GalleryMediaTile extends StatefulWidget {
   final Media item;
@@ -592,6 +593,13 @@ class _GalleryMediaTileState extends State<GalleryMediaTile> {
       );
     }
 
+    if (item.fileType == 'video') {
+      return VideoThumbnailWidget(
+        videoPath: item.fileUrl,
+        showPlayIcon: false,
+        borderRadius: BorderRadius.zero,
+      );
+    }
     final file = File(item.fileUrl);
 
     if (file.existsSync()) {

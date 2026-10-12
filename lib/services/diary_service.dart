@@ -213,7 +213,7 @@ class DiaryService {
     return tags;
   }
 
-  Future<DiaryFinalization> saveTagsAndFinalize({
+  Future<void> saveTags({
     required AuthTokens tokens,
     required int diaryId,
     required List<int> tagIds,
@@ -224,6 +224,12 @@ class DiaryService {
     await _put('/diaries/$diaryId/emotion-tags', tokens, {
       'emotion_tag_ids': tagIds,
     });
+  }
+
+  Future<DiaryFinalization> finalizeDiary({
+    required AuthTokens tokens,
+    required int diaryId,
+  }) async {
     final result = await _post('/diaries/$diaryId/finalize', tokens, const {});
     final emotion = result['emotion'];
     final flower = result['flower'];
@@ -246,6 +252,15 @@ class DiaryService {
       flowerName: (flowerMap['flower_name'] ?? '마음의 꽃').toString(),
       flowerSentence: (flowerMap['sentence'] ?? '').toString(),
     );
+  }
+
+  Future<DiaryFinalization> saveTagsAndFinalize({
+    required AuthTokens tokens,
+    required int diaryId,
+    required List<int> tagIds,
+  }) async {
+    await saveTags(tokens: tokens, diaryId: diaryId, tagIds: tagIds);
+    return finalizeDiary(tokens: tokens, diaryId: diaryId);
   }
 
   Future<dynamic> _get(

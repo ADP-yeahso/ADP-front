@@ -179,6 +179,20 @@ void main() {
     client.close();
   });
 
+  test('다음 단계에서 선택 태그를 먼저 저장한다', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'PUT');
+      expect(request.url.path, '/api/v1/diaries/42/emotion-tags');
+      expect(jsonDecode(request.body)['emotion_tag_ids'], [1, 6, 7]);
+      return http.Response('{}', 200);
+    });
+
+    await DiaryService(
+      client: client,
+    ).saveTags(tokens: tokens, diaryId: 42, tagIds: [1, 6, 7]);
+    client.close();
+  });
+
   test('확정 감정의 timestamp를 기준으로 월간 일기를 가져온다', () async {
     final client = MockClient((request) async {
       expect(request.method, 'GET');

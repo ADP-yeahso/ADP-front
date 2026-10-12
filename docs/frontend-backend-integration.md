@@ -28,7 +28,9 @@ AuthSession (로그인 토큰을 앱 메모리에 보관)
 
 ## 3. 서버 주소 설정
 
-### 권장: `env.json` + `--dart-define-from-file`
+별도 설정이 없으면 모든 플랫폼에서 Railway 백엔드 `https://adp-back-production.up.railway.app/api/v1`에 연결한다. Dockerfile의 웹 빌드도 같은 주소를 기본값으로 사용한다.
+
+### 다른 서버 사용: `env.json` + `--dart-define-from-file`
 
 프로젝트 루트의 `env.json`에 다음처럼 작성한다. 이 파일은 `.gitignore`에 포함되어 있으므로 개인/환경별 주소를 커밋하지 않는다.
 
@@ -55,8 +57,17 @@ VS Code에서는 [`.vscode/launch.json`](../.vscode/launch.json)에 이미 같�
 
 | 실행 환경 | 기본 주소 |
 | --- | --- |
-| Android 에뮬레이터 | `http://10.0.2.2:8000/api/v1` |
-| iOS 시뮬레이터·웹·데스크톱 | `http://localhost:8000/api/v1` |
+| 모든 플랫폼 | `https://adp-back-production.up.railway.app/api/v1` |
+
+`API_BASE_URL`을 빈 문자열로 전달해도 Railway 기본 주소를 사용한다. 로컬 백엔드를 개발할 때만 주소를 명시적으로 지정한다.
+
+```bash
+# 웹·iOS 시뮬레이터·데스크톱에서 로컬 백엔드 사용
+flutter run --dart-define=API_BASE_URL=http://localhost:8000/api/v1
+
+# Android 에뮬레이터에서 개발 PC의 로컬 백엔드 사용
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1
+```
 
 설정값 끝의 `/`는 자동으로 제거한다. 따라서 `.../api/v1/`을 입력해도 API 경로가 `//auth/login`으로 만들어지지 않는다.
 
@@ -119,7 +130,7 @@ Content-Type: application/json
 | 위치 | 수정 내용 | 이유 |
 | --- | --- | --- |
 | `pubspec.yaml` | `http` 패키지 추가 | Flutter에서 REST 요청을 보낼 클라이언트가 필요함 |
-| `lib/config/api_config.dart` | `API_BASE_URL`과 플랫폼별 로컬 기본 주소 추가 | 소스 수정 없이 로컬·배포 서버를 전환 |
+| `lib/config/api_config.dart` | Railway 기본 주소와 `API_BASE_URL` 재정의 지원 | 설정 없이 공개 서버에 연결하고, 개발 시 다른 서버로 전환 |
 | `lib/services/auth_service.dart` | 회원가입/로그인 POST, JSON 변환, 상태 코드·timeout 처리 | 네트워크 로직을 화면에서 분리 |
 | `lib/screens/auth/signup_screen.dart` | 실제 가입 요청, 진행 중 중복 탭 방지, 오류 SnackBar | UI 입력값을 백엔드 계약에 맞춰 전송 |
 | `lib/screens/auth/login_screen.dart` | 실제 로그인 요청, 토큰 저장, 성공 시 화면 전환 | 더미 화면 전환을 실제 인증 흐름으로 교체 |

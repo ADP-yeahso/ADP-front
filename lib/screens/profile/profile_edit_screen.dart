@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
+import '../../data/auth_session.dart';
+import '../../services/api_service.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -53,16 +55,35 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     );
   }
 
-  void _saveProfile() {
+  Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    context.read<AppData>().updateCurrentUserProfile(
-          name: _nameController.text.trim(),
-          password: _passwordController.text,
-          phoneNumber: _phoneController.text.trim(),
-        );
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 후 프로필을 수정할 수 있어요.')),
+      );
+      return;
+    }
+
+    try {
+      await UserApi(ApiService()).updateProfile(tokens, {
+        'name': _nameController.text.trim(),
+        'phone_number': _phoneController.text.trim(),
+      });
+      context.read<AppData>().updateCurrentUserProfile(
+            name: _nameController.text.trim(),
+            password: _passwordController.text,
+            phoneNumber: _phoneController.text.trim(),
+          );
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

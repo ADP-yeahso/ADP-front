@@ -32,36 +32,33 @@ class ApiService {
     AuthTokens tokens, {
     Object? body,
     int? expectedStatus,
-  }) =>
-      _send(
-        () => _client.post(
-          _uri(path),
-          headers: _headers(tokens),
-          body: body == null ? null : jsonEncode(body),
-        ),
-        tokens,
-        expectedStatus: expectedStatus,
-      );
+  }) => _send(
+    () => _client.post(
+      _uri(path),
+      headers: _headers(tokens),
+      body: body == null ? null : jsonEncode(body),
+    ),
+    tokens,
+    expectedStatus: expectedStatus,
+  );
 
-  Future<dynamic> patch(String path, AuthTokens tokens, Object body) =>
-      _send(
-        () => _client.patch(
-          _uri(path),
-          headers: _headers(tokens),
-          body: jsonEncode(body),
-        ),
-        tokens,
-      );
+  Future<dynamic> patch(String path, AuthTokens tokens, Object body) => _send(
+    () => _client.patch(
+      _uri(path),
+      headers: _headers(tokens),
+      body: jsonEncode(body),
+    ),
+    tokens,
+  );
 
-  Future<dynamic> put(String path, AuthTokens tokens, {Object? body}) =>
-      _send(
-        () => _client.put(
-          _uri(path),
-          headers: _headers(tokens),
-          body: body == null ? null : jsonEncode(body),
-        ),
-        tokens,
-      );
+  Future<dynamic> put(String path, AuthTokens tokens, {Object? body}) => _send(
+    () => _client.put(
+      _uri(path),
+      headers: _headers(tokens),
+      body: body == null ? null : jsonEncode(body),
+    ),
+    tokens,
+  );
 
   Future<void> delete(String path, AuthTokens tokens) async {
     await _send(
@@ -131,41 +128,59 @@ class GroupApi {
   GroupApi(this._api);
   final ApiService _api;
 
-  Future<List<Map<String, dynamic>>> list(AuthTokens tokens) async =>
-      _maps(await _api.get('/groups', tokens));
+  Future<List<Map<String, dynamic>>> list(AuthTokens tokens) async {
+    final response = await _api.get('/groups', tokens);
+    if (response is List) return _maps(response);
+    if (response is Map<String, dynamic>) {
+      for (final key in ['groups', 'items', 'data']) {
+        final value = response[key];
+        if (value is List) return _maps(value);
+      }
+    }
+    return const [];
+  }
 
   Future<Map<String, dynamic>> create(
     AuthTokens tokens, {
     required String groupName,
     String? profileImageUrl,
-  }) async =>
-      _map(await _api.post('/groups', tokens, body: {
+  }) async => _map(
+    await _api.post(
+      '/groups',
+      tokens,
+      body: {
         'group_name': groupName,
         if (profileImageUrl != null) 'group_profile_image_url': profileImageUrl,
-      }));
+      },
+    ),
+  );
 
   Future<Map<String, dynamic>> join(
     AuthTokens tokens,
     String inviteCode,
-  ) async =>
-      _map(await _api.post('/groups/join', tokens, body: {'invite_code': inviteCode}));
+  ) async => _map(
+    await _api.post('/groups/join', tokens, body: {'invite_code': inviteCode}),
+  );
 
   Future<Map<String, dynamic>> detail(AuthTokens tokens, int groupId) async =>
       _map(await _api.get('/groups/$groupId', tokens));
 
-  Future<List<Map<String, dynamic>>> members(AuthTokens tokens, int groupId) async =>
-      _maps(await _api.get('/groups/$groupId/members', tokens));
+  Future<List<Map<String, dynamic>>> members(
+    AuthTokens tokens,
+    int groupId,
+  ) async => _maps(await _api.get('/groups/$groupId/members', tokens));
 
   Future<Map<String, dynamic>> updateMembership(
     AuthTokens tokens,
     int groupId, {
     String? patientsNickname,
     String? patientRelation,
-  }) async =>
-      _map(await _api.patch('/groups/$groupId/members/me', tokens, {
-        if (patientsNickname != null) 'patients_nickname': patientsNickname,
-        if (patientRelation != null) 'patient_relation': patientRelation,
-      }));
+  }) async => _map(
+    await _api.patch('/groups/$groupId/members/me', tokens, {
+      if (patientsNickname != null) 'patients_nickname': patientsNickname,
+      if (patientRelation != null) 'patient_relation': patientRelation,
+    }),
+  );
 }
 
 class PatientApi {
@@ -186,8 +201,7 @@ class PatientApi {
     AuthTokens tokens,
     int patientId,
     Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.patch('/patients/$patientId', tokens, body));
+  ) async => _map(await _api.patch('/patients/$patientId', tokens, body));
 }
 
 class MemoryRecordApi {
@@ -198,8 +212,9 @@ class MemoryRecordApi {
     AuthTokens tokens,
     int patientId,
     Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.post('/patients/$patientId/memory-records', tokens, body: body));
+  ) async => _map(
+    await _api.post('/patients/$patientId/memory-records', tokens, body: body),
+  );
 
   Future<List<Map<String, dynamic>>> list(
     AuthTokens tokens,
@@ -213,7 +228,9 @@ class MemoryRecordApi {
     if (fromDate != null) query['from_date'] = _date(fromDate);
     if (toDate != null) query['to_date'] = _date(toDate);
     final suffix = Uri(queryParameters: query).query;
-    return _maps(await _api.get('/patients/$patientId/memory-records?$suffix', tokens));
+    return _maps(
+      await _api.get('/patients/$patientId/memory-records?$suffix', tokens),
+    );
   }
 
   Future<Map<String, dynamic>> detail(AuthTokens tokens, int id) async =>
@@ -223,10 +240,10 @@ class MemoryRecordApi {
     AuthTokens tokens,
     int id,
     Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.patch('/memory-records/$id', tokens, body));
+  ) async => _map(await _api.patch('/memory-records/$id', tokens, body));
 
-  Future<void> remove(AuthTokens tokens, int id) => _api.delete('/memory-records/$id', tokens);
+  Future<void> remove(AuthTokens tokens, int id) =>
+      _api.delete('/memory-records/$id', tokens);
 
   Future<bool> setBookmark(AuthTokens tokens, int id, bool value) async {
     if (value) {
@@ -237,17 +254,25 @@ class MemoryRecordApi {
     return false;
   }
 
-  Future<List<Map<String, dynamic>>> comments(AuthTokens tokens, int id) async =>
-      _maps(await _api.get('/memory-records/$id/comments', tokens));
+  Future<List<Map<String, dynamic>>> comments(
+    AuthTokens tokens,
+    int id,
+  ) async => _maps(await _api.get('/memory-records/$id/comments', tokens));
 
   Future<Map<String, dynamic>> addComment(
     AuthTokens tokens,
     int id,
     String text,
-  ) async =>
-      _map(await _api.post('/memory-records/$id/comments', tokens, body: {'comment_text': text}));
+  ) async => _map(
+    await _api.post(
+      '/memory-records/$id/comments',
+      tokens,
+      body: {'comment_text': text},
+    ),
+  );
 
-  Future<void> removeComment(AuthTokens tokens, int id) => _api.delete('/comments/$id', tokens);
+  Future<void> removeComment(AuthTokens tokens, int id) =>
+      _api.delete('/comments/$id', tokens);
 }
 
 class MediaApi {
@@ -258,11 +283,13 @@ class MediaApi {
     AuthTokens tokens, {
     required String fileName,
     required String fileType,
-  }) async =>
-      _map(await _api.post('/media/presign', tokens, body: {
-        'file_name': fileName,
-        'file_type': fileType,
-      }));
+  }) async => _map(
+    await _api.post(
+      '/media/presign',
+      tokens,
+      body: {'file_name': fileName, 'file_type': fileType},
+    ),
+  );
 
   Future<Map<String, dynamic>> register(
     AuthTokens tokens,
@@ -276,8 +303,9 @@ class MediaApi {
     int groupId, {
     int page = 1,
     int size = 20,
-  }) async =>
-      _maps(await _api.get('/groups/$groupId/gallery?page=$page&size=$size', tokens));
+  }) async => _maps(
+    await _api.get('/groups/$groupId/gallery?page=$page&size=$size', tokens),
+  );
 
   Future<void> remove(AuthTokens tokens, int groupId, int mediaId) =>
       _api.delete('/groups/$groupId/gallery/$mediaId', tokens);
@@ -296,8 +324,7 @@ class UserApi {
   Future<Map<String, dynamic>> updateProfile(
     AuthTokens tokens,
     Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.patch('/users/me', tokens, body));
+  ) async => _map(await _api.patch('/users/me', tokens, body));
 
   Future<void> changePassword(
     AuthTokens tokens,
@@ -319,11 +346,12 @@ class CalendarApi {
     AuthTokens tokens,
     int groupId,
     DateTime value,
-  ) async =>
-      _map(await _api.get(
-        '/groups/$groupId/calendar?year=${value.year}&month=${value.month}',
-        tokens,
-      ));
+  ) async => _map(
+    await _api.get(
+      '/groups/$groupId/calendar?year=${value.year}&month=${value.month}',
+      tokens,
+    ),
+  );
 
   Future<Map<String, dynamic>> day(
     AuthTokens tokens,
@@ -337,11 +365,13 @@ class CalendarApi {
     DateTime value, {
     int? groupId,
   }) async {
-    final query = Uri(queryParameters: {
-      'year': '${value.year}',
-      'month': '${value.month}',
-      if (groupId != null) 'group_id': '$groupId',
-    }).query;
+    final query = Uri(
+      queryParameters: {
+        'year': '${value.year}',
+        'month': '${value.month}',
+        if (groupId != null) 'group_id': '$groupId',
+      },
+    ).query;
     return _map(await _api.get('/gardens?$query', tokens));
   }
 }
@@ -354,37 +384,45 @@ class CareApi {
     AuthTokens tokens,
     int patientId,
     Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.post('/patients/$patientId/daily-conditions', tokens, body: body));
+  ) async => _map(
+    await _api.post(
+      '/patients/$patientId/daily-conditions',
+      tokens,
+      body: body,
+    ),
+  );
 
   Future<List<Map<String, dynamic>>> dailyConditions(
     AuthTokens tokens,
     int patientId, {
     DateTime? recordDate,
-  }) async =>
-      _maps(await _api.get(
-        '/patients/$patientId/daily-conditions${recordDate == null ? '' : '?record_date=${_date(recordDate)}'}',
-        tokens,
-      ));
+  }) async => _maps(
+    await _api.get(
+      '/patients/$patientId/daily-conditions${recordDate == null ? '' : '?record_date=${_date(recordDate)}'}',
+      tokens,
+    ),
+  );
 
   Future<Map<String, dynamic>> updateDailyCondition(
     AuthTokens tokens,
     int patientId,
     int conditionId,
     Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.patch(
-        '/patients/$patientId/daily-conditions/$conditionId',
-        tokens,
-        body,
-      ));
+  ) async => _map(
+    await _api.patch(
+      '/patients/$patientId/daily-conditions/$conditionId',
+      tokens,
+      body,
+    ),
+  );
 
   Future<Map<String, dynamic>> createBehaviorLog(
     AuthTokens tokens,
     int patientId,
     Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.post('/patients/$patientId/behavior-logs', tokens, body: body));
+  ) async => _map(
+    await _api.post('/patients/$patientId/behavior-logs', tokens, body: body),
+  );
 
   Future<List<Map<String, dynamic>>> behaviorLogs(
     AuthTokens tokens,
@@ -396,27 +434,33 @@ class CareApi {
     AuthTokens tokens,
     int patientId,
     Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.post('/patients/$patientId/medications', tokens, body: body));
+  ) async => _map(
+    await _api.post('/patients/$patientId/medications', tokens, body: body),
+  );
 
   Future<List<Map<String, dynamic>>> medications(
     AuthTokens tokens,
     int patientId, {
     bool activeOnly = false,
-  }) async =>
-      _maps(await _api.get('/patients/$patientId/medications?active_only=$activeOnly', tokens));
+  }) async => _maps(
+    await _api.get(
+      '/patients/$patientId/medications?active_only=$activeOnly',
+      tokens,
+    ),
+  );
 
   Future<Map<String, dynamic>> upsertIntake(
     AuthTokens tokens,
     int medicationId,
     DateTime logDate,
     Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.put(
-        '/medications/$medicationId/intake-logs/${_date(logDate)}',
-        tokens,
-        body: body,
-      ));
+  ) async => _map(
+    await _api.put(
+      '/medications/$medicationId/intake-logs/${_date(logDate)}',
+      tokens,
+      body: body,
+    ),
+  );
 
   Future<List<Map<String, dynamic>>> intakeLogs(
     AuthTokens tokens,
@@ -428,8 +472,9 @@ class CareApi {
     AuthTokens tokens,
     int patientId,
     Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.post('/patients/$patientId/hospital-visits', tokens, body: body));
+  ) async => _map(
+    await _api.post('/patients/$patientId/hospital-visits', tokens, body: body),
+  );
 
   Future<List<Map<String, dynamic>>> hospitalVisits(
     AuthTokens tokens,

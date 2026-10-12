@@ -26,7 +26,7 @@ void main() {
           200,
         );
       }
-      if (request.url.path == '/api/v1/diaries/draft') {
+      if (request.url.path == '/api/v1/diaries') {
         expect(jsonDecode(request.body), containsPair('group_id', 7));
         return http.Response(jsonEncode({'id': 42}), 201);
       }

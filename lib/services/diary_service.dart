@@ -104,7 +104,9 @@ class DiaryService {
   }) async {
     final response = await _send(
       () => _client.get(
-        _uri('/groups/$groupId/calendar?year=${month.year}&month=${month.month}'),
+        _uri(
+          '/groups/$groupId/calendar?year=${month.year}&month=${month.month}',
+        ),
         headers: _headers(tokens),
       ),
     );
@@ -165,7 +167,14 @@ class DiaryService {
     String? title,
     required DateTime recordDate,
   }) async {
-    final groups = await _get('/groups', tokens);
+    final groupsResponse = await _get('/groups', tokens);
+    final groups = groupsResponse is List
+        ? groupsResponse
+        : groupsResponse is Map<String, dynamic>
+        ? (groupsResponse['groups'] ??
+              groupsResponse['items'] ??
+              groupsResponse['data'])
+        : null;
     if (groups is! List || groups.isEmpty) {
       throw const DiaryException('일기를 작성하려면 먼저 가족 그룹에 참여해주세요.');
     }
@@ -174,13 +183,14 @@ class DiaryService {
       throw const DiaryException('가족 그룹 정보를 읽을 수 없습니다.');
     }
 
-    final created = await _post('/diaries/draft', tokens, {
+    // 현재 배포된 백엔드는 /diaries를 초안 생성 endpoint로 사용한다.
+    final created = await _post('/diaries', tokens, {
       'group_id': firstGroup['id'],
       'situation_text': situationText,
       if (title != null && title.isNotEmpty) 'title': title,
       'record_date': recordDate.toIso8601String(),
     });
-    final diaryId = created['id'];
+    final diaryId = created['id'] ?? created['diary_id'];
     if (diaryId is! int) {
       throw const DiaryException('일기 저장 응답 형식이 올바르지 않습니다.');
     }
@@ -191,7 +201,11 @@ class DiaryService {
       null,
       timeout: const Duration(seconds: 75),
     );
-    final text = question['ai_question_text'] ?? question['aiQuestionText'];
+    final text =
+        question['ai_question_text'] ??
+        question['aiQuestionText'] ??
+        question['ai_question'] ??
+        question['question'];
     if (text is! String || text.isEmpty) {
       throw const DiaryException('AI 질문을 생성하지 못했습니다.');
     }
@@ -210,12 +224,17 @@ class DiaryService {
       '/diaries/$diaryId/emotion-tag-suggestions',
       tokens,
     );
-    if (response is! List) {
+    final rawSuggestions = response is List
+        ? response
+        : response is Map<String, dynamic>
+        ? (response['suggestions'] ?? response['items'] ?? response['data'])
+        : null;
+    if (rawSuggestions is! List) {
       throw const DiaryException('감정 태그 추천 응답 형식이 올바르지 않습니다.');
     }
 
     final tags = <EmotionTagOption>[];
-    for (final item in response.whereType<Map<String, dynamic>>()) {
+    for (final item in rawSuggestions.whereType<Map<String, dynamic>>()) {
       final emotionName = (item['display_name'] ?? item['emotion'] ?? '감정')
           .toString();
       final rawTags = item['tags'];

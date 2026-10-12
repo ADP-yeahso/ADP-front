@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:path/path.dart' as p;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
@@ -12,6 +14,8 @@ import '../../data/app_data.dart';
 import '../../models/media.dart';
 import '../../widgets/asset_text_scrollbar.dart';
 import '../../widgets/video_thumbnail_widget.dart';
+import '../../data/auth_session.dart';
+import '../../services/api_service.dart';
 
 class PatientInfoScreen extends StatefulWidget {
   const PatientInfoScreen({super.key});
@@ -29,6 +33,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   final List<Media> _attachedMedia = [];
   final ImagePicker _picker = ImagePicker();
   bool _isPickingMedia = false;
+  bool _isSaving = false;
 
   // 입력 필드 포커스 노드
   final _titleFocusNode = FocusNode();
@@ -162,25 +167,100 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     });
   }
 
-  void _save() {
+  String _contentType(String fileType, String path) {
+    final extension = p.extension(path).toLowerCase();
+    if (fileType == 'image') return extension == '.png' ? 'image/png' : 'image/jpeg';
+    if (fileType == 'video') {
+      return extension == '.mov' ? 'video/quicktime' : 'video/mp4';
+    }
+    return extension == '.wav' ? 'audio/wav' : 'audio/mpeg';
+  }
+
+  Future<void> _save() async {
     if (!_isFormValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('제목과 내용을 입력해 주세요.')),
       );
       return;
     }
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 후 기록을 저장할 수 있어요.')),
+      );
+      return;
+    }
+    setState(() => _isSaving = true);
     final appData = context.read<AppData>();
-    appData.addMemory(
-      date: _date,
-      title: _titleController.text.trim(),
-      content: _contentController.text.trim(),
-      mediaList: _attachedMedia,
-      isPublic: _isPublic,
-    );
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('나무에 새 잎이 달렸어요 🌿')),
-    );
+    try {
+      final api = ApiService();
+      final memory = await MemoryRecordApi(api).create(
+        tokens,
+        appData.patient.id,
+        {
+          'title': _titleController.text.trim(),
+          'context': _contentController.text.trim(),
+          'record_date': _date.toIso8601String().split('T').first,
+        },
+      );
+      final memoryId = (memory['id'] ?? memory['memory_record_id']) as int?;
+      if (memoryId == null) throw const ApiException('저장된 기록 ID를 받지 못했습니다.');
+
+      for (final media in _attachedMedia) {
+        final bytes = await File(media.fileUrl).readAsBytes();
+        final signed = await MediaApi(api).presign(
+          tokens,
+          fileName: p.basename(media.fileUrl),
+          fileType: media.fileType,
+        );
+        final uploadUrl =
+            (signed['upload_url'] ?? signed['presigned_url']) as String?;
+        final fileUrl =
+            (signed['file_url'] ?? signed['public_url'] ?? signed['object_url'])
+                as String?;
+        if (uploadUrl == null || fileUrl == null) {
+          throw const ApiException('첨부 파일 업로드 정보를 받지 못했습니다.');
+        }
+        await api.uploadBytes(
+          uploadUrl: uploadUrl,
+          bytes: Uint8List.fromList(bytes),
+          contentType: _contentType(media.fileType, media.fileUrl),
+        );
+        await MediaApi(api).register(tokens, appData.patient.groupId, {
+          'file_url': fileUrl,
+          'file_type': media.fileType,
+          'memory_record_id': memoryId,
+          'duration': media.duration ?? 0,
+          'sort_order': media.sortOrder,
+        });
+      }
+
+      // 로컬 캐시는 서버 저장이 성공한 뒤에만 갱신한다.
+      appData.addMemory(
+        date: _date,
+        title: _titleController.text.trim(),
+        content: _contentController.text.trim(),
+        mediaList: _attachedMedia,
+        isPublic: _isPublic,
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('나무에 새 잎이 달렸어요 🌿')),
+      );
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } on Exception {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('기록 저장 중 오류가 발생했습니다.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   Widget _buildPlaceholderIcon(IconData icon, String label) {
@@ -731,7 +811,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 48),
       child: Center(
         child: GestureDetector(
-          onTap: _save,
+          onTap: _isSaving ? null : _save,
           child: Image.asset(
             _isFormValid
                 ? 'assets/images/screen3_1/next_button_green.png'
@@ -746,9 +826,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                 color: _isFormValid ? const Color(0xFFA2D97C) : const Color(0xFFFFEFB5),
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Center(
+              child: Center(
                 child: Text(
-                  '다음',
+                  _isSaving ? '저장 중...' : '다음',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

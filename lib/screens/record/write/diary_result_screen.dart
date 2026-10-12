@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../models/emotions.dart';
 import '../../../utils/emotion_utils.dart';
+import '../../../services/diary_service.dart';
 import 'diary_care_content_screen.dart';
 
 class DiaryResultScreen extends StatelessWidget {
   final Emotion? emotion;
+  final DiaryFinalization? finalization;
 
   const DiaryResultScreen({
     super.key,
     this.emotion,
+    this.finalization,
   });
 
   Widget _buildAssetWidget({
@@ -76,7 +79,13 @@ class DiaryResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeEmotion = emotion ?? EmotionValues.neutral;
+    final finalizedEmotion = finalization?.emotionId == null
+        ? null
+        : EmotionValues.values.firstWhere(
+            (item) => item.id == finalization!.emotionId,
+            orElse: () => EmotionValues.neutral,
+          );
+    final activeEmotion = emotion ?? finalizedEmotion ?? EmotionValues.neutral;
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0),
       appBar: AppBar(
@@ -181,12 +190,12 @@ class DiaryResultScreen extends StatelessWidget {
                           child: Stack(
                             children: [
                               // 위치 20*30 폰트크기 40 (은방울꽃)
-                              const Positioned(
+                              Positioned(
                                 top: 24,
                                 left: 20,
                                 child: Text(
-                                  '은방울꽃',
-                                  style: TextStyle(
+                                  finalization?.flowerName ?? '은방울꽃',
+                                  style: const TextStyle(
                                     fontSize: 30,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
@@ -195,12 +204,12 @@ class DiaryResultScreen extends StatelessWidget {
                                 ),
                               ),
                               // 위치 20*80 폰트크기 16 (꽃말)
-                              const Positioned(
+                              Positioned(
                                 top: 68,
                                 left: 20,
                                 child: Text(
-                                  '행복이 반드시 찾아옵니다',
-                                  style: TextStyle(
+                                  finalization?.flowerSentence ?? '행복이 반드시 찾아옵니다',
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.white70,
                                   ),

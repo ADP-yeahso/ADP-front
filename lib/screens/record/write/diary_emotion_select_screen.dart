@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+
+import '../../../data/auth_session.dart';
 import '../../../models/emotion_model.dart';
-import 'diary_loading_screen.dart';
+import '../../../services/diary_service.dart';
+import 'diary_result_screen.dart';
 
 class DiaryEmotionSelectScreen extends StatefulWidget {
-  final List<EmotionModel>? subEmotionsA;
-  final List<EmotionModel>? subEmotionsB;
-  final dynamic emotionLabelA;
-  final dynamic emotionLabelB;
-
   const DiaryEmotionSelectScreen({
     super.key,
-    this.subEmotionsA,
-    this.subEmotionsB,
-    this.emotionLabelA,
-    this.emotionLabelB,
+    required this.draft,
+    required this.suggestions,
   });
+
+  final DiaryDraft draft;
+  final List<EmotionTagOption> suggestions;
 
   /// AI가 추출한 상위 감정 2개의 하위 감정 각각 5개(총 10개)를
   /// 3-4-3 다이아몬드 구도에 감정이 서로 겹치지 않고 교차 배치(A-B-A / B-A-B-A / B-A-B)되도록 섞어주는 함수
@@ -47,6 +47,7 @@ class DiaryEmotionSelectScreen extends StatefulWidget {
 
 class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
   final List<EmotionModel> _selectedEmotions = [];
+  final Map<String, int> _tagIdsByName = {};
   static const int _maxSelection = 3;
 
   late List<List<EmotionModel>> _scatteredEmotions;
@@ -73,20 +74,64 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
   @override
   void initState() {
     super.initState();
-    List<EmotionModel>? listA = widget.subEmotionsA;
-    List<EmotionModel>? listB = widget.subEmotionsB;
-
-    if (listA == null && widget.emotionLabelA != null) {
-      listA = EmotionCategories.getSubEmotionsForCategory(widget.emotionLabelA);
-    }
-    if (listB == null && widget.emotionLabelB != null) {
-      listB = EmotionCategories.getSubEmotionsForCategory(widget.emotionLabelB);
-    }
-
-    if (listA != null && listB != null && listA.isNotEmpty && listB.isNotEmpty) {
+    if (widget.suggestions.isNotEmpty) {
+      final grouped = <String, List<EmotionModel>>{};
+      for (final suggestion in widget.suggestions) {
+        _tagIdsByName[suggestion.name] = suggestion.id;
+        final category = EmotionCategories.categories.values.firstWhere(
+          (item) => item.label == suggestion.emotionName,
+          orElse: () => EmotionCategories.categories['0']!,
+        );
+        grouped.putIfAbsent(suggestion.emotionName, () => []).add(
+              EmotionModel(name: suggestion.name, color: category.color),
+            );
+      }
+      final groups = grouped.values.toList();
+      final listA = groups.isNotEmpty ? groups[0] : <EmotionModel>[];
+      final listB = groups.length > 1 ? groups[1] : <EmotionModel>[];
       _scatteredEmotions = DiaryEmotionSelectScreen.mixSubEmotions(listA, listB);
     } else {
       _scatteredEmotions = _defaultEmotions;
+    }
+  }
+
+  Future<void> _finalizeDiary() async {
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인이 만료되었습니다. 다시 로그인해주세요.')),
+      );
+      return;
+    }
+    final tagIds = _selectedEmotions
+        .map((emotion) => _tagIdsByName[emotion.name])
+        .whereType<int>()
+        .toList();
+    if (tagIds.length != _maxSelection) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('서버에서 받은 감정 태그를 확인할 수 없습니다.')),
+      );
+      return;
+    }
+
+    try {
+      final finalization = await DiaryService().saveTagsAndFinalize(
+        tokens: tokens,
+        diaryId: widget.draft.id,
+        tagIds: tagIds,
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DiaryResultScreen(finalization: finalization),
+        ),
+      );
+    } on DiaryException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
     }
   }
 
@@ -389,16 +434,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                       width: 180,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: isComplete
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const DiaryLoadingScreen(),
-                                  ),
-                                );
-                              }
-                            : null,
+                        onPressed: isComplete ? _finalizeDiary : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isComplete
                               ? const Color(0xFFA5DD82)

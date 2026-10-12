@@ -10,6 +10,7 @@ import '../../models/diary.dart';
 import '../../models/emotions.dart';
 import '../../utils/emotion_utils.dart';
 import '../../services/diary_service.dart';
+import '../../services/api_service.dart';
 
 const _weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -32,6 +33,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime? _drilldownMonth;
   DateTime? _selectedDay;
   List<CalendarDiaryEntry>? _calendarDiaries;
+  Map<int, int>? _calendarRecordCounts;
   bool _isLoadingCalendar = false;
 
   @override
@@ -74,14 +76,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() {
       _isLoadingCalendar = true;
       _calendarDiaries = null;
+      _calendarRecordCounts = null;
     });
     try {
-      final diaries = await DiaryService().fetchFinalizedForMonth(
+      final groups = await GroupApi(ApiService()).list(tokens);
+      final groupId = groups.isEmpty ? null : groups.first['id'];
+      if (groupId is! int) throw const DiaryException('가족 그룹을 찾을 수 없습니다.');
+      final recordCounts = await DiaryService().fetchCalendarMonth(
         tokens: tokens,
+        groupId: groupId,
         month: month,
       );
       if (mounted && _drilldownMonth == month) {
-        setState(() => _calendarDiaries = diaries);
+        setState(() {
+          _calendarDiaries = const [];
+          _calendarRecordCounts = recordCounts;
+        });
       }
     } on DiaryException {
       // Keep the calendar usable if the API is temporarily unavailable.
@@ -158,6 +168,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       month: _drilldownMonth!,
       onSelectDay: _selectDay,
       calendarDiaries: _calendarDiaries,
+      calendarRecordCounts: _calendarRecordCounts,
       isLoading: _isLoadingCalendar,
     );
   }
@@ -435,12 +446,14 @@ class _DayGrid extends StatelessWidget {
   final DateTime month;
   final void Function(DateTime day) onSelectDay;
   final List<CalendarDiaryEntry>? calendarDiaries;
+  final Map<int, int>? calendarRecordCounts;
   final bool isLoading;
 
   const _DayGrid({
     required this.month,
     required this.onSelectDay,
     required this.calendarDiaries,
+    required this.calendarRecordCounts,
     required this.isLoading,
   });
 
@@ -524,7 +537,8 @@ class _DayGrid extends StatelessWidget {
                   DateTime(month.year, month.month, day),
                   today,
                 ),
-                hasMemory: memoryDays.contains(day),
+                hasMemory: memoryDays.contains(day) ||
+                    (calendarRecordCounts?[day] ?? 0) > 0,
                 flowerEmotion:
                     latestRemoteEmotionByDay[day] ??
                     latestDiaryByDay[day]?.flowerType.emotionId,

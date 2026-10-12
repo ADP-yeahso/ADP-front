@@ -97,6 +97,33 @@ class DiaryService {
 
   final http.Client _client;
 
+  Future<Map<int, int>> fetchCalendarMonth({
+    required AuthTokens tokens,
+    required int groupId,
+    required DateTime month,
+  }) async {
+    final response = await _send(
+      () => _client.get(
+        _uri('/groups/$groupId/calendar?year=${month.year}&month=${month.month}'),
+        headers: _headers(tokens),
+      ),
+    );
+    final body = _bodyOrThrow(response);
+    final days = body is Map<String, dynamic> ? body['days'] : null;
+    final result = <int, int>{};
+    if (days is List) {
+      for (final item in days.whereType<Map<String, dynamic>>()) {
+        final date = item['date'];
+        final count = item['record_count'];
+        if (date is String && count is int) {
+          final parsed = DateTime.tryParse(date);
+          if (parsed != null) result[parsed.day] = count;
+        }
+      }
+    }
+    return result;
+  }
+
   /// Fetches finalized diaries for one calendar month.
   ///
   /// The API accepts the date range for efficient filtering. The client also
@@ -147,7 +174,7 @@ class DiaryService {
       throw const DiaryException('가족 그룹 정보를 읽을 수 없습니다.');
     }
 
-    final created = await _post('/diaries', tokens, {
+    final created = await _post('/diaries/draft', tokens, {
       'group_id': firstGroup['id'],
       'situation_text': situationText,
       if (title != null && title.isNotEmpty) 'title': title,
@@ -161,10 +188,10 @@ class DiaryService {
     final question = await _post(
       '/diaries/$diaryId/ai-question',
       tokens,
-      const {},
+      null,
       timeout: const Duration(seconds: 75),
     );
-    final text = question['ai_question_text'];
+    final text = question['ai_question_text'] ?? question['aiQuestionText'];
     if (text is! String || text.isEmpty) {
       throw const DiaryException('AI 질문을 생성하지 못했습니다.');
     }
@@ -220,7 +247,7 @@ class DiaryService {
     await _put('/diaries/$diaryId/emotion-tags', tokens, {
       'emotion_tag_ids': tagIds,
     });
-    final result = await _post('/diaries/$diaryId/finalize', tokens, const {});
+    final result = await _post('/diaries/$diaryId/finalize', tokens, null);
     final emotion = result['emotion'];
     final flower = result['flower'];
     final emotionMap = emotion is Map<String, dynamic>
@@ -249,13 +276,13 @@ class DiaryService {
   Future<Map<String, dynamic>> _post(
     String path,
     AuthTokens tokens,
-    Map<String, dynamic> body, {
+    Map<String, dynamic>? body, {
     Duration timeout = const Duration(seconds: 20),
   }) => _write(
     () => _client.post(
       _uri(path),
       headers: _headers(tokens),
-      body: jsonEncode(body),
+      body: body == null ? null : jsonEncode(body),
     ),
     timeout: timeout,
   );

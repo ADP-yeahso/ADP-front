@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
+import '../../../data/auth_session.dart';
 import '../../../models/media.dart';
+import '../../../services/diary_service.dart';
 import 'diary_emotion_explore_screen.dart';
-import 'diary_loading_screen.dart';
 
 class DiarySituationScreen extends StatefulWidget {
   const DiarySituationScreen({super.key});
@@ -35,6 +37,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   final Set<int> _selectedMediaIds = {};
 
   final ImagePicker _picker = ImagePicker();
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -47,6 +50,44 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitSituation() async {
+    final title = _titleController.text.trim();
+    final situation = _contentController.text.trim();
+    if (title.isEmpty || situation.isEmpty || _isSubmitting) return;
+
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('일기를 저장하려면 먼저 로그인해주세요.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      final draft = await DiaryService().createDraftAndQuestion(
+        tokens: tokens,
+        title: title,
+        situationText: situation,
+        recordDate: DateTime.now(),
+      );
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DiaryEmotionExploreScreen(draft: draft),
+        ),
+      );
+    } on DiaryException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   // 기기 내 저장소 실제 미디어 전체 스캔 (재귀 탐색)
@@ -853,19 +894,8 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                       width: 180,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: isFormValid
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const DiaryLoadingScreen(
-                                          nextScreen:
-                                              DiaryEmotionExploreScreen(),
-                                        ),
-                                  ),
-                                );
-                              }
+                        onPressed: isFormValid && !_isSubmitting
+                            ? _submitSituation
                             : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isFormValid
@@ -879,8 +909,8 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                             borderRadius: BorderRadius.circular(26),
                           ),
                         ),
-                        child: const Text(
-                          '다음',
+                        child: Text(
+                          _isSubmitting ? '저장 중...' : '다음',
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,

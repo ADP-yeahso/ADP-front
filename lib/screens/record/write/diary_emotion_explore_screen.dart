@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+
+import '../../../data/auth_session.dart';
+import '../../../services/diary_service.dart';
 import 'diary_emotion_select_screen.dart';
 
 class DiaryEmotionExploreScreen extends StatefulWidget {
-  const DiaryEmotionExploreScreen({super.key});
+  const DiaryEmotionExploreScreen({super.key, required this.draft});
+
+  final DiaryDraft draft;
 
   @override
   State<DiaryEmotionExploreScreen> createState() =>
@@ -12,11 +18,50 @@ class DiaryEmotionExploreScreen extends StatefulWidget {
 
 class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
   final TextEditingController _controller = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitAnswer() async {
+    final answer = _controller.text.trim();
+    if (answer.isEmpty || _isSubmitting) return;
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인이 만료되었습니다. 다시 로그인해주세요.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      final suggestions = await DiaryService().saveAnswerAndGetSuggestions(
+        tokens: tokens,
+        diaryId: widget.draft.id,
+        answer: answer,
+      );
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DiaryEmotionSelectScreen(
+            draft: widget.draft,
+            suggestions: suggestions,
+          ),
+        ),
+      );
+    } on DiaryException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   Widget _buildAssetWidget({
@@ -92,22 +137,15 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 메인 헤드라인 ("오늘 느낀 감정을 표현해볼까요?")
+              // 명세서의 ai-question 응답을 화면에 표시한다.
               Center(
-                child: _buildAssetWidget(
-                  candidatePaths: const [
-                    'assets/record/choice/svg/3-0,3-2-1~3-2-5대제목 수정.svg/svg/3-2-2 메인 헤드라인.svg',
-                    'assets/record/choice/svg/3-2-2.svg/svg/3-2-2 메인 헤드라인.svg',
-                    'assets/record/choice/png/3-2-2.png/png/3-2-2 메인 헤드라인.png',
-                  ],
-                  fallback: const Text(
-                    '오늘 느낀 감정을 표현해볼까요?',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF222222),
-                    ),
-                    textAlign: TextAlign.center,
+                child: Text(
+                  widget.draft.aiQuestion,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF222222),
                   ),
                 ),
               ),
@@ -150,15 +188,8 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                       width: 180,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: isFormValid
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const DiaryEmotionSelectScreen(),
-                                  ),
-                                );
-                              }
+                        onPressed: isFormValid && !_isSubmitting
+                            ? _submitAnswer
                             : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isFormValid ? const Color(0xFFA5DD82) : const Color(0xFFFFF2B2),
@@ -170,8 +201,8 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                             borderRadius: BorderRadius.circular(26),
                           ),
                         ),
-                        child: const Text(
-                          '다음',
+                        child: Text(
+                          _isSubmitting ? '분석 중...' : '다음',
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
+import '../../data/auth_session.dart';
+import '../../services/auth_service.dart';
 import 'family_management_screen.dart';
 import 'help_screen.dart';
 import 'profile_edit_screen.dart';
@@ -32,6 +34,15 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
     if (confirmed == true && context.mounted) {
+      final tokens = context.read<AuthSession>().tokens;
+      if (tokens != null) {
+        try {
+          await AuthService().logout(tokens);
+        } on AuthException {
+          // 서버 로그아웃이 실패해도 로컬 세션은 정리한다.
+        }
+      }
+      context.read<AuthSession>().signOut();
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (route) => false,

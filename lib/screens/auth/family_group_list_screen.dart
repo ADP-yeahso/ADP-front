@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+
+import '../../data/auth_session.dart';
+import '../../services/api_service.dart';
 import 'create_family_screen.dart';
 import 'group_created_screen.dart';
 
@@ -32,6 +36,30 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
 
   void _onStateChanged() {
     setState(() {});
+  }
+
+  Future<void> _joinGroup() async {
+    final code = _codeController.text.trim();
+    if (code.isEmpty) return;
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) return;
+    try {
+      await GroupApi(ApiService()).join(tokens, code);
+      if (!mounted) return;
+      _codeController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('가족 그룹에 참여했습니다.')),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const GroupCreatedScreen()),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
   }
 
   @override
@@ -223,11 +251,7 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                       height: 48 * wScale,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          if (_codeController.text.isNotEmpty) {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
-                          }
-                        },
+                        onTap: _joinGroup,
                       ),
                     ),
                   ],

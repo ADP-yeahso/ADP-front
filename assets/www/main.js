@@ -97,8 +97,7 @@ function init() {
     Math.min(window.devicePixelRatio || 1, 2)
   );
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = false;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(0x000000, 0); // transparent
   container.appendChild(renderer.domElement);
@@ -114,13 +113,7 @@ function init() {
   dirLight.color.setHSL(0.1, 1, 0.95);
   dirLight.position.set(-1, 1.75, 1);
   dirLight.position.multiplyScalar(30);
-  dirLight.castShadow = true;
-  dirLight.shadow.mapSize.width = 1024;
-  dirLight.shadow.mapSize.height = 1024;
-  dirLight.shadow.camera.left = -20;
-  dirLight.shadow.camera.right = 20;
-  dirLight.shadow.camera.top = 20;
-  dirLight.shadow.camera.bottom = -20;
+  dirLight.castShadow = false;
   scene.add(dirLight);
 
   // 3D 바닥(Ground) 생성
@@ -132,7 +125,8 @@ function init() {
   });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
+  ground.castShadow = false;
+  ground.receiveShadow = false;
   scene.add(ground);
 
   // OrbitControls
@@ -226,8 +220,8 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
     worldTree.userData = { isTree: true };
     worldTree.traverse((child) => {
       if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
+        child.castShadow = false;
+        child.receiveShadow = false;
       }
     });
     // scale tree if needed
@@ -331,8 +325,8 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
             geometry.applyMatrix4(child.matrixWorld);
 
             const imesh = new THREE.InstancedMesh(geometry, material, numInstances);
-            imesh.castShadow = true;
-            imesh.receiveShadow = true;
+            imesh.castShadow = false;
+            imesh.receiveShadow = false;
             imesh.userData = { isFlower: true, diaryIds: [] };
             
             // Add instance id to diary id mapping inside userData if we needed specific raycasting index mapping
@@ -664,6 +658,19 @@ function emitDiagnosticReport(reason) {
   const resources = collectDiagnosticResources();
   const rendererMemory = renderer.info.memory;
   const rendererRender = renderer.info.render;
+  let shadowCasters = 0;
+  let shadowReceivers = 0;
+  let shadowRenderTargets = 0;
+
+  scene.traverse((object) => {
+    if (object.castShadow) shadowCasters += 1;
+    if (object.receiveShadow) shadowReceivers += 1;
+
+    if (object.isLight) {
+      if (object.shadow?.map) shadowRenderTargets += 1;
+      if (object.shadow?.mapPass) shadowRenderTargets += 1;
+    }
+  });
 
   const report = {
     type: 'garden_diagnostics',
@@ -683,6 +690,12 @@ function emitDiagnosticReport(reason) {
       programs: renderer.info.programs?.length ?? 0,
       drawCalls: rendererRender.calls,
       triangles: rendererRender.triangles,
+    },
+    shadows: {
+      rendererEnabled: renderer.shadowMap.enabled,
+      casters: shadowCasters,
+      receivers: shadowReceivers,
+      renderTargets: shadowRenderTargets,
     },
     activity: {
       eventListeners: diagnosticState.ownedEventListeners,

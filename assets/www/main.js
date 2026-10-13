@@ -211,7 +211,7 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
   loader.load(treeUrl, (gltf) => {
     endDiagnosticLoad();
     if (currentLoadId !== gardenLoadId) {
-      disposeObject3D(gltf.scene, new Set());
+      disposeObject3Ds([gltf.scene]);
       return;
     }
     worldTree = gltf.scene;
@@ -287,12 +287,9 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
 
     Promise.all(loadPromises).then(results => {
       if (currentLoadId !== gardenLoadId) {
-        const textures = new Set();
-
-        results.forEach(({ gltf }) => {
-          disposeObject3D(gltf.scene, textures);
-        });
-
+        disposeObject3Ds(
+          results.map(({ gltf }) => gltf.scene),
+        );
         return;
       }
       document.getElementById('loading').style.display = 'none';
@@ -320,7 +317,7 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
         const typeInstancedMeshes = [];
         baseFlower.traverse((child) => {
           if (child.isMesh) {
-            const material = child.material ? child.material.clone() : new THREE.MeshStandardMaterial();
+            const material = cloneMaterialOrMaterials(child.material);
             const geometry = child.geometry.clone();
             geometry.applyMatrix4(child.matrixWorld);
 
@@ -571,23 +568,72 @@ function requestRender() {
   });
 }
 
-const textureKeys = [
-  'map',
-  'normalMap',
-  'roughnessMap',
-  'metalnessMap',
-  'emissiveMap',
-  'aoMap',
-  'alphaMap',
-  'bumpMap',
-  'displacementMap',
-  'lightMap',
-  'clearcoatMap',
-  'clearcoatNormalMap',
-  'clearcoatRoughnessMap',
-  'transmissionMap',
-  'thicknessMap',
-];
+function cloneMaterialOrMaterials(materialOrMaterials) {
+  if (Array.isArray(materialOrMaterials)) {
+    return materialOrMaterials.map((material) => (
+      material?.clone() ?? new THREE.MeshStandardMaterial()
+    ));
+  }
+
+  return materialOrMaterials?.clone()
+    ?? new THREE.MeshStandardMaterial();
+}
+
+function forEachMaterial(materialOrMaterials, callback) {
+  const materials = Array.isArray(materialOrMaterials)
+    ? materialOrMaterials
+    : [materialOrMaterials];
+
+  materials.forEach((material) => {
+    if (material) {
+      callback(material);
+    }
+  });
+}
+
+function collectTextureValue(value, textures) {
+  if (value?.isTexture) {
+    textures.add(value);
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => {
+      collectTextureValue(item, textures);
+    });
+  }
+}
+
+function collectMaterialTextures(material, textures) {
+  Object.values(material).forEach((value) => {
+    collectTextureValue(value, textures);
+  });
+
+  if (!material.uniforms) return;
+
+  Object.values(material.uniforms).forEach((uniform) => {
+    collectTextureValue(uniform?.value, textures);
+  });
+}
+
+function collectImageBitmapValue(value, bitmaps) {
+  if (typeof ImageBitmap === 'undefined') return;
+
+  if (value instanceof ImageBitmap) {
+    bitmaps.add(value);
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => {
+      collectImageBitmapValue(item, bitmaps);
+    });
+  }
+}
+
+function collectTextureBitmaps(texture, bitmaps) {
+  collectImageBitmapValue(texture?.source?.data, bitmaps);
+}
 
 function collectDiagnosticResources() {
   const geometries = new Set();
@@ -608,37 +654,19 @@ function collectDiagnosticResources() {
       geometries.add(object.geometry);
     }
 
-    const objectMaterials = Array.isArray(object.material)
-      ? object.material
-      : [object.material];
-
-    objectMaterials.forEach((material) => {
-      if (!material) return;
-
+    forEachMaterial(object.material, (material) => {
       materials.add(material);
-
-      textureKeys.forEach((key) => {
-        const texture = material[key];
-
-        if (!texture?.isTexture) return;
-
-        textures.add(texture);
-
-        const image = texture.source?.data;
-
-        if (
-          typeof ImageBitmap !== 'undefined' &&
-          image instanceof ImageBitmap
-        ) {
-          bitmaps.add(image);
-        }
-      });
+      collectMaterialTextures(material, textures);
     });
 
     if (object.isInstancedMesh) {
       instancedMeshes += 1;
       instanceSlots += object.count;
     }
+  });
+
+  textures.forEach((texture) => {
+    collectTextureBitmaps(texture, bitmaps);
   });
 
   return {
@@ -718,33 +746,119 @@ function emitDiagnosticReport(reason) {
   }
 }
 
-function disposeObject3D(root, textures) {
+const disposedInstancedMeshes = new WeakSet();
+const disposedSkeletons = new WeakSet();
+const disposedGeometries = new WeakSet();
+const disposedMaterials = new WeakSet();
+const disposedTextures = new WeakSet();
+const closedBitmaps = new WeakSet();
+
+function createDisposalContext() {
+  return {
+    instancedMeshes: new Set(),
+    skeletons: new Set(),
+    geometries: new Set(),
+    materials: new Set(),
+    textures: new Set(),
+    bitmaps: new Set(),
+    finalized: false,
+  };
+}
+
+function disposeObject3D(root, context) {
+  if (!root) return;
+
+  root.removeFromParent();
+
   root.traverse((child) => {
+    child.userData = {};
+
     if (!child.isMesh) return;
 
-    child.geometry?.dispose();
+    if (
+      child.isInstancedMesh &&
+      !context.instancedMeshes.has(child)
+    ) {
+      context.instancedMeshes.add(child);
 
-    const materials = Array.isArray(child.material)
-      ? child.material
-      : [child.material];
+      if (!disposedInstancedMeshes.has(child)) {
+        child.dispose();
+        disposedInstancedMeshes.add(child);
+      }
+    }
 
-    materials.forEach((material) => {
-      if (!material) return;
+    if (
+      child.isSkinnedMesh &&
+      child.skeleton &&
+      !context.skeletons.has(child.skeleton)
+    ) {
+      context.skeletons.add(child.skeleton);
+      if (!disposedSkeletons.has(child.skeleton)) {
+        child.skeleton.dispose();
+        disposedSkeletons.add(child.skeleton);
+      }
+    }
 
-      textureKeys.forEach((key) => {
-        const texture = material[key];
+    const geometry = child.geometry;
 
-        if (texture && !textures.has(texture)) {
-          textures.add(texture);
-          texture.dispose();
-        }
-      });
+    if (geometry && !context.geometries.has(geometry)) {
+      context.geometries.add(geometry);
 
-      material.dispose();
+      if (!disposedGeometries.has(geometry)) {
+        geometry.dispose();
+        disposedGeometries.add(geometry);
+      }
+    }
+
+    forEachMaterial(child.material, (material) => {
+      collectMaterialTextures(material, context.textures);
+
+      if (context.materials.has(material)) return;
+
+      context.materials.add(material);
+
+      if (!disposedMaterials.has(material)) {
+        material.dispose();
+        disposedMaterials.add(material);
+      }
     });
   });
+}
 
-  scene.remove(root);
+function finalizeDisposalContext(context) {
+  if (context.finalized) return;
+
+  context.textures.forEach((texture) => {
+    collectTextureBitmaps(texture, context.bitmaps);
+
+    if (!disposedTextures.has(texture)) {
+      texture.dispose();
+      disposedTextures.add(texture);
+    }
+  });
+
+  context.bitmaps.forEach((bitmap) => {
+    if (closedBitmaps.has(bitmap)) return;
+
+    try {
+      bitmap.close();
+      closedBitmaps.add(bitmap);
+    } catch (error) {
+      console.warn('Failed to close ImageBitmap', error);
+    }
+  });
+
+  context.finalized = true;
+}
+
+function disposeObject3Ds(roots) {
+  const context = createDisposalContext();
+
+  roots.forEach((root) => {
+    disposeObject3D(root, context);
+  });
+
+  finalizeDisposalContext(context);
 }
 
 window.disposeGarden = function() {
@@ -755,21 +869,25 @@ window.disposeGarden = function() {
   isFocusing = false;
   controls.enabled = true;
 
-  const textures = new Set();
+  const roots = [];
 
   if (worldTree) {
-    disposeObject3D(worldTree, textures);
+    roots.push(worldTree);
     worldTree = null;
   }
 
-  flowerMeshes.forEach((mesh) => {
-    disposeObject3D(mesh, textures);
-  });
+  roots.push(...flowerMeshes);
+  disposeObject3Ds(roots);
 
   flowerMeshes = [];
   flowerData = [];
+  diagnosticState.diaryCount = 0;
 
   renderer.renderLists?.dispose();
+
+  if (diagnosticsEnabled) {
+    emitDiagnosticReport('garden_disposed');
+  }
 
   requestRender();
 };
@@ -791,6 +909,7 @@ function showPreviewSelection(label) {
       panel.style.display = 'none';
       window.resetCamera();
     });
+    panel.appendChild(button);
     // UI taps should not trigger the scene raycaster.
     addTrackedEventListener(panel, 'touchstart', event => event.stopPropagation(), { passive: true });
     addTrackedEventListener(panel, 'touchend', event => event.stopPropagation());

@@ -653,13 +653,9 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
 
       await _controller!.initialize();
 
-      _controller!.addListener(() {
-        if (mounted) {
-          setState(() {});
-        }
-      });
-
       if (!mounted) return;
+
+      _controller!.addListener(_onVideoChanged);
 
       setState(() {
         _initialized = true;
@@ -673,6 +669,11 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
         _hasError = true;
       });
     }
+  }
+
+  void _onVideoChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _togglePlay() async {
@@ -699,6 +700,8 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
 
   @override
   void dispose() {
+    // pause() notifies listeners synchronously, while the tree is unmounting.
+    _controller?.removeListener(_onVideoChanged);
     _controller?.pause();
     _controller?.dispose();
     super.dispose();

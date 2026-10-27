@@ -11,8 +11,12 @@ let isFocusing = false;
 let gardenLoadId = 0;
 let isAssetPreview = false;
 
-// Default camera position
-const defaultCameraPos = new THREE.Vector3(0, 35, 50);
+// Preserve the original composition after its fixed polar angle was applied.
+const defaultCameraPos = new THREE.Vector3().setFromSphericalCoords(
+  Math.hypot(35, 50),
+  Math.PI / 3.2,
+  0,
+);
 const origin = new THREE.Vector3(0, 0, 0);
 
 let renderQueued = false;
@@ -34,7 +38,7 @@ function init() {
 
   // Camera setup
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 35, 50);
+  camera.position.copy(defaultCameraPos);
 
   // Renderer setup
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -85,6 +89,7 @@ function init() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
   controls.target.copy(origin);
+  controls.enablePan = false; // Keep the tree base as the orbit center, including during pinch zoom.
   controls.addEventListener('change', requestRender);
 
   // 핀치 줌 완벽 지원 (너무 뚫고 가거나 나가지 않게 제한)
@@ -92,47 +97,47 @@ function init() {
   controls.minDistance = 22; // 나무를 너무 뚫고 들어가지 않도록
   controls.maxDistance = 80; // 맵 밖으로 너무 멀어지지 않도록
 
-  // 시안처럼 약간 위에서 내려다보는(Bird's-eye) 고도각 설정
-  // 완전 고정할 수도 있고, 살짝 위아래로 움직이게 여유를 줄 수도 있음. 일단 시안 구도로 고정.
-  controls.minPolarAngle = Math.PI / 3.2; // 약 56도 (위에서 비스듬히 내려다봄)
-  controls.maxPolarAngle = Math.PI / 3.2;
+  // 수직축 기준 45~70도: 기본 구도(56.25도)를 유지하면서 상하 탐색 허용.
+  controls.minPolarAngle = THREE.MathUtils.degToRad(45);
+  controls.maxPolarAngle = THREE.MathUtils.degToRad(70);
+  controls.update();
 
   // Raycaster
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
 
   window.addEventListener('resize', onWindowResize);
-  window.addEventListener('click', onClick);
-
-  // ── 모바일 터치 지원 ──
-  // iOS WebView에서는 click 이벤트가 제대로 발생하지 않으므로
-  // touchstart/touchend로 "탭"을 감지하여 raycast를 수행합니다.
-  let touchStartX = 0, touchStartY = 0;
-  let touchStartTime = 0;
-
-  window.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-      touchStartTime = Date.now();
+  // Pointer events work in the WebView without a synthetic click. A drag or
+  // multi-touch gesture must never select a flower, even if it ends at its start.
+  let tap = null;
+  renderer.domElement.addEventListener('pointerdown', (event) => {
+    if (tap) {
+      tap.cancelled = true;
+      return;
     }
-  }, { passive: true });
-
-  window.addEventListener('touchend', (e) => {
-    if (e.changedTouches.length !== 1) return;
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - touchStartX;
-    const dy = touch.clientY - touchStartY;
-    const dt = Date.now() - touchStartTime;
-
-    // 손가락 이동이 10px 이하이고 300ms 이내면 "탭"으로 간주
-    if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && dt < 300) {
-      onClick({
-        clientX: touch.clientX,
-        clientY: touch.clientY,
-      });
+    if (isFocusing || event.button !== 0 || !event.isPrimary) return;
+    tap = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      time: Date.now(),
+      cancelled: false,
+    };
+  });
+  renderer.domElement.addEventListener('pointermove', (event) => {
+    if (!tap || event.pointerId !== tap.pointerId) return;
+    if (Math.hypot(event.clientX - tap.x, event.clientY - tap.y) >= 10) {
+      tap.cancelled = true;
     }
   });
+  renderer.domElement.addEventListener('pointerup', (event) => {
+    if (!tap || event.pointerId !== tap.pointerId) return;
+    const isTap = !tap.cancelled && Date.now() - tap.time < 300 &&
+      Math.hypot(event.clientX - tap.x, event.clientY - tap.y) < 10;
+    tap = null;
+    if (isTap) onClick(event);
+  });
+  renderer.domElement.addEventListener('pointercancel', () => { tap = null; });
 
   // Hide loading by default until data comes
   document.getElementById('loading').style.display = 'none';
@@ -377,9 +382,26 @@ function onClick(event) {
   }
 }
 
+function stopCameraMotion() {
+  controls.enabled = false;
+  gsap.killTweensOf(camera.position);
+  gsap.killTweensOf(controls.target);
+
+  // Flush OrbitControls' remaining inertia, then restore the visible pose.
+  // Programmatic transitions own the camera and must not inherit a drag.
+  const position = camera.position.clone();
+  const target = controls.target.clone();
+  controls.enableDamping = false;
+  controls.update();
+  controls.enableDamping = true;
+  camera.position.copy(position);
+  controls.target.copy(target);
+  camera.lookAt(target);
+}
+
 function focusOnFlower(fData) {
   isFocusing = true;
-  controls.enabled = false;
+  stopCameraMotion();
 
   // Transform offset to face same direction as flower to tree
   const direction = new THREE.Vector3().subVectors(origin, fData.position).normalize();
@@ -416,7 +438,7 @@ function focusOnFlower(fData) {
 
 function focusOnTree(treeObj) {
   isFocusing = true;
-  controls.enabled = false;
+  stopCameraMotion();
 
   // Tree is at origin, just zoom in
   const targetCamPos = new THREE.Vector3(0, 10, 20);
@@ -446,6 +468,9 @@ function focusOnTree(treeObj) {
 }
 
 window.resetCamera = function () {
+  isFocusing = true;
+  stopCameraMotion();
+
   // Tween back to default position
   gsap.to(camera.position, {
     x: defaultCameraPos.x,
@@ -466,6 +491,8 @@ window.resetCamera = function () {
     onComplete: () => {
       isFocusing = false;
       controls.enabled = true;
+      controls.update();
+      requestRender();
     }
   });
 };
@@ -479,7 +506,14 @@ function requestRender() {
     renderQueued = false;
     renderRunning = true;
 
-    const controlsChanged = controls.update();
+    // Focus/reset animations may be closer than minDistance or outside the
+    // browsing angles. Look at the animated target without clamping their pose.
+    let controlsChanged = false;
+    if (controls.enabled) {
+      controlsChanged = controls.update();
+    } else {
+      camera.lookAt(controls.target);
+    }
     renderer.render(scene, camera);
 
     renderRunning = false;
@@ -540,11 +574,18 @@ function disposeObject3D(root, textures) {
 
 window.disposeGarden = function() {
   gardenLoadId++;
-  gsap.killTweensOf(camera.position);
-  gsap.killTweensOf(controls.target);
+  stopCameraMotion();
+
+  // A month change can interrupt focus/reset. Do not keep a flower as the
+  // browsing pivot once that flower's scene has been removed.
+  if (isFocusing) {
+    camera.position.copy(defaultCameraPos);
+    controls.target.copy(origin);
+  }
 
   isFocusing = false;
   controls.enabled = true;
+  controls.update();
 
   const textures = new Set();
 

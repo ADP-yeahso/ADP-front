@@ -131,7 +131,8 @@ class _GardenScreenState extends State<GardenScreen> {
           .toList(),
     );
     const assetVersion = 'flower-mapping-v1';
-    final treeUrl = 'http://localhost:8080/images/worldtree.glb?v=$assetVersion';
+    final treeUrl =
+        'http://localhost:8080/images/worldtree.glb?v=$assetVersion';
 
     final flowerBaseUrl = 'http://localhost:8080/images/flower';
     final placeholderFlowerUrl =
@@ -235,6 +236,27 @@ class _GardenScreenState extends State<GardenScreen> {
                     left: 0,
                     right: 0,
                     child: _buildHeader(month),
+                  ),
+
+                if (_isServerStarted && !_isFocusing)
+                  Positioned(
+                    right: 16,
+                    bottom: 72,
+                    child: Tooltip(
+                      message: '기본 구도로 돌아가기',
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF4A6B8A),
+                          backgroundColor: Colors.white.withValues(alpha: 0.9),
+                          minimumSize: const Size(48, 48),
+                        ),
+                        onPressed: () => _webViewController.runJavaScript(
+                          'if(typeof window.resetCamera === "function") window.resetCamera()',
+                        ),
+                        icon: const Icon(Icons.center_focus_strong, size: 18),
+                        label: const Text('기본 구도'),
+                      ),
+                    ),
                   ),
 
                 // ── 양옆 달 변경 화살표 ──

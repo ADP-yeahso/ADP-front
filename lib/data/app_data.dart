@@ -283,6 +283,7 @@ class AppData extends ChangeNotifier {
         id: memoryId,
         patientId: 1,
         userId: me.id,
+        title: title,
         contextText: content,
         mediaList: updatedMedia,
         isPublic: isPublic,
@@ -297,6 +298,7 @@ class AppData extends ChangeNotifier {
   Diary addDiary({
     required DateTime date,
     required String content,
+    String? title,
     Emotion? emotion,
     List<Media> mediaList = const [],
     bool isPublic = true,
@@ -332,6 +334,7 @@ class AppData extends ChangeNotifier {
     final entry = Diary(
       id: diaryId,
       userId: me.id,
+      title: title,
       context: content,
       flowerType: flower,
       mediaList: updatedMedia,
@@ -368,6 +371,7 @@ class AppData extends ChangeNotifier {
         id: old.id,
         patientId: old.patientId,
         userId: old.userId,
+        title: old.title,
         contextText: old.contextText,
         mediaList: old.mediaList,
         isPublic: !old.isPublic,
@@ -386,6 +390,73 @@ class AppData extends ChangeNotifier {
       _publicDiaryIds.add(id);
     }
     notifyListeners();
+  }
+
+  bool updateMemoryText(int id, String? title, String content) {
+    if (content.trim().isEmpty) return false;
+
+    final index = memories.indexWhere((m) => m.id == id);
+    if (index == -1) return false;
+
+    final old = memories[index];
+    memories[index] = Memory(
+      id: old.id,
+      patientId: old.patientId,
+      userId: old.userId,
+      title: title,
+      contextText: content.trim(),
+      mediaList: old.mediaList,
+      isPublic: old.isPublic,
+      recordDate: old.recordDate,
+      createdAt: old.createdAt,
+      updatedAt: DateTime.now(),
+      deletedAt: old.deletedAt,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool updateDiaryText(int id, String? title, String content) {
+    if (content.trim().isEmpty) return false;
+
+    final index = diaries.indexWhere((d) => d.id == id);
+    if (index == -1) return false;
+
+    final old = diaries[index];
+    diaries[index] = Diary(
+      id: old.id,
+      userId: old.userId,
+      title: title,
+      context: content.trim(),
+      flowerType: old.flowerType,
+      mediaList: old.mediaList,
+      recordDate: old.recordDate,
+      createdAt: old.createdAt,
+      updatedAt: DateTime.now(),
+      deletedAt: old.deletedAt,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool deleteMemory(int id) {
+    final index = memories.indexWhere((m) => m.id == id);
+    if (index == -1) return false;
+
+    memories.removeAt(index);
+    comments.removeWhere((c) => c.memoryRecordId == id);
+    notifyListeners();
+    return true;
+  }
+
+  bool deleteDiary(int id) {
+    final index = diaries.indexWhere((d) => d.id == id);
+    if (index == -1) return false;
+
+    diaries.removeAt(index);
+    _publicDiaryIds.remove(id);
+    notifyListeners();
+    return true;
   }
 
   List<Memory> memoriesForMonth(DateTime month) =>

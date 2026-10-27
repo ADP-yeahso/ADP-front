@@ -12,7 +12,9 @@ import '../../data/garden_range.dart';
 
 import '../../utils/local_asset_server.dart';
 import '../care_notebook/care_notebook_list_screen.dart';
+import '../family/family_share_screen.dart';
 import 'entry_detail_sheet.dart';
+import 'garden_home_header.dart';
 
 /// 기억의 정원 – Three.js + WebView 하이브리드 아키텍처
 class GardenScreen extends StatefulWidget {
@@ -33,6 +35,8 @@ class _GardenScreenState extends State<GardenScreen> {
 
   bool _isFocusing = false;
   bool _isServerStarted = false;
+  // Read state lasts for this home session until a persistent inbox is added.
+  final Set<String> _openedSharedRecordIds = {};
 
   DateTime get _currentMonth => gardenMonthAt(_anchor, _pageIndex);
 
@@ -190,8 +194,6 @@ class _GardenScreenState extends State<GardenScreen> {
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
     final month = _currentMonth;
-    final memories = appData.memoriesForMonth(month);
-    final diariesCount = appData.diariesForMonth(month).length;
 
     return Scaffold(
       body: Stack(
@@ -235,7 +237,20 @@ class _GardenScreenState extends State<GardenScreen> {
                     top: 0,
                     left: 0,
                     right: 0,
-                    child: _buildHeader(month),
+                    child: GardenHomeHeader(
+                      month: month,
+                      groupName: appData.group.groupName,
+                      hasUnreadRecords: _sharedRecordIds(
+                        appData,
+                      ).difference(_openedSharedRecordIds).isNotEmpty,
+                      onOpenMailbox: _openMailbox,
+                      onOpenNotebook: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CareNotebookListScreen(),
+                        ),
+                      ),
+                    ),
                   ),
 
                 if (_isServerStarted && !_isFocusing)
@@ -267,8 +282,9 @@ class _GardenScreenState extends State<GardenScreen> {
                     bottom: 0,
                     child: Center(
                       child: _SideMonthButton(
-                        icon: Icons.chevron_left,
-                        onTap: _prevMonth,
+                        assetPath: 'assets/garden/home/month_previous.svg',
+                        tooltip: '이전 달',
+                        onTap: _pageIndex > 0 ? _prevMonth : null,
                       ),
                     ),
                   ),
@@ -278,44 +294,11 @@ class _GardenScreenState extends State<GardenScreen> {
                     bottom: 0,
                     child: Center(
                       child: _SideMonthButton(
-                        icon: Icons.chevron_right,
-                        onTap: _nextMonth,
-                      ),
-                    ),
-                  ),
-
-                  // ── 하단 기억/꽃 개수 안내 버튼 ──
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 16,
-                    child: Center(
-                      child: GestureDetector(
-                        onTap: () => showMemoryListSheet(context, memories),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            '🌳 잎 ${memories.length}개 / 🌸 꽃 $diariesCount송이',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF333333),
-                            ),
-                          ),
-                        ),
+                        assetPath: 'assets/garden/home/month_next.svg',
+                        tooltip: '다음 달',
+                        onTap: _pageIndex < gardenTotalPages - 1
+                            ? _nextMonth
+                            : null,
                       ),
                     ),
                   ),
@@ -383,112 +366,49 @@ class _GardenScreenState extends State<GardenScreen> {
     }
   }
 
-  Widget _buildHeader(DateTime month) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-      child: Stack(
-        alignment: Alignment.topCenter,
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 날짜 (예: 07 . 26)
-              Text(
-                '${month.month.toString().padLeft(2, '0')} . ${month.year.toString().substring(2)}',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF4A6B8A), // 스케치의 파란 펜 느낌 색상
-                  letterSpacing: 2,
-                ),
-              ),
-              const SizedBox(height: 4),
-              // 그룹 선택 (더미)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '우리가족',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF4A6B8A),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFF4A6B8A),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 12,
-                      color: Color(0xFF4A6B8A),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Positioned(
-            right: 0,
-            top: 0,
-            child: IconButton(
-              icon: SvgPicture.asset(
-                'assets/icons/spiral_notebook.svg',
-                width: 28,
-                height: 28,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFF4A6B8A),
-                  BlendMode.srcIn,
-                ),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const CareNotebookListScreen(),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+  Set<String> _sharedRecordIds(AppData appData) => {
+    for (final memory in appData.sharedMemories)
+      if (!appData.isCurrentUser(memory.userId))
+        'memory:${memory.id}:${memory.updatedAt.microsecondsSinceEpoch}',
+    for (final diary in appData.sharedDiaries)
+      if (!appData.isCurrentUser(diary.userId))
+        'diary:${diary.id}:${diary.updatedAt.microsecondsSinceEpoch}',
+  };
+
+  void _openMailbox() {
+    final records = _sharedRecordIds(context.read<AppData>());
+    setState(() => _openedSharedRecordIds.addAll(records));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const FamilyShareScreen()),
     );
   }
 }
 
 class _SideMonthButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _SideMonthButton({required this.icon, required this.onTap});
+  final String assetPath;
+  final String tooltip;
+  final VoidCallback? onTap;
+  const _SideMonthButton({
+    required this.assetPath,
+    required this.tooltip,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.9),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onTap,
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      icon: Opacity(
+        opacity: onTap == null ? 0.35 : 1,
+        child: SvgPicture.asset(
+          assetPath,
+          width: 14,
+          height: 25,
+          excludeFromSemantics: true,
         ),
-        alignment: Alignment.center,
-        child: Icon(icon, size: 28, color: const Color(0xFF333333)),
       ),
     );
   }

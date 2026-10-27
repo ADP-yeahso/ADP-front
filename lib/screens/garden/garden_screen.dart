@@ -35,6 +35,9 @@ class _GardenScreenState extends State<GardenScreen> {
 
   bool _isFocusing = false;
   bool _isServerStarted = false;
+  bool _isFlowerBrowsing = false;
+  int _flowerIndex = 0;
+  int _flowerCount = 0;
   // Read state lasts for this home session until a persistent inbox is added.
   final Set<String> _openedSharedRecordIds = {};
 
@@ -60,11 +63,7 @@ class _GardenScreenState extends State<GardenScreen> {
           if (kDebugMode) {
             print('JS Message: $msgId');
           }
-          if (msgId == 'tree') {
-            _handleTreeTap();
-          } else if (msgId.isNotEmpty) {
-            _handleFlowerTap(msgId);
-          }
+          _handleGardenMessage(msgId);
         },
       )
       ..setNavigationDelegate(
@@ -85,6 +84,55 @@ class _GardenScreenState extends State<GardenScreen> {
       setState(() {
         _isServerStarted = true;
       });
+    }
+  }
+
+  void _handleGardenMessage(String message) {
+    if (!mounted || message.startsWith('ERROR_')) return;
+    if (message.startsWith('{')) {
+      final event = jsonDecode(message) as Map<String, dynamic>;
+      switch (event['type']) {
+        case 'flowerBrowse':
+          setState(() {
+            _isFlowerBrowsing = true;
+            _flowerIndex = event['index'] as int;
+            _flowerCount = event['count'] as int;
+          });
+          return;
+        case 'gardenOverview':
+          setState(() {
+            _isFlowerBrowsing = false;
+            _flowerIndex = 0;
+            _flowerCount = 0;
+          });
+          return;
+        case 'openDiary':
+          _handleFlowerTap(event['diaryId'] as String);
+          return;
+        default:
+          return;
+      }
+    }
+    if (message == 'tree') {
+      _handleTreeTap();
+    } else if (message.isNotEmpty) {
+      _handleFlowerTap(message);
+    }
+  }
+
+  void _previousGardenItem() {
+    if (_isFlowerBrowsing) {
+      _webViewController.runJavaScript('window.browseFlower?.(-1)');
+    } else {
+      _prevMonth();
+    }
+  }
+
+  void _nextGardenItem() {
+    if (_isFlowerBrowsing) {
+      _webViewController.runJavaScript('window.browseFlower?.(1)');
+    } else {
+      _nextMonth();
     }
   }
 
@@ -239,6 +287,7 @@ class _GardenScreenState extends State<GardenScreen> {
                     right: 0,
                     child: GardenHomeHeader(
                       month: month,
+                      showTitleAndActions: !_isFlowerBrowsing,
                       groupName: appData.group.groupName,
                       hasUnreadRecords: _sharedRecordIds(
                         appData,
@@ -258,7 +307,9 @@ class _GardenScreenState extends State<GardenScreen> {
                     right: 16,
                     bottom: 72,
                     child: Tooltip(
-                      message: '기본 구도로 돌아가기',
+                      message: _isFlowerBrowsing
+                          ? '전체 정원으로 돌아가기'
+                          : '기본 구도로 돌아가기',
                       child: TextButton.icon(
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFF4A6B8A),
@@ -269,12 +320,12 @@ class _GardenScreenState extends State<GardenScreen> {
                           'if(typeof window.resetCamera === "function") window.resetCamera()',
                         ),
                         icon: const Icon(Icons.center_focus_strong, size: 18),
-                        label: const Text('기본 구도'),
+                        label: Text(_isFlowerBrowsing ? '정원으로' : '기본 구도'),
                       ),
                     ),
                   ),
 
-                // ── 양옆 달 변경 화살표 ──
+                // 꽃 감상 중에는 같은 달의 꽃을, 전체 정원에서는 달을 이동.
                 if (!_isFocusing && !widget.assetPreview) ...[
                   Positioned(
                     left: 12,
@@ -283,8 +334,13 @@ class _GardenScreenState extends State<GardenScreen> {
                     child: Center(
                       child: _SideMonthButton(
                         assetPath: 'assets/garden/home/month_previous.svg',
-                        tooltip: '이전 달',
-                        onTap: _pageIndex > 0 ? _prevMonth : null,
+                        tooltip: _isFlowerBrowsing ? '이전 꽃' : '이전 달',
+                        onTap:
+                            (_isFlowerBrowsing
+                                ? _flowerCount > 1
+                                : _pageIndex > 0)
+                            ? _previousGardenItem
+                            : null,
                       ),
                     ),
                   ),
@@ -295,14 +351,34 @@ class _GardenScreenState extends State<GardenScreen> {
                     child: Center(
                       child: _SideMonthButton(
                         assetPath: 'assets/garden/home/month_next.svg',
-                        tooltip: '다음 달',
-                        onTap: _pageIndex < gardenTotalPages - 1
-                            ? _nextMonth
+                        tooltip: _isFlowerBrowsing ? '다음 꽃' : '다음 달',
+                        onTap:
+                            (_isFlowerBrowsing
+                                ? _flowerCount > 1
+                                : _pageIndex < gardenTotalPages - 1)
+                            ? _nextGardenItem
                             : null,
                       ),
                     ),
                   ),
                 ],
+                if (_isFlowerBrowsing && !_isFocusing && !widget.assetPreview)
+                  Positioned(
+                    left: 24,
+                    right: 24,
+                    bottom: 20,
+                    child: IgnorePointer(
+                      child: Text(
+                        '${_flowerIndex + 1} / $_flowerCount · 꽃을 다시 누르면 일기를 볼 수 있어요',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF386622),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -312,10 +388,13 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Future<void> _handleFlowerTap(String diaryId) async {
+    if (_isFocusing) return;
     // 더미 데이터 클릭 시 무시 (아이디가 dummy로 시작)
     if (diaryId.startsWith('dummy')) {
       _webViewController.runJavaScript(
-        'if(typeof window.resetCamera === "function") window.resetCamera()',
+        _isFlowerBrowsing
+            ? 'window.resumeFlowerBrowse?.()'
+            : 'window.resetCamera?.()',
       );
       return;
     }
@@ -340,12 +419,15 @@ class _GardenScreenState extends State<GardenScreen> {
         _isFocusing = false;
       });
       _webViewController.runJavaScript(
-        'if(typeof window.resetCamera === "function") window.resetCamera()',
+        _isFlowerBrowsing
+            ? 'window.resumeFlowerBrowse?.()'
+            : 'window.resetCamera?.()',
       );
     }
   }
 
   Future<void> _handleTreeTap() async {
+    if (_isFocusing) return;
     final appData = context.read<AppData>();
     final memories = appData.memoriesForMonth(_currentMonth);
 

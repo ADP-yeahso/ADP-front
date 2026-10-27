@@ -10,6 +10,8 @@ let worldTree;
 let isFocusing = false;
 let gardenLoadId = 0;
 let isAssetPreview = false;
+let flowerBrowseGroup = null;
+let selectedFlowerIndex = -1;
 
 // Preserve the original composition after its fixed polar angle was applied.
 const defaultCameraPos = new THREE.Vector3().setFromSphericalCoords(
@@ -172,6 +174,7 @@ function init() {
 }
 
 function constrainOrbitCenter() {
+  if (selectedFlowerIndex >= 0) return;
   const previous = controls.target.clone();
   controls.target.y = Math.max(0, controls.target.y);
   // Ignore floating point noise at the boundary so idle rendering can settle.
@@ -183,6 +186,7 @@ function constrainOrbitCenter() {
 }
 
 function prepareZoomAt(clientX, clientY) {
+  if (selectedFlowerIndex >= 0) return;
   clearOrbitMomentum();
   camera.updateMatrixWorld();
   scene.updateMatrixWorld(true);
@@ -211,6 +215,7 @@ function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (flowerBrowseGroup) frameSelectedFlower();
   requestRender();
 }
 
@@ -306,6 +311,7 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
       
       flowerData = [];
       flowerMeshes = []; // array of InstancedMeshes
+      const diaryOrder = new Map(diaries.map((diary, index) => [String(diary.id), index]));
       
       const flowerScale = 0.2;
       const dummy = new THREE.Object3D();
@@ -369,18 +375,23 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
           dummy.lookAt(origin);
           dummy.updateMatrix();
 
+          const data = {
+            diaryId: diary.id,
+            position: dummy.position.clone(),
+            minZoomDistance,
+            previewLabel: diary.previewLabel,
+            meshes: typeInstancedMeshes,
+            instanceIndex: i,
+          };
+          if (assetPreview || !String(diary.id).startsWith('dummy')) flowerData.push(data);
+
           typeInstancedMeshes.forEach(imesh => {
             imesh.setMatrixAt(i, dummy.matrix);
             // Since raycaster hits a specific InstancedMesh, we need to map imesh + instanceId -> diary.
             // Currently flowerData is a flat array, but raycaster uses instanceId (0 to numInstances-1).
             // To fix raycasting with multiple InstancedMeshes, we must store a mapping per imesh!
             if (!imesh.userData.diaryMapping) imesh.userData.diaryMapping = [];
-            imesh.userData.diaryMapping[i] = {
-              diaryId: diary.id,
-              position: dummy.position.clone(),
-              minZoomDistance,
-              previewLabel: diary.previewLabel,
-            };
+            imesh.userData.diaryMapping[i] = data;
           });
         }
 
@@ -388,6 +399,8 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
           imesh.instanceMatrix.needsUpdate = true;
         });
       });
+      // Keep navigation stable across model batches and repeated emotion types.
+      flowerData.sort((a, b) => diaryOrder.get(String(a.diaryId)) - diaryOrder.get(String(b.diaryId)));
       requestRender();
     }).catch(error => {
       if (currentLoadId !== gardenLoadId) {
@@ -413,6 +426,23 @@ function onClick(event) {
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
   raycaster.setFromCamera(mouse, camera);
+
+  if (flowerBrowseGroup) {
+    // Use the original garden instances, including tree occlusion, for taps.
+    const hit = raycaster.intersectObjects(scene.children, true)[0];
+    const data = hit?.object.userData.isFlower
+      ? hit.object.userData.diaryMapping?.[hit.instanceId]
+      : null;
+    if (data === flowerData[selectedFlowerIndex] && !isAssetPreview) {
+      isFocusing = true;
+      stopCameraMotion();
+      window.FlutterChannel?.postMessage(JSON.stringify({
+        type: 'openDiary',
+        diaryId: String(flowerData[selectedFlowerIndex].diaryId),
+      }));
+    }
+    return;
+  }
 
   // We raycast against all objects
   const intersects = raycaster.intersectObjects(scene.children, true);
@@ -476,40 +506,119 @@ function clearOrbitMomentum() {
 }
 
 function focusOnFlower(fData) {
+  const index = flowerData.indexOf(fData);
+  if (index < 0) return;
   isFocusing = true;
   stopCameraMotion();
 
-  // Transform offset to face same direction as flower to tree
-  const direction = new THREE.Vector3().subVectors(origin, fData.position).normalize();
+  // This unrendered group only measures the selected instance for framing.
+  // Keep the original flower, tree and surrounding garden in place and visible.
+  if (flowerBrowseGroup) {
+    flowerBrowseGroup.clear();
+  }
+  flowerBrowseGroup = new THREE.Group();
+  const matrix = new THREE.Matrix4();
+  fData.meshes.forEach((source) => {
+    source.updateWorldMatrix(true, false);
+    source.getMatrixAt(fData.instanceIndex, matrix);
+    matrix.premultiply(source.matrixWorld);
+    const flower = new THREE.Mesh(source.geometry, source.material);
+    flower.applyMatrix4(matrix);
+    flower.castShadow = true;
+    flower.receiveShadow = true;
+    flowerBrowseGroup.add(flower);
+  });
+  selectedFlowerIndex = index;
+  controls.zoomToCursor = false;
+  notifyFlowerBrowse();
+  frameSelectedFlower();
+}
 
-  // Just a simple heuristic: move camera closer to flower
-  const targetCamPos = fData.position.clone().add(new THREE.Vector3(0, 4, 0)).sub(direction.multiplyScalar(8));
+function notifyFlowerBrowse() {
+  window.FlutterChannel?.postMessage(JSON.stringify({
+    type: 'flowerBrowse',
+    diaryId: String(flowerData[selectedFlowerIndex].diaryId),
+    index: selectedFlowerIndex,
+    count: flowerData.length,
+  }));
+}
 
-  // Tween Camera Position
+function frameSelectedFlower() {
+  isFocusing = true;
+  stopCameraMotion();
+  const bounds = new THREE.Box3().setFromObject(flowerBrowseGroup);
+  const center = bounds.getCenter(new THREE.Vector3());
+  const radius = Math.max(bounds.getBoundingSphere(new THREE.Sphere()).radius, 0.1);
+  const verticalHalfFov = THREE.MathUtils.degToRad(camera.fov / 2);
+  const horizontalHalfFov = Math.atan(Math.tan(verticalHalfFov) * camera.aspect);
+  // Keep the full flower clear of the date and navigation controls.
+  const distance = radius / Math.sin(Math.min(verticalHalfFov * 0.48, horizontalHalfFov * 0.7));
+  // Approach from outside the flower ring so the camera stays away from the
+  // tree trunk while the tree remains in the background.
+  const azimuth = Math.atan2(center.x - origin.x, center.z - origin.z);
+  const offset = new THREE.Vector3().setFromSphericalCoords(distance, Math.PI / 3, azimuth);
+  const targetCamPos = center.clone().add(offset);
+  controls.minDistance = Math.max(radius * 1.5, 0.3);
+  controls.maxDistance = distance * 2;
+
   gsap.to(camera.position, {
     x: targetCamPos.x,
     y: targetCamPos.y,
     z: targetCamPos.z,
-    duration: 1.5,
+    duration: 0.65,
     ease: "power3.inOut",
     onUpdate: requestRender,
   });
 
-  // Tween Controls Target (LookAt)
   gsap.to(controls.target, {
-    x: fData.position.x,
-    y: fData.position.y,
-    z: fData.position.z,
-    duration: 1.5,
+    x: center.x,
+    y: center.y,
+    z: center.z,
+    duration: 0.65,
     ease: "power3.inOut",
     onUpdate: requestRender,
     onComplete: () => {
-      // Notify Flutter
-      if (window.FlutterChannel && !fData.previewLabel) {
-        window.FlutterChannel.postMessage(fData.diaryId);
-      }
+      isFocusing = false;
+      controls.enabled = true;
+      controls.update();
+      requestRender();
     }
   });
+}
+
+window.browseFlower = function (direction) {
+  if (selectedFlowerIndex < 0 || flowerData.length < 2) return;
+  const index = (selectedFlowerIndex + (direction < 0 ? -1 : 1) + flowerData.length) % flowerData.length;
+  const data = flowerData[index];
+  if (data.previewLabel) showPreviewSelection(data.previewLabel);
+  focusOnFlower(data);
+};
+
+window.resumeFlowerBrowse = function () {
+  if (!flowerBrowseGroup) return;
+  isFocusing = false;
+  controls.enabled = true;
+  controls.update();
+  requestRender();
+};
+
+function leaveFlowerBrowse() {
+  const wasBrowsing = selectedFlowerIndex >= 0;
+  if (flowerBrowseGroup) {
+    // The framing proxy shares the garden's geometry and materials.
+    flowerBrowseGroup.clear();
+    flowerBrowseGroup = null;
+  }
+  selectedFlowerIndex = -1;
+  controls.zoomToCursor = true;
+  controls.minDistance = defaultMinZoomDistance;
+  controls.maxDistance = 80;
+  const panel = document.getElementById('preview-selection');
+  if (panel) panel.style.display = 'none';
+  if (wasBrowsing) {
+    window.FlutterChannel?.postMessage(JSON.stringify({ type: 'gardenOverview' }));
+  }
+  return wasBrowsing;
 }
 
 function focusOnTree(treeObj) {
@@ -546,6 +655,7 @@ function focusOnTree(treeObj) {
 window.resetCamera = function () {
   isFocusing = true;
   stopCameraMotion();
+  leaveFlowerBrowse();
   controls.minDistance = defaultMinZoomDistance;
 
   // Tween back to default position
@@ -660,11 +770,12 @@ function disposeObject3D(root, textures) {
 window.disposeGarden = function() {
   gardenLoadId++;
   stopCameraMotion();
+  const wasBrowsing = leaveFlowerBrowse();
   controls.minDistance = defaultMinZoomDistance;
 
   // A month change can interrupt focus/reset. Do not keep a flower as the
   // browsing pivot once that flower's scene has been removed.
-  if (isFocusing) {
+  if (isFocusing || wasBrowsing) {
     camera.position.copy(defaultCameraPos);
     controls.target.copy(origin);
   }

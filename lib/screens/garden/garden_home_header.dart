@@ -9,6 +9,7 @@ class GardenHomeHeader extends StatelessWidget {
     required this.hasUnreadRecords,
     required this.onOpenMailbox,
     required this.onOpenNotebook,
+    this.showTitleAndActions = true,
   });
 
   final DateTime month;
@@ -16,6 +17,7 @@ class GardenHomeHeader extends StatelessWidget {
   final bool hasUnreadRecords;
   final VoidCallback onOpenMailbox;
   final VoidCallback onOpenNotebook;
+  final bool showTitleAndActions;
 
   static const _assetBase = 'assets/garden/home';
   static const _green = Color(0xFF386622);
@@ -32,11 +34,13 @@ class GardenHomeHeader extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SvgPicture.asset(
-                  '$_assetBase/title.svg',
-                  width: 150,
-                  height: 76,
-                  semanticsLabel: '기억의 정원, 우리의 소중한 시간',
+                _gardenAction(
+                  SvgPicture.asset(
+                    '$_assetBase/title.svg',
+                    width: 150,
+                    height: 76,
+                    semanticsLabel: '기억의 정원, 우리의 소중한 시간',
+                  ),
                 ),
                 const SizedBox(height: 4),
                 SizedBox(
@@ -100,65 +104,76 @@ class GardenHomeHeader extends StatelessWidget {
               ],
             ),
           ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 76),
-              IconButton(
-                tooltip: '돌봄수첩',
-                onPressed: onOpenNotebook,
-                padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints.tightFor(
-                  width: 64,
-                  height: 64,
-                ),
-                icon: SvgPicture.asset(
-                  '$_assetBase/care_notebook.svg',
-                  width: 42,
-                  height: 49,
-                  excludeFromSemantics: true,
-                ),
-              ),
-              const SizedBox(height: 16),
-              IconButton(
-                tooltip: hasUnreadRecords ? '편지함 · 새 공유 기록' : '편지함',
-                onPressed: onOpenMailbox,
-                padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints.tightFor(
-                  width: 64,
-                  height: 64,
-                ),
-                icon: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SvgPicture.asset(
-                        '$_assetBase/mailbox.svg',
-                        width: 55,
-                        height: 50,
-                        excludeFromSemantics: true,
-                      ),
-                      if (hasUnreadRecords)
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: SvgPicture.asset(
-                            '$_assetBase/unread_badge.svg',
-                            width: 20,
-                            height: 20,
-                            excludeFromSemantics: true,
-                          ),
-                        ),
-                    ],
+          _gardenAction(
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 76),
+                IconButton(
+                  tooltip: '돌봄수첩',
+                  onPressed: onOpenNotebook,
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints.tightFor(
+                    width: 64,
+                    height: 64,
+                  ),
+                  icon: SvgPicture.asset(
+                    '$_assetBase/care_notebook.svg',
+                    width: 42,
+                    height: 49,
+                    excludeFromSemantics: true,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                IconButton(
+                  tooltip: hasUnreadRecords ? '편지함 · 새 공유 기록' : '편지함',
+                  onPressed: onOpenMailbox,
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints.tightFor(
+                    width: 64,
+                    height: 64,
+                  ),
+                  icon: SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SvgPicture.asset(
+                          '$_assetBase/mailbox.svg',
+                          width: 55,
+                          height: 50,
+                          excludeFromSemantics: true,
+                        ),
+                        if (hasUnreadRecords)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: SvgPicture.asset(
+                              '$_assetBase/unread_badge.svg',
+                              width: 20,
+                              height: 20,
+                              excludeFromSemantics: true,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+
+  Widget _gardenAction(Widget child) => IgnorePointer(
+    ignoring: !showTitleAndActions,
+    child: AnimatedOpacity(
+      opacity: showTitleAndActions ? 1 : 0,
+      duration: const Duration(milliseconds: 200),
+      child: child,
+    ),
+  );
 }

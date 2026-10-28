@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/comment.dart';
+import '../utils/emotion_utils.dart';
 import '../models/diary.dart';
 import '../models/emotions.dart';
 import '../models/flower.dart';
@@ -376,6 +377,13 @@ class AppData extends ChangeNotifier {
   Diary _diary(Map<String, dynamic> value) {
     final emotion = value['emotion'] as Map<String, dynamic>? ?? {};
     final flower = value['flower'] as Map<String, dynamic>? ?? {};
+    final emotionId =
+        value['final_emotion_id'] as int? ?? emotion['id'] as int? ?? 0;
+    final fallback = EmotionValues.values.firstWhere(
+      (item) => item.id == emotionId,
+      orElse: () => EmotionValues.neutral,
+    );
+    final matchesFinalEmotion = emotion['id'] == emotionId;
     return Diary(
       id: value['id'] as int,
       userId: value['user_id'] as String,
@@ -384,9 +392,13 @@ class AppData extends ChangeNotifier {
       flowerType: Flower(
         id: flower['id'] as int? ?? 0,
         emotionId: Emotion(
-          id: emotion['id'] as int? ?? value['final_emotion_id'] as int? ?? 0,
-          name: (emotion['emotion'] ?? '').toString(),
-          displayName: (emotion['display_name'] ?? '').toString(),
+          id: emotionId,
+          name: matchesFinalEmotion
+              ? (emotion['emotion'] ?? fallback.name).toString()
+              : fallback.name,
+          displayName: matchesFinalEmotion
+              ? (emotion['display_name'] ?? fallback.displayName).toString()
+              : fallback.displayName,
         ),
         flowerName: (flower['flower_name'] ?? '').toString(),
         colorCode: '',

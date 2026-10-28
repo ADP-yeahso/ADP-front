@@ -582,23 +582,13 @@ class _MiniDayNumber extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            if (flowerEmotion != null)
-              Container(
-                width: 17,
-                height: 17,
-                decoration: BoxDecoration(
-                  color: flowerEmotion!.color.withValues(alpha: 0.25),
-                  shape: BoxShape.circle,
-                ),
-              ),
             if (moodAsset != null)
               SvgPicture.asset(
                 moodAsset,
                 width: 17,
                 height: 17,
-                colorFilter: ColorFilter.mode(
-                  flowerEmotion!.color,
-                  BlendMode.srcIn,
+                key: ValueKey(
+                  'calendar-year-mood-${date.year}-${date.month}-${date.day}',
                 ),
               ),
             if (moodAsset == null && isToday)
@@ -942,25 +932,12 @@ class _DayCell extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                if (flowerEmotion != null)
-                  Container(
-                    key: ValueKey(
-                      'calendar-label-color-${date.year}-${date.month}-${date.day}',
-                    ),
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: flowerEmotion!.color.withValues(alpha: 0.25),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
                 if (moodAssetPath != null)
                   SvgPicture.asset(
                     moodAssetPath,
                     semanticsLabel: '${flowerEmotion!.displayName} 감정',
-                    colorFilter: ColorFilter.mode(
-                      flowerEmotion!.color,
-                      BlendMode.srcIn,
+                    key: ValueKey(
+                      'calendar-mood-${date.year}-${date.month}-${date.day}',
                     ),
                     width: 78,
                     height: 65,

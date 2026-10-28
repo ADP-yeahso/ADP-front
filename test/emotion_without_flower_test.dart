@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:care_garden/data/app_data.dart';
 import 'package:care_garden/models/diary.dart';
@@ -9,6 +10,8 @@ import 'package:care_garden/services/api_service.dart';
 import 'package:care_garden/services/auth_service.dart';
 import 'package:care_garden/services/diary_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -20,6 +23,7 @@ const _tokens = AuthTokens(
   tokenType: 'bearer',
 );
 const _names = ['중립', '분노/답답함', '불안/초조', '슬픔/소진', '죄책감/자책', '감사/안도', '애틋함/수용'];
+const _moodAssets = ['joonglib', 'b_d', 'b_ch', 's_s', 'j_j', 'g_a', 'a_s'];
 const _colors = [
   0xFF88C24D,
   0xFFE36887,
@@ -254,11 +258,68 @@ void main() {
     expect(data.diaries.single.flowerType.emotionId.id, 6);
   });
 
+  test(
+    'the saved final emotion ID takes priority over nested display data',
+    () async {
+      final saved = _saved(6);
+      saved['emotion'] = {
+        'id': 1,
+        'emotion': 'anger',
+        'display_name': '분노/답답함',
+      };
+      final data = await _load(saved);
+      expect(data.diaries.single.flowerType.emotionId.id, 6);
+      expect(data.diaries.single.flowerType.emotionId.displayName, '애틋함/수용');
+    },
+  );
+
   test('changing a pending diary removes the stale classification', () async {
     final data = await _load(_saved(6), resetOnEdit: true);
     expect(await data.updateDiaryText(91, '수정', '새 내용'), isTrue);
     expect(data.diaries, isEmpty);
   });
+
+  testWidgets(
+    'original mood shapes render visibly instead of shrinking into the SVG canvas',
+    (tester) async {
+      for (final asset in _moodAssets) {
+        final boundaryKey = GlobalKey();
+        await tester.pumpWidget(
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(
+              child: RepaintBoundary(
+                key: boundaryKey,
+                child: SvgPicture.asset(
+                  'assets/page2/moods/$asset.svg',
+                  width: 66,
+                  height: 66,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final boundary =
+            boundaryKey.currentContext!.findRenderObject()!
+                as RenderRepaintBoundary;
+        final image = await tester.runAsync(() => boundary.toImage());
+        final bytes = await tester.runAsync(
+          () => image!.toByteData(format: ui.ImageByteFormat.rawRgba),
+        );
+        var visiblePixels = 0;
+        for (var i = 3; i < bytes!.lengthInBytes; i += 4) {
+          if (bytes.getUint8(i) > 128) visiblePixels++;
+        }
+        expect(
+          visiblePixels,
+          greaterThan(200),
+          reason: '$asset must occupy a visible area',
+        );
+        image!.dispose();
+      }
+    },
+  );
 
   for (var id = 0; id <= 6; id++) {
     testWidgets(
@@ -282,19 +343,47 @@ void main() {
           filter.colorFilter,
           ColorFilter.mode(Color(_colors[id]), BlendMode.srcIn),
         );
-        final background = tester.widget<Container>(
+        final mood = tester.widget<SvgPicture>(
+          find.byKey(
+            ValueKey('calendar-mood-${date.year}-${date.month}-${date.day}'),
+          ),
+        );
+        expect(
+          (mood.bytesLoader as SvgAssetLoader).assetName,
+          'assets/page2/moods/${_moodAssets[id]}.svg',
+        );
+        expect(mood.colorFilter, isNull);
+        expect(
           find.byKey(
             ValueKey(
               'calendar-label-color-${date.year}-${date.month}-${date.day}',
             ),
           ),
-        );
-        expect(
-          (background.decoration as BoxDecoration).color,
-          Color(_colors[id]).withValues(alpha: 0.25),
+          findsNothing,
         );
         expect(find.bySemanticsLabel('${_names[id]} 감정'), findsOneWidget);
         expect(tester.takeException(), isNull);
+        await tester.pumpWidget(
+          ChangeNotifierProvider<AppData>.value(
+            value: data,
+            child: const MaterialApp(
+              home: CalendarScreen(key: ValueKey('year')),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final yearlyMood = tester.widget<SvgPicture>(
+          find.byKey(
+            ValueKey(
+              'calendar-year-mood-${date.year}-${date.month}-${date.day}',
+            ),
+          ),
+        );
+        expect(
+          (yearlyMood.bytesLoader as SvgAssetLoader).assetName,
+          'assets/page2/moods/${_moodAssets[id]}.svg',
+        );
+        expect(yearlyMood.colorFilter, isNull);
       },
     );
   }

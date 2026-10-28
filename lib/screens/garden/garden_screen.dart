@@ -340,6 +340,52 @@ class _GardenScreenState extends State<GardenScreen> {
     ''');
   }
 
+  Future<void> _runGardenDiagnosticAction(String action) async {
+    if (!_gardenDiagnosticsEnabled || !_isServerStarted || !mounted) {
+      return;
+    }
+
+    final controller = _webViewController;
+
+    try {
+      if (action == 'reload') {
+        await controller.reload();
+        return;
+      }
+
+      const expressions = <String, String>{
+        'status': 'true',
+        'pause': '(window.pauseGarden(), true)',
+        'resume': 'window.resumeGarden()',
+        'destroy': 'window.destroyGardenViewer()',
+        'cancel':
+            '(window.cancelGardenLoadForDiagnostics()'
+            '.catch(error => console.error(error)), true)',
+        'context-loss': 'window.loseGardenContextForDiagnostics()',
+      };
+
+      final expression = expressions[action];
+      if (expression == null) {
+        return;
+      }
+
+      final result = await controller.runJavaScriptReturningResult('''
+        JSON.stringify({
+          result: $expression,
+          status: window.getGardenViewerStatus()
+        })
+      ''');
+
+      if (!mounted || !identical(controller, _webViewController)) {
+        return;
+      }
+
+      debugPrint('GARDEN_STATUS[$action]: $result');
+    } catch (error) {
+      debugPrint('GARDEN_DIAGNOSTIC_ERROR[$action]: $error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
@@ -377,20 +423,42 @@ class _GardenScreenState extends State<GardenScreen> {
                   Positioned(
                     top: 100,
                     right: 16,
-                    child: TextButton(
-                      onPressed: () async {
-                        try {
-                          await _webViewController.runJavaScript('''
-                            window.cancelGardenLoadForDiagnostics()
-                              .catch((error) => {
-                                console.error('Diagnostic cancel failed', error);
-                              });
-                          ''');
-                        } catch (error) {
-                          debugPrint('GARDEN_DIAGNOSTIC_CANCEL_ERROR: $error');
-                        }
-                      },
-                      child: const Text('로딩 취소 · 진단'),
+                    child: PopupMenuButton<String>(
+                      onSelected: _runGardenDiagnosticAction,
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: 'status',
+                          child: Text('상태 확인'),
+                        ),
+                        PopupMenuItem(
+                          value: 'pause',
+                          child: Text('일시 중단'),
+                        ),
+                        PopupMenuItem(
+                          value: 'resume',
+                          child: Text('재개'),
+                        ),
+                        PopupMenuItem(
+                          value: 'cancel',
+                          child: Text('로딩 취소'),
+                        ),
+                        PopupMenuItem(
+                          value: 'destroy',
+                          child: Text('전체 종료'),
+                        ),
+                        PopupMenuItem(
+                          value: 'reload',
+                          child: Text('뷰어 재생성'),
+                        ),
+                        PopupMenuItem(
+                          value: 'context-loss',
+                          child: Text('그래픽 손실 주입'),
+                        ),
+                      ],
+                      child: const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Text('정원 진단'),
+                      ),
                     ),
                   ),
                 if (widget.assetPreview)

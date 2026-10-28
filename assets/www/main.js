@@ -17,6 +17,8 @@ const diagnosticState = {
 };
 
 let pendingDiagnosticReason = null;
+const ownedEventRemovers = new Set();
+const ownedGardenDelays = new Map();
 
 function beginDiagnosticLoad() {
   if (!diagnosticsEnabled) return;
@@ -40,9 +42,46 @@ function endDiagnosticLoad() {
 function addTrackedEventListener(target, type, listener, options) {
   target.addEventListener(type, listener, options);
 
-  if (diagnosticsEnabled) {
-    diagnosticState.ownedEventListeners += 1;
+  const remove = () => {
+    if (!ownedEventRemovers.delete(remove)) {
+      return;
+    }
+
+    target.removeEventListener(type, listener, options);
+    diagnosticState.ownedEventListeners = ownedEventRemovers.size;
+  };
+
+  ownedEventRemovers.add(remove);
+  diagnosticState.ownedEventListeners = ownedEventRemovers.size;
+
+  return remove;
+}
+
+function removeOwnedEventListeners() {
+  for (const remove of [...ownedEventRemovers]) {
+    remove();
   }
+}
+
+function waitForGardenDelay(milliseconds) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      ownedGardenDelays.delete(timer);
+      resolve();
+    }, milliseconds);
+
+    ownedGardenDelays.set(timer, resolve);
+  });
+}
+
+function cancelGardenDelays() {
+  const delays = [...ownedGardenDelays.entries()];
+  ownedGardenDelays.clear();
+
+  delays.forEach(([timer, resolve]) => {
+    clearTimeout(timer);
+    resolve();
+  });
 }
 
 function queueDiagnosticReport(reason) {
@@ -74,6 +113,17 @@ const origin = new THREE.Vector3(0, 0, 0);
 
 let renderQueued = false;
 let renderRunning = false;
+let renderFrameId = null;
+let viewerActive = true;
+let viewerDestroyed = false;
+let selectionId = 0;
+let latestGardenRequest = null;
+let viewerContextLost = false;
+const pendingFlowerBatches = new Set();
+
+function isGardenViewerActive() {
+  return viewerActive && !viewerDestroyed && !viewerContextLost;
+}
 
 const MAX_CONCURRENT_MODEL_LOADS = 1;
 const modelLoader = new GLTFLoader();
@@ -95,11 +145,15 @@ function queueModelLoad(
   isCurrent = () => generation === gardenLoadId
 ) {
   return new Promise((resolve, reject) => {
+    if (!isGardenViewerActive()) {
+      reject(new StaleGardenLoadError());
+      return;
+    }
     modelLoadQueue.push({
       url,
       generation,
       acceptResult,
-      isCurrent,
+      isCurrent: () => isGardenViewerActive() && isCurrent(),
       resolve,
       reject,
     });
@@ -128,6 +182,7 @@ function cancelPreviewCatalogLoad() {
 
 function drainModelLoadQueue() {
   while (
+    isGardenViewerActive() &&
     activeModelLoads < MAX_CONCURRENT_MODEL_LOADS &&
     modelLoadQueue.length > 0
   ) {
@@ -281,6 +336,29 @@ function init() {
   mouse = new THREE.Vector2();
 
   addTrackedEventListener(window, 'resize', onWindowResize);
+  addTrackedEventListener(
+  renderer.domElement,
+  'webglcontextlost',
+  onGardenContextLost
+);
+
+addTrackedEventListener(
+  renderer.domElement,
+  'webglcontextrestored',
+  onGardenContextRestored
+);
+
+addTrackedEventListener(
+  document,
+  'visibilitychange',
+  onGardenVisibilityChange
+);
+
+addTrackedEventListener(
+  window,
+  'pagehide',
+  onGardenPageHide
+);
   addTrackedEventListener(window, 'click', onClick);
 
   // ── 모바일 터치 지원 ──
@@ -317,7 +395,88 @@ function init() {
   document.getElementById('loading').style.display = 'none';
 }
 
+function showGardenViewerRecovery(message) {
+  if (viewerDestroyed) {
+    return;
+  }
+
+  const loading = document.getElementById('loading');
+  const text = document.createElement('div');
+  text.textContent = message;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = '정원 다시 열기';
+  button.style.marginTop = '8px';
+
+  let retrying = false;
+
+  button.onclick = (event) => {
+    event.stopPropagation();
+
+    if (viewerDestroyed || retrying) {
+      return;
+    }
+
+    retrying = true;
+    button.disabled = true;
+    window.location.reload();
+  };
+
+  loading.replaceChildren(text, button);
+  loading.style.pointerEvents = 'auto';
+  loading.style.zIndex = '3';
+  loading.style.textAlign = 'center';
+  loading.style.display = 'block';
+}
+
+function onGardenContextLost(event) {
+  if (viewerDestroyed) {
+    return;
+  }
+
+  event.preventDefault();
+  window.pauseGarden();
+  viewerContextLost = true;
+
+  showGardenViewerRecovery(
+    '정원을 표시할 수 없어요. 다시 열어 주세요.'
+  );
+
+  emitDiagnosticReport('webgl_context_lost');
+}
+
+function onGardenContextRestored() {
+  if (viewerDestroyed) {
+    return;
+  }
+
+  viewerContextLost = false;
+
+  // 자동 재시도 루프를 만들지 않고 사용자 재시도를 기다린다.
+  showGardenViewerRecovery(
+    '정원을 다시 열어 계속 이용해 주세요.'
+  );
+
+  emitDiagnosticReport('webgl_context_restored');
+}
+
+function onGardenVisibilityChange() {
+  if (document.hidden) {
+    window.pauseGarden();
+  } else if (!window.FlutterChannel && !viewerDestroyed) {
+    window.resumeGarden();
+  }
+}
+
+function onGardenPageHide() {
+  window.destroyGardenViewer();
+}
+
 function onWindowResize() {
+  if (!isGardenViewerActive()) {
+    return;
+  }
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -325,7 +484,10 @@ function onWindowResize() {
 }
 
 function showGardenLoadError(message, generation, retry) {
-  if (generation !== gardenLoadId) {
+  if (
+    !isGardenViewerActive() ||
+    generation !== gardenLoadId
+  ) {
     return;
   }
 
@@ -558,6 +720,21 @@ window.initGarden = function (
   diariesJson,
   assetPreview = false
 ) {
+  if (viewerDestroyed) {
+    return;
+  }
+
+  latestGardenRequest = {
+    kind: 'garden',
+    treeUrl,
+    flowerUrlsMapJson,
+    diariesJson,
+    assetPreview,
+  };
+
+  if (!isGardenViewerActive()) {
+    return;
+  }
   window.clearGardenContent();
 
   const currentLoadId = gardenLoadId;
@@ -583,6 +760,7 @@ window.initGarden = function (
 
   const loadGarden = async () => {
     const pendingFlowerMeshes = [];
+    pendingFlowerBatches.add(pendingFlowerMeshes);
     let stage = 'data';
 
     try {
@@ -728,6 +906,8 @@ window.initGarden = function (
 
       queueDiagnosticReport(reason);
       requestRender();
+    } finally {
+      pendingFlowerBatches.delete(pendingFlowerMeshes);
     }
   };
 
@@ -735,7 +915,9 @@ window.initGarden = function (
 };
 
 function onClick(event) {
-  if (isFocusing) return;
+  if (!isGardenViewerActive() || isFocusing) {
+    return;
+  }
 
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -782,7 +964,26 @@ function onClick(event) {
   }
 }
 
+function beginGardenSelection() {
+  const generation = gardenLoadId;
+  const token = ++selectionId;
+
+  gsap.killTweensOf(camera.position);
+  gsap.killTweensOf(controls.target);
+
+  return () => (
+    isGardenViewerActive() &&
+    generation === gardenLoadId &&
+    token === selectionId
+  );
+}
+
 function focusOnFlower(fData) {
+  if (!isGardenViewerActive()) {
+    return;
+  }
+
+  const isCurrentSelection = beginGardenSelection();
   isFocusing = true;
   controls.enabled = false;
 
@@ -811,6 +1012,9 @@ function focusOnFlower(fData) {
     ease: "power3.inOut",
     onUpdate: requestRender,
     onComplete: () => {
+      if (!isCurrentSelection()) {
+        return;
+      }
       // Notify Flutter
       if (window.FlutterChannel && !fData.previewLabel) {
         window.FlutterChannel.postMessage(fData.diaryId);
@@ -820,6 +1024,11 @@ function focusOnFlower(fData) {
 }
 
 function focusOnTree(treeObj) {
+  if (!isGardenViewerActive()) {
+    return;
+  }
+
+  const isCurrentSelection = beginGardenSelection();
   isFocusing = true;
   controls.enabled = false;
 
@@ -843,6 +1052,9 @@ function focusOnTree(treeObj) {
     ease: "power3.inOut",
     onUpdate: requestRender,
     onComplete: () => {
+      if (!isCurrentSelection()) {
+        return;
+      }
       if (window.FlutterChannel) {
         window.FlutterChannel.postMessage('tree');
       }
@@ -851,6 +1063,11 @@ function focusOnTree(treeObj) {
 }
 
 window.resetCamera = function () {
+  if (!isGardenViewerActive()) {
+    return;
+  }
+
+  const isCurrentSelection = beginGardenSelection();
   // Tween back to default position
   gsap.to(camera.position, {
     x: defaultCameraPos.x,
@@ -869,33 +1086,78 @@ window.resetCamera = function () {
     ease: "power3.inOut",
     onUpdate: requestRender,
     onComplete: () => {
+      if (!isCurrentSelection()) {
+        return;
+      }
       isFocusing = false;
       controls.enabled = true;
     }
   });
 };
 
+function cancelGardenRender() {
+  if (renderFrameId !== null) {
+    cancelAnimationFrame(renderFrameId);
+    renderFrameId = null;
+  }
+
+  renderQueued = false;
+  pendingDiagnosticReason = null;
+}
+
 function requestRender() {
-  if (renderQueued || renderRunning) return;
+  if (
+    !isGardenViewerActive() ||
+    !scene ||
+    !camera ||
+    !renderer ||
+    !controls ||
+    renderQueued ||
+    renderRunning
+  ) {
+    return;
+  }
 
   renderQueued = true;
 
-  requestAnimationFrame(() => {
+  renderFrameId = requestAnimationFrame(() => {
+    renderFrameId = null;
     renderQueued = false;
-    renderRunning = true;
 
-    const controlsChanged = controls.update();
-    renderer.render(scene, camera);
-
-    renderRunning = false;
-
-    if (pendingDiagnosticReason !== null) {
-      const reason = pendingDiagnosticReason;
-      pendingDiagnosticReason = null;
-      emitDiagnosticReport(reason);
+    if (!isGardenViewerActive()) {
+      return;
     }
 
-    // OrbitControls damping이 끝날 때까지 계속 렌더링
+    renderRunning = true;
+    let controlsChanged = false;
+
+    try {
+      controlsChanged = controls.update();
+
+      if (!isGardenViewerActive()) {
+        return;
+      }
+
+      renderer.render(scene, camera);
+
+      if (pendingDiagnosticReason !== null) {
+        const reason = pendingDiagnosticReason;
+        pendingDiagnosticReason = null;
+        emitDiagnosticReport(reason);
+      }
+    } catch (error) {
+      console.error('Garden render failed', error);
+      window.pauseGarden?.();
+
+      window.FlutterChannel?.postMessage(
+        'ERROR_RENDER: ' + String(error)
+      );
+
+      return;
+    } finally {
+      renderRunning = false;
+    }
+
     if (controlsChanged) {
       requestRender();
     }
@@ -1061,7 +1323,9 @@ function emitDiagnosticReport(reason) {
     },
     activity: {
       eventListeners: diagnosticState.ownedEventListeners,
-      timers: Number(window.__gardenPendingInitTimers || 0),
+      timers:
+        ownedGardenDelays.size +
+        Number(window.__gardenPendingInitTimers || 0),
       rafQueued: Number(renderQueued),
       rafRunning: Number(renderRunning),
       tweens: gsap.getTweensOf([
@@ -1196,9 +1460,15 @@ function disposeObject3Ds(roots) {
 }
 
 window.clearGardenContent = function () {
+  if (viewerDestroyed) {
+    return;
+  }
   gardenLoadId++;
+  selectionId++;
   cancelWaitingModelLoads();
   cancelPreviewCatalogLoad();
+  cancelGardenDelays();
+  disposePendingFlowerBatches();
 
   const loading = document.getElementById('loading');
   loading.replaceChildren();
@@ -1214,7 +1484,7 @@ window.clearGardenContent = function () {
   gsap.killTweensOf(controls.target);
 
   isFocusing = false;
-  controls.enabled = true;
+  controls.enabled = isGardenViewerActive();
 
   camera.position.copy(defaultCameraPos);
   controls.target.copy(origin);
@@ -1229,25 +1499,179 @@ window.clearGardenContent = function () {
   requestRender();
 };
 
-window.disposeGarden = function () {
-  invalidateWorldTree();
-  window.clearGardenContent();
+function disposePendingFlowerBatches() {
+  const roots = [];
 
-  emitDiagnosticReport('garden_disposed');
-};
+  pendingFlowerBatches.forEach((batch) => {
+    roots.push(...batch);
+    batch.length = 0;
+  });
 
-window.cancelGardenLoadForDiagnostics = async function () {
-  if (!diagnosticsEnabled) {
+  pendingFlowerBatches.clear();
+  disposeObject3Ds(roots);
+}
+
+window.pauseGarden = function () {
+  if (viewerDestroyed || !viewerActive) {
     return;
   }
 
-  window.disposeGarden();
+  viewerActive = false;
+  gardenLoadId++;
+  treeLoadId++;
+  treeLoadPromise = null;
+  selectionId++;
+
+  cancelWaitingModelLoads();
+  cancelPreviewCatalogLoad();
+  cancelGardenDelays();
+  cancelGardenRender();
+
+  gsap.killTweensOf(camera.position);
+  gsap.killTweensOf(controls.target);
+
+  isFocusing = false;
+  controls.enabled = false;
+
+  disposePendingFlowerBatches();
+  emitDiagnosticReport('garden_paused');
+};
+
+window.resumeGarden = function () {
+  if (viewerDestroyed || viewerContextLost) {
+    return false;
+  }
+
+  if (viewerActive) {
+    return true;
+  }
+
+  viewerActive = true;
+  controls.enabled = isGardenViewerActive();
+
+  const request = latestGardenRequest;
+
+  if (request?.kind === 'preview') {
+    window.previewGarden();
+  } else if (request?.kind === 'garden') {
+    window.initGarden(
+      request.treeUrl,
+      request.flowerUrlsMapJson,
+      request.diariesJson,
+      request.assetPreview
+    );
+  } else {
+    requestRender();
+  }
+
+  return true;
+};
+
+window.destroyGardenViewer = function () {
+  if (viewerDestroyed) {
+    return true;
+  }
+
+  viewerDestroyed = true;
+  viewerActive = false;
+  gardenLoadId++;
+  treeLoadId++;
+  treeLoadPromise = null;
+  selectionId++;
+  latestGardenRequest = null;
+
+  cancelWaitingModelLoads();
+  cancelPreviewCatalogLoad();
+  cancelGardenDelays();
+  cancelGardenRender();
+
+  if (camera) {
+    gsap.killTweensOf(camera.position);
+  }
+  if (controls) {
+    gsap.killTweensOf(controls.target);
+  }
+
+  removeOwnedEventListeners();
+  controls?.dispose();
+
+  disposePendingFlowerBatches();
+
+  scene?.traverse((object) => {
+    object.shadow?.dispose?.();
+  });
+
+  if (scene) {
+    disposeObject3Ds([scene]);
+    scene.clear();
+  }
+
+  flowerMeshes = [];
+  worldTree = null;
+  worldTreeUrl = null;
+  isFocusing = false;
+  diagnosticState.diaryCount = 0;
+
+  const loading = document.getElementById('loading');
+  if (loading) {
+    loading.replaceChildren();
+    loading.onclick = null;
+    loading.ontouchstart = null;
+    loading.ontouchend = null;
+    loading.style.pointerEvents = 'none';
+    loading.style.display = 'none';
+  }
+
+  document.getElementById('preview-selection')?.remove();
+
+  const oldRenderer = renderer;
+
+  oldRenderer?.renderLists?.dispose();
+  oldRenderer?.dispose();
+
+  if (oldRenderer) {
+    try {
+      const extension = oldRenderer.getContext()
+        .getExtension('WEBGL_lose_context');
+
+      if (extension) {
+        oldRenderer.forceContextLoss();
+      }
+    } catch (error) {
+      console.warn('Context release failed', error);
+    }
+
+    oldRenderer.domElement.remove();
+  }
+
+  emitDiagnosticReport('viewer_destroyed');
+
+  scene = null;
+  camera = null;
+  controls = null;
+  renderer = null;
+  raycaster = null;
+  mouse = null;
+
+  return true;
+};
+
+// 기존 Flutter 종료 호출도 전체 종료로 연결한다.
+window.disposeGarden = window.destroyGardenViewer;
+
+window.cancelGardenLoadForDiagnostics = async function () {
+  if (!diagnosticsEnabled || !isGardenViewerActive()) {
+    return;
+  }
+
+  invalidateWorldTree();
+  window.clearGardenContent();
 
   const cancelledGeneration = gardenLoadId;
   const deadline = performance.now() + 10000;
 
   while (cancelledGeneration === gardenLoadId) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await waitForGardenDelay(100);
 
     if (cancelledGeneration !== gardenLoadId) {
       return;
@@ -1297,6 +1721,15 @@ function showPreviewSelection(label) {
 }
 
 window.previewGarden = async function () {
+  if (viewerDestroyed) {
+    return;
+  }
+
+  latestGardenRequest = { kind: 'preview' };
+
+  if (!isGardenViewerActive()) {
+    return;
+  }
   window.clearGardenContent();
 
   const requestGeneration = gardenLoadId;
@@ -1309,6 +1742,7 @@ window.previewGarden = async function () {
   loading.style.display = 'block';
 
   const isCurrentRequest = () => (
+    isGardenViewerActive() &&
     requestGeneration === gardenLoadId &&
     previewCatalogController === controller &&
     !controller.signal.aborted
@@ -1343,9 +1777,7 @@ window.previewGarden = async function () {
         loading.textContent = '꽃 목록 처리 대기 중 · 진단';
         emitDiagnosticReport('preview_catalog_process_delayed');
 
-        await new Promise((resolve) => {
-          setTimeout(resolve, Math.min(delayMs, 10000));
-        });
+        await waitForGardenDelay(Math.min(delayMs, 10000));
       }
     }
 
@@ -1421,5 +1853,59 @@ window.previewGarden = async function () {
   }
 };
 
+window.loseGardenContextForDiagnostics = function () {
+  if (
+    !diagnosticsEnabled ||
+    !isGardenViewerActive() ||
+    !renderer
+  ) {
+    return false;
+  }
+
+  const extension = renderer.getContext()
+    .getExtension('WEBGL_lose_context');
+
+  if (!extension) {
+    return false;
+  }
+
+  extension.loseContext();
+  return true;
+};
+
+window.getGardenViewerStatus = function () {
+  return {
+    sessionId: diagnosticSessionId,
+    active: isGardenViewerActive(),
+    destroyed: viewerDestroyed,
+    contextLost: viewerContextLost,
+
+    loading: {
+      active: activeModelLoads,
+      waiting: modelLoadQueue.length,
+    },
+
+    resources: collectDiagnosticResources(),
+
+    activity: {
+      eventListeners: ownedEventRemovers.size,
+      timers:
+        ownedGardenDelays.size +
+        Number(window.__gardenPendingInitTimers || 0),
+      rafQueued: Number(renderQueued),
+      rafRunning: Number(renderRunning),
+      tweens: camera && controls
+        ? gsap.getTweensOf([
+            camera.position,
+            controls.target,
+          ]).length
+        : 0,
+    },
+
+    canvasCount: document.querySelectorAll(
+      '#canvas-container canvas'
+    ).length,
+  };
+};
 // Opening the viewer directly in a browser uses the same complete asset preview.
 if (!window.FlutterChannel) window.previewGarden();

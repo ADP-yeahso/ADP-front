@@ -4,6 +4,7 @@ import 'data/app_data.dart';
 import 'data/garden_nav_controller.dart';
 import 'screens/auth/login_screen.dart';
 import 'theme/app_theme.dart';
+import 'utils/garden_route_observers.dart';
 
 void main() {
   runApp(const CareGardenApp());
@@ -23,6 +24,7 @@ class CareGardenApp extends StatelessWidget {
         title: '마음정원',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        navigatorObservers: [gardenRootRouteObserver],
         home: const LoginScreen(),
       ),
     );

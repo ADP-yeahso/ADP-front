@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:ui';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,121 +9,405 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../data/app_data.dart';
 import '../../data/garden_range.dart';
 
-import '../../utils/local_asset_server.dart';
+import 'dart:async';
+import '../../utils/garden_viewer_session.dart';
 import '../care_notebook/care_notebook_list_screen.dart';
 import 'entry_detail_sheet.dart';
 
-/// 기억의 정원 – Three.js + WebView 하이브리드 아키텍처
 class GardenScreen extends StatefulWidget {
-  const GardenScreen({super.key, this.assetPreview = false});
+  const GardenScreen({
+    super.key,
+    this.assetPreview = false,
+    this.isActive = true,
+    this.isRouteVisible = true,
+    this.routeObserver,
+  });
 
   final bool assetPreview;
+  final bool isActive;
+  final bool isRouteVisible;
+  final RouteObserver<PageRoute<dynamic>>? routeObserver;
 
   @override
   State<GardenScreen> createState() => _GardenScreenState();
 }
 
-class _GardenScreenState extends State<GardenScreen> {
+class _GardenScreenState extends State<GardenScreen>
+    with WidgetsBindingObserver, RouteAware {
   final DateTime _anchor = gardenAnchorMonth();
   int _pageIndex = gardenMonthsBack;
 
-  late final WebViewController _webViewController;
-  late final LocalAssetServer _localhostServer;
-
-  // (메모리 01-B) 진단 플래그 추가
   static const bool _gardenDiagnosticsEnabled = bool.fromEnvironment(
     'GARDEN_DIAGNOSTICS',
     defaultValue: false,
   );
+
   static const String _gardenScenario = String.fromEnvironment(
     'GARDEN_SCENARIO',
     defaultValue: 'real',
   );
 
+  static const int _catalogProcessDelayMs = int.fromEnvironment(
+    'GARDEN_CATALOG_PROCESS_DELAY_MS',
+    defaultValue: 0,
+  );
+
+  GardenViewerSession? _session;
+  Future<void> _transition = Future<void>.value();
+  Timer? _idleReleaseTimer;
+  PageRoute<dynamic>? _observedRoute;
+
   bool _isFocusing = false;
-  bool _isServerStarted = false;
+  bool _disposed = false;
+  bool _appForeground = true;
+  bool _innerRouteVisible = true;
+  bool _releaseRequested = false;
+  bool _retryRequired = false;
+  String? _viewerError;
 
   DateTime get _currentMonth => gardenMonthAt(_anchor, _pageIndex);
+
+  bool get _shouldRun =>
+      mounted &&
+      !_disposed &&
+      widget.isActive &&
+      widget.isRouteVisible &&
+      _innerRouteVisible &&
+      _appForeground &&
+      !_retryRequired;
+
+  bool _ownsSession(GardenViewerSession session) =>
+      mounted && !_disposed && identical(session, _session);
 
   @override
   void initState() {
     super.initState();
-    _localhostServer = LocalAssetServer(assetBase: 'assets');
-    _initWebViewAndServer();
+
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _appForeground =
+        lifecycle == null || lifecycle == AppLifecycleState.resumed;
+
+    WidgetsBinding.instance.addObserver(this);
+    _syncAvailability();
   }
 
-  Future<void> _initWebViewAndServer() async {
-    await _localhostServer.start();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _subscribeRoute();
+  }
 
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
-      ..addJavaScriptChannel(
-        'FlutterChannel',
-        onMessageReceived: (JavaScriptMessage message) {
-          final msgId = message.message;
-          if (msgId.startsWith('GARDEN_DIAGNOSTICS:')) {
-            if (_gardenDiagnosticsEnabled) {
-              debugPrint(msgId);
-            }
-            return;
-          }
-          if (msgId.startsWith('ERROR_')) {
-            debugPrint(msgId);
-            return;
-          }
-          if (kDebugMode) {
-            print('JS Message: $msgId');
-          }
-          if (msgId == 'tree') {
-            _handleTreeTap();
-          } else if (msgId.isNotEmpty) {
-            _handleFlowerTap(msgId);
-          }
-        },
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) {
-            _reload3DScene();
-          },
-        ),
-      );
+  void _subscribeRoute() {
+    final observer = widget.routeObserver;
+    final route = ModalRoute.of(context);
 
-    final diagnosticsQuery = _gardenDiagnosticsEnabled ? '&diagnostics=1' : '';
+    if (observer == null ||
+        route is! PageRoute<dynamic> ||
+        identical(route, _observedRoute)) {
+      return;
+    }
 
-    const catalogProcessDelayMs = int.fromEnvironment(
-      'GARDEN_CATALOG_PROCESS_DELAY_MS',
-      defaultValue: 0,
-    );
+    observer.unsubscribe(this);
+    _observedRoute = route;
+    observer.subscribe(this, route);
+  }
 
-    final catalogProcessQuery =
-        _gardenDiagnosticsEnabled &&
-                widget.assetPreview &&
-                catalogProcessDelayMs > 0
-            ? '&catalogProcessDelayMs=$catalogProcessDelayMs'
-            : '';
+  @override
+  void didUpdateWidget(covariant GardenScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
 
-    await _webViewController.loadRequest(
-      Uri.parse(
-        'http://localhost:8080/www/index.html'
-        '?v=flower-mapping-v1$diagnosticsQuery$catalogProcessQuery',
-      ),
-    );
+    if (!identical(oldWidget.routeObserver, widget.routeObserver)) {
+      oldWidget.routeObserver?.unsubscribe(this);
+      _observedRoute = null;
+      _subscribeRoute();
+    }
 
-    if (mounted) {
-      setState(() {
-        _isServerStarted = true;
-      });
+    if (oldWidget.isActive != widget.isActive ||
+        oldWidget.isRouteVisible != widget.isRouteVisible) {
+      _syncAvailability();
     }
   }
 
   @override
-  void dispose() {
-    _webViewController.runJavaScript(
-      'if (typeof window.disposeGarden === "function") window.disposeGarden();',
+  void didPushNext() {
+    _innerRouteVisible = false;
+    _syncAvailability();
+  }
+
+  @override
+  void didPopNext() {
+    _innerRouteVisible = true;
+    _syncAvailability();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appForeground = state == AppLifecycleState.resumed;
+    _syncAvailability();
+  }
+
+  @override
+  void didHaveMemoryPressure() {
+    if (_disposed) return;
+
+    _retryRequired = true;
+    _viewerError = '메모리 확보를 위해 정원을 닫았어요.';
+    _syncAvailability();
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _syncAvailability() {
+    if (_disposed || !mounted) return;
+
+    final current = _session;
+
+    if (_shouldRun) {
+      _idleReleaseTimer?.cancel();
+      _idleReleaseTimer = null;
+      _releaseRequested = false;
+    } else if (!widget.isActive || _retryRequired) {
+      _idleReleaseTimer?.cancel();
+      _idleReleaseTimer = null;
+      _releaseRequested = true;
+
+      if (current != null) {
+        unawaited(current.close());
+      }
+    } else {
+      if (current != null) {
+        if (!current.isReady) {
+          _releaseRequested = true;
+          unawaited(current.close());
+        } else {
+          unawaited(current.pause());
+        }
+      }
+
+      _idleReleaseTimer ??= Timer(const Duration(seconds: 5), () {
+        _idleReleaseTimer = null;
+
+        if (!_shouldRun) {
+          _releaseRequested = true;
+
+          final session = _session;
+          if (session != null) {
+            unawaited(session.close());
+          }
+
+          _queueReconcile();
+        }
+      });
+    }
+
+    _queueReconcile();
+  }
+
+  void _queueReconcile() {
+    if (_disposed) return;
+
+    _transition = _transition.then((_) => _reconcileViewer()).catchError(
+      (Object error, StackTrace stackTrace) {
+        debugPrint('Garden lifecycle failed: $error');
+
+        if (_disposed || !mounted) return;
+
+        _retryRequired = true;
+        _releaseRequested = true;
+        _viewerError = '정원을 다시 불러와 주세요.';
+
+        final current = _session;
+        if (current != null) {
+          unawaited(current.close());
+        }
+
+        setState(() {});
+      },
     );
-    _localhostServer.stop();
+  }
+
+  Future<void> _reconcileViewer() async {
+    if (_disposed) return;
+
+    var current = _session;
+
+    if (!_shouldRun) {
+      if (current != null) {
+        if (_releaseRequested || current.isClosing || !current.isReady) {
+          await _dropSession(current);
+        } else {
+          await current.pause();
+        }
+      }
+      return;
+    }
+
+    if (current != null && current.isClosing) {
+      await _dropSession(current);
+      current = null;
+    }
+
+    if (!_shouldRun) return;
+
+    if (current == null) {
+      final candidate = GardenViewerSession(
+        diagnostics: _gardenDiagnosticsEnabled,
+        catalogProcessDelayMs: _catalogProcessDelayMs,
+        onChanged: _onSessionChanged,
+        onEvent: _onSessionEvent,
+      );
+
+      _session = candidate;
+      _viewerError = null;
+      setState(() {});
+
+      try {
+        await candidate.start();
+      } catch (error) {
+        debugPrint('Garden startup failed: $error');
+
+        if (_ownsSession(candidate) && _shouldRun) {
+          _retryRequired = true;
+          _viewerError = '정원을 불러오지 못했어요.';
+        }
+
+        await _dropSession(candidate);
+        return;
+      }
+
+      if (candidate.isClosing || !_shouldRun) {
+        await _dropSession(candidate);
+
+        if (_shouldRun) {
+          _queueReconcile();
+        }
+      }
+
+      return;
+    }
+
+    if (!current.isReady || !current.isPaused) return;
+
+    final resumed = await current.resume();
+
+    if (!_ownsSession(current) || !_shouldRun) return;
+
+    if (!resumed) {
+      await _dropSession(current);
+
+      if (_shouldRun) {
+        _queueReconcile();
+      }
+      return;
+    }
+
+    _reload3DScene();
+  }
+
+  Future<void> _dropSession(GardenViewerSession session) async {
+    try {
+      await session.close();
+    } finally {
+      if (identical(session, _session)) {
+        _session = null;
+        _isFocusing = false;
+
+        if (!_disposed && mounted) {
+          setState(() {});
+        }
+      }
+    }
+  }
+
+  void _onSessionChanged(GardenViewerSession session) {
+    if (!_ownsSession(session)) return;
+
+    if (!_shouldRun && !session.isClosing) {
+      unawaited(session.pause());
+    }
+
+    setState(() {});
+  }
+
+  void _onSessionEvent(
+    GardenViewerSession session,
+    Map<String, dynamic> event,
+  ) {
+    if (!_ownsSession(session) || session.isClosing) return;
+
+    switch (event['type']) {
+      case 'ready':
+        if (_shouldRun) {
+          setState(() => _isFocusing = false);
+          _reload3DScene();
+        }
+
+      case 'flower':
+        final diaryId = event['diaryId'];
+        if (_shouldRun && !_isFocusing && diaryId is String) {
+          unawaited(_handleFlowerTap(diaryId));
+        }
+
+      case 'tree':
+        if (_shouldRun && !_isFocusing) {
+          unawaited(_handleTreeTap());
+        }
+
+      case 'error':
+        debugPrint('GARDEN_ERROR: ${event['code']} ${event['detail']}');
+
+        if (const [
+          'ERROR_PAGE',
+          'ERROR_JS',
+          'ERROR_RENDER',
+        ].contains(event['code'])) {
+          _retryRequired = true;
+          _viewerError = event['message']?.toString();
+          _syncAvailability();
+          setState(() {});
+        }
+
+      case 'destroyed':
+        _retryRequired = true;
+        _viewerError = '정원이 종료됐어요. 다시 불러와 주세요.';
+        _syncAvailability();
+        setState(() {});
+    }
+  }
+
+  void _retryViewer() {
+    if (_disposed || !mounted) return;
+
+    _retryRequired = false;
+    _viewerError = null;
+    _isFocusing = false;
+
+    final current = _session;
+    if (current != null) {
+      unawaited(current.close());
+    }
+
+    _syncAvailability();
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _idleReleaseTimer?.cancel();
+
+    WidgetsBinding.instance.removeObserver(this);
+    widget.routeObserver?.unsubscribe(this);
+
+    final current = _session;
+    _session = null;
+
+    if (current != null) {
+      unawaited(current.close());
+    }
+
     super.dispose();
   }
 
@@ -227,19 +510,21 @@ class _GardenScreenState extends State<GardenScreen> {
 
   /// 달이 변경될 때마다 3D Scene의 데이터를 다시 주입
   void _reload3DScene() {
-    if (widget.assetPreview) {
-      _webViewController.runJavaScript('''
-        function tryPreviewGarden() {
-          if (typeof window.previewGarden === 'function') {
-            window.previewGarden();
-          } else {
-            setTimeout(tryPreviewGarden, 100);
-          }
-        }
-        tryPreviewGarden();
-      ''');
+    final session = _session;
+    final origin = session?.origin;
+
+    if (!_shouldRun ||
+        session == null ||
+        !session.isReady ||
+        origin == null) {
       return;
     }
+
+    if (widget.assetPreview) {
+      unawaited(session.runScript('window.previewGarden();'));
+      return;
+    }
+
     final appData = context.read<AppData>();
     final diaries = appData.diariesForMonth(_currentMonth);
 
@@ -269,12 +554,12 @@ class _GardenScreenState extends State<GardenScreen> {
     const assetVersion = 'flower-mapping-v1';
     final treeUrl =
         _gardenDiagnosticsEnabled && _gardenScenario == 'fail-tree'
-            ? 'http://localhost:8080/images/__missing_tree__.glb'
+            ? '$origin/images/__missing_tree__.glb'
                 '?v=$assetVersion'
-            : 'http://localhost:8080/images/worldtree.glb'
+            : '$origin/images/worldtree.glb'
                 '?v=$assetVersion';
 
-    final flowerBaseUrl = 'http://localhost:8080/images/flower';
+    final flowerBaseUrl = '$origin/images/flower';
     final placeholderFlowerUrl =
         '$flowerBaseUrl/flower.glb?v=$assetVersion'; // 감사,중립 꽃 에셋 나오면 교체하고 삭제해도 됨
 
@@ -318,41 +603,37 @@ class _GardenScreenState extends State<GardenScreen> {
         _gardenScenario == 'fail-flower'
             ? '$flowerBaseUrl/__missing_flower__.glb'
                 '?v=$assetVersion'
-            : 'http://localhost:8080/www/index.html'
+            : '$origin/www/index.html'
                 '?v=$assetVersion',
       ];
     }
     final flowerUrlsMapJson = jsonEncode(emotionToFlowers);
-
-    _webViewController.runJavaScript('''
-      function tryInitGarden() {
-        if (typeof window.initGarden === 'function') {
-          window.initGarden('$treeUrl', '$flowerUrlsMapJson', '$diariesJson');
-        } else {
-          window.__gardenPendingInitTimers = (window.__gardenPendingInitTimers || 0) + 1;
-          setTimeout(() => {
-            window.__gardenPendingInitTimers = Math.max(0, (window.__gardenPendingInitTimers || 1) - 1);
-            tryInitGarden();
-          }, 100);
-        }
-      }
-      tryInitGarden();
-    ''');
+    unawaited(session.runScript(
+      'window.initGarden('
+      '${jsonEncode(treeUrl)},'
+      '${jsonEncode(flowerUrlsMapJson)},'
+      '${jsonEncode(diariesJson)}'
+      ');',
+    ));
   }
 
   Future<void> _runGardenDiagnosticAction(String action) async {
-    if (!_gardenDiagnosticsEnabled || !_isServerStarted || !mounted) {
+    if (!_gardenDiagnosticsEnabled || !mounted) {
       return;
     }
 
-    final controller = _webViewController;
+    if (action == 'reload') {
+      _retryViewer();
+      return;
+    }
+
+    final controller = _session?.controller;
+
+    if (controller == null || _session?.isReady != true) {
+      return;
+    }
 
     try {
-      if (action == 'reload') {
-        await controller.reload();
-        return;
-      }
-
       const expressions = <String, String>{
         'status': 'true',
         'pause': '(window.pauseGarden(), true)',
@@ -376,7 +657,7 @@ class _GardenScreenState extends State<GardenScreen> {
         })
       ''');
 
-      if (!mounted || !identical(controller, _webViewController)) {
+      if (!mounted || !identical(controller, _session?.controller)) {
         return;
       }
 
@@ -392,17 +673,37 @@ class _GardenScreenState extends State<GardenScreen> {
     final month = _currentMonth;
     final memories = appData.memoriesForMonth(month);
     final diariesCount = appData.diariesForMonth(month).length;
+    final controller = _session?.controller;
 
     return Scaffold(
       body: Stack(
         children: [
           // ── 1. 가장 밑바탕: 3D Three.js 뷰어 (WebView) 전체 화면 ──
-          if (_isServerStarted)
+          if (controller != null)
             Positioned.fill(
               child: IgnorePointer(
-                ignoring: _isFocusing,
-                child: WebViewWidget(controller: _webViewController),
+                ignoring: _isFocusing || _session?.isClosing == true,
+                child: WebViewWidget(
+                  key: ValueKey(_session),
+                  controller: controller,
+                ),
               ),
+            )
+          else if (_retryRequired)
+            Positioned.fill(
+              child: Center(
+                child: TextButton(
+                  onPressed: _retryViewer,
+                  child: Text(
+                    '${_viewerError ?? '정원을 불러오지 못했어요.'}\n다시 시도',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            )
+          else if (_shouldRun)
+            const Positioned.fill(
+              child: Center(child: CircularProgressIndicator()),
             ),
 
           // ── 2. 포커싱 시 배경 흐림 효과 (WebView 위를 덮음) ──
@@ -551,57 +852,59 @@ class _GardenScreenState extends State<GardenScreen> {
   }
 
   Future<void> _handleFlowerTap(String diaryId) async {
-    // 더미 데이터 클릭 시 무시 (아이디가 dummy로 시작)
-    if (diaryId.startsWith('dummy')) {
-      _webViewController.runJavaScript(
-        'if(typeof window.resetCamera === "function") window.resetCamera()',
-      );
+    final session = _session;
+    final documentId = session?.jsSessionId;
+
+    if (!_shouldRun || session == null || !session.isReady || _isFocusing) {
       return;
     }
 
     final appData = context.read<AppData>();
-    final diary = appData.diaryById(int.tryParse(diaryId) ?? -1);
+    final diary = diaryId.startsWith('dummy')
+        ? null
+        : appData.diaryById(int.tryParse(diaryId) ?? -1);
+
     if (diary == null) {
-      _webViewController.runJavaScript(
-        'if(typeof window.resetCamera === "function") window.resetCamera()',
-      );
+      unawaited(session.runScript('window.resetCamera();'));
       return;
     }
 
-    setState(() {
-      _isFocusing = true;
-    });
+    setState(() => _isFocusing = true);
 
-    await showDiaryDetailSheet(context, diary);
-
-    if (mounted) {
-      setState(() {
-        _isFocusing = false;
-      });
-      _webViewController.runJavaScript(
-        'if(typeof window.resetCamera === "function") window.resetCamera()',
-      );
+    try {
+      await showDiaryDetailSheet(context, diary);
+    } finally {
+      if (_ownsSession(session) &&
+          _shouldRun &&
+          session.jsSessionId == documentId) {
+        setState(() => _isFocusing = false);
+        unawaited(session.runScript('window.resetCamera();'));
+      }
     }
   }
 
   Future<void> _handleTreeTap() async {
+    final session = _session;
+    final documentId = session?.jsSessionId;
+
+    if (!_shouldRun || session == null || !session.isReady || _isFocusing) {
+      return;
+    }
+
     final appData = context.read<AppData>();
     final memories = appData.memoriesForMonth(_currentMonth);
 
-    setState(() {
-      _isFocusing = true;
-    });
+    setState(() => _isFocusing = true);
 
-    await showMemoryListSheet(context, memories);
-
-    if (mounted) {
-      setState(() {
-        _isFocusing = false;
-      });
-      // 나무에서 멀어질 경우 리셋 카메라(선택적)
-      _webViewController.runJavaScript(
-        'if(typeof window.resetCamera === "function") window.resetCamera()',
-      );
+    try {
+      await showMemoryListSheet(context, memories);
+    } finally {
+      if (_ownsSession(session) &&
+          _shouldRun &&
+          session.jsSessionId == documentId) {
+        setState(() => _isFocusing = false);
+        unawaited(session.runScript('window.resetCamera();'));
+      }
     }
   }
 

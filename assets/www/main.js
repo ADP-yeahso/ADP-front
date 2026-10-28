@@ -5,9 +5,19 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const diagnosticsEnabled =
   new URLSearchParams(window.location.search).get('diagnostics') === '1';
 
-const diagnosticSessionId = diagnosticsEnabled
-  ? (globalThis.crypto?.randomUUID?.() ?? `garden-${Date.now()}`)
-  : null;
+const diagnosticSessionId =
+  globalThis.crypto?.randomUUID?.() ??
+  `garden-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+function sendGardenEvent(type, payload = {}) {
+  window.FlutterChannel?.postMessage(
+    'GARDEN_EVENT:' + JSON.stringify({
+      type,
+      sessionId: diagnosticSessionId,
+      ...payload,
+    })
+  );
+}
 
 const diagnosticState = {
   activeLoads: 0,
@@ -892,11 +902,11 @@ window.initGarden = function (
       const [code, message, reason] = errors[stage];
       console.error(code, error);
 
-      if (window.FlutterChannel) {
-        window.FlutterChannel.postMessage(
-          `${code}: ${error?.message ?? String(error)}`
-        );
-      }
+      sendGardenEvent('error', {
+        code,
+        message,
+        detail: String(error),
+      });
 
       showGardenLoadError(
         message,
@@ -1017,7 +1027,9 @@ function focusOnFlower(fData) {
       }
       // Notify Flutter
       if (window.FlutterChannel && !fData.previewLabel) {
-        window.FlutterChannel.postMessage(fData.diaryId);
+        sendGardenEvent('flower', {
+          diaryId: String(fData.diaryId),
+        });
       }
     }
   });
@@ -1056,7 +1068,7 @@ function focusOnTree(treeObj) {
         return;
       }
       if (window.FlutterChannel) {
-        window.FlutterChannel.postMessage('tree');
+        sendGardenEvent('tree');
       }
     }
   });
@@ -1149,9 +1161,11 @@ function requestRender() {
       console.error('Garden render failed', error);
       window.pauseGarden?.();
 
-      window.FlutterChannel?.postMessage(
-        'ERROR_RENDER: ' + String(error)
-      );
+      sendGardenEvent('error', {
+        code: 'ERROR_RENDER',
+        message: '정원을 표시하지 못했어요.',
+        detail: String(error),
+      });
 
       return;
     } finally {
@@ -1537,7 +1551,7 @@ window.pauseGarden = function () {
   emitDiagnosticReport('garden_paused');
 };
 
-window.resumeGarden = function () {
+window.resumeGarden = function (reload = true) {
   if (viewerDestroyed || viewerContextLost) {
     return false;
   }
@@ -1548,6 +1562,10 @@ window.resumeGarden = function () {
 
   viewerActive = true;
   controls.enabled = isGardenViewerActive();
+  if (!reload) {
+    requestRender();
+    return true;
+  }
 
   const request = latestGardenRequest;
 
@@ -1645,6 +1663,7 @@ window.destroyGardenViewer = function () {
   }
 
   emitDiagnosticReport('viewer_destroyed');
+  sendGardenEvent('destroyed');
 
   scene = null;
   camera = null;
@@ -1831,11 +1850,11 @@ window.previewGarden = async function () {
 
     console.error('Error loading flower catalog', error);
 
-    if (window.FlutterChannel) {
-      window.FlutterChannel.postMessage(
-        'ERROR_PREVIEW_CATALOG: ' + error.message
-      );
-    }
+    sendGardenEvent('error', {
+      code: 'ERROR_PREVIEW_CATALOG',
+      message: '꽃 목록을 불러오지 못했어요.',
+      detail: String(error),
+    });
 
     showGardenLoadError(
       '꽃 목록을 불러오지 못했어요.',
@@ -1846,7 +1865,6 @@ window.previewGarden = async function () {
     queueDiagnosticReport('preview_catalog_error');
     requestRender();
   } finally {
-    // 더 최신 요청의 controller를 지우지 않도록 확인한다.
     if (previewCatalogController === controller) {
       previewCatalogController = null;
     }
@@ -1907,5 +1925,6 @@ window.getGardenViewerStatus = function () {
     ).length,
   };
 };
+sendGardenEvent('ready');
 // Opening the viewer directly in a browser uses the same complete asset preview.
 if (!window.FlutterChannel) window.previewGarden();

@@ -233,7 +233,9 @@ class AppData extends ChangeNotifier {
       );
       final details = <Map<String, dynamic>>[];
       for (final row in diaryRows) {
-        if (row['final_emotion_id'] == null || row['deleted_at'] != null) {
+        if (row['status'] != 'completed' ||
+            row['final_emotion_id'] == null ||
+            row['deleted_at'] != null) {
           continue;
         }
         details.add(await _diaryDetail(row['id'] as int, tokens));
@@ -282,6 +284,17 @@ class AppData extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> createMemory(Map<String, dynamic> body) async {
+    final tokens = _requireTokens();
+    if (!hasPatient) throw const ApiException('환자 정보를 먼저 불러와주세요.');
+    final generation = _generation;
+    _recordsRequest++;
+    final value = await MemoryRecordApi(_api).create(tokens, patient.id, body);
+    if (generation != _generation) return false;
+    cacheMemory(value);
+    return true;
+  }
+
   User _user(Map<String, dynamic> value) => User(
     id: value['id'] as String,
     email: (value['email'] ?? '').toString(),
@@ -314,6 +327,7 @@ class AppData extends ChangeNotifier {
     id: value['id'] as int,
     patientId: value['patient_id'] as int,
     userId: value['user_id'] as String,
+    title: value['title'] as String?,
     contextText: value['context'] as String?,
     mediaList: _media(value['media']),
     isPublic: true,
@@ -328,11 +342,12 @@ class AppData extends ChangeNotifier {
     return Diary(
       id: value['id'] as int,
       userId: value['user_id'] as String,
+      title: value['title'] as String?,
       context: (value['situation_text'] ?? '').toString(),
       flowerType: Flower(
         id: flower['id'] as int? ?? 0,
         emotionId: Emotion(
-          id: emotion['id'] as int? ?? value['final_emotion_id'] as int? ?? 7,
+          id: emotion['id'] as int? ?? value['final_emotion_id'] as int? ?? 0,
           name: (emotion['emotion'] ?? '').toString(),
           displayName: (emotion['display_name'] ?? '').toString(),
         ),
@@ -524,6 +539,7 @@ class AppData extends ChangeNotifier {
         id: memoryId,
         patientId: patient.id,
         userId: me.id,
+        title: title,
         contextText: content,
         mediaList: updatedMedia,
         isPublic: isPublic,
@@ -538,6 +554,7 @@ class AppData extends ChangeNotifier {
   Diary addDiary({
     required DateTime date,
     required String content,
+    String? title,
     Emotion? emotion,
     List<Media> mediaList = const [],
     bool isPublic = true,
@@ -573,6 +590,7 @@ class AppData extends ChangeNotifier {
     final entry = Diary(
       id: diaryId,
       userId: me.id,
+      title: title,
       context: content,
       flowerType: flower,
       mediaList: updatedMedia,
@@ -609,6 +627,7 @@ class AppData extends ChangeNotifier {
         id: old.id,
         patientId: old.patientId,
         userId: old.userId,
+        title: old.title,
         contextText: old.contextText,
         mediaList: old.mediaList,
         isPublic: !old.isPublic,
@@ -627,6 +646,84 @@ class AppData extends ChangeNotifier {
       _publicDiaryIds.add(id);
     }
     notifyListeners();
+  }
+
+  Future<bool> updateMemoryText(int id, String? title, String content) async {
+    if (content.trim().isEmpty) return false;
+    if (!memories.any((m) => m.id == id)) return false;
+    final tokens = _requireTokens();
+    final generation = _generation;
+    _recordsRequest++;
+    final value = await MemoryRecordApi(
+      _api,
+    ).update(tokens, id, {'title': title, 'context': content.trim()});
+    if (generation != _generation) return false;
+    cacheMemory(value);
+    return true;
+  }
+
+  Future<bool> updateDiaryText(int id, String? title, String content) async {
+    if (content.trim().isEmpty) return false;
+    if (!diaries.any((d) => d.id == id)) return false;
+    final tokens = _requireTokens();
+    final generation = _generation;
+    _recordsRequest++;
+    final value =
+        await _api.patch('/diaries/$id', tokens, {
+              'title': title,
+              'situation_text': content.trim(),
+            })
+            as Map<String, dynamic>;
+    if (generation != _generation) return false;
+    final index = diaries.indexWhere((d) => d.id == id);
+    if (index == -1) return false;
+    final old = diaries[index];
+    _recordsRequest++;
+    diaries[index] = Diary(
+      id: old.id,
+      userId: old.userId,
+      title: value['title'] as String?,
+      context: value['situation_text'] as String,
+      flowerType: old.flowerType,
+      mediaList: old.mediaList,
+      recordDate: old.recordDate,
+      createdAt: old.createdAt,
+      updatedAt: _time(value['updated_at']),
+      deletedAt: old.deletedAt,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  AuthTokens _requireTokens() =>
+      _tokens ?? (throw const ApiException('로그인 후 기록을 변경할 수 있어요.'));
+
+  Future<bool> deleteMemory(int id) async {
+    if (!memories.any((m) => m.id == id)) return false;
+    final tokens = _requireTokens();
+    final generation = _generation;
+    _recordsRequest++;
+    await MemoryRecordApi(_api).remove(tokens, id);
+    if (generation != _generation) return false;
+    _recordsRequest++;
+    memories.removeWhere((m) => m.id == id);
+    comments.removeWhere((c) => c.memoryRecordId == id);
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> deleteDiary(int id) async {
+    if (!diaries.any((d) => d.id == id)) return false;
+    final tokens = _requireTokens();
+    final generation = _generation;
+    _recordsRequest++;
+    await _api.delete('/diaries/$id', tokens);
+    if (generation != _generation) return false;
+    _recordsRequest++;
+    diaries.removeWhere((d) => d.id == id);
+    _publicDiaryIds.remove(id);
+    notifyListeners();
+    return true;
   }
 
   List<Memory> memoriesForMonth(DateTime month) =>

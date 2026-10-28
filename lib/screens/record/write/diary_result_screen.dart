@@ -62,6 +62,7 @@ class DiaryResultScreen extends StatelessWidget {
       case 6:
         name = '애틋수용';
         break;
+      case 0:
       case 7:
       default:
         name = '중립';

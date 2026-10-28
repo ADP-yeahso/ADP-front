@@ -283,22 +283,28 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                 style: TextStyle(fontSize: 12, color: Colors.black54),
               ),
               const SizedBox(height: 10),
-              for (final relation in _relationOptions)
-                RadioListTile<String>(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(relation),
-                  value: relation,
-                  groupValue: _selectedRelation,
-                  onChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
+              RadioGroup<String>(
+                groupValue: _selectedRelation,
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
 
-                    setState(() {
-                      _selectedRelation = value;
-                    });
-                  },
+                  setState(() {
+                    _selectedRelation = value;
+                  });
+                },
+                child: Column(
+                  children: [
+                    for (final relation in _relationOptions)
+                      RadioListTile<String>(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(relation),
+                        value: relation,
+                      ),
+                  ],
                 ),
+              ),
               if (_selectedRelation == '기타') ...[
                 const SizedBox(height: 8),
                 TextFormField(

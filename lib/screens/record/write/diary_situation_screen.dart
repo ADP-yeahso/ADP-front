@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +12,7 @@ import '../../../data/app_data.dart';
 import '../../../models/media.dart';
 import '../../../services/diary_service.dart';
 import 'diary_emotion_explore_screen.dart';
+import 'diary_loading_screen.dart';
 
 class DiarySituationScreen extends StatefulWidget {
   const DiarySituationScreen({super.key});
@@ -39,6 +42,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
 
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
+  bool _isPickingMedia = false;
   final _service = DiaryService();
   final _recordDate = DateTime.now();
 
@@ -69,30 +73,30 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
       return;
     }
 
+    final groupId = context.read<AppData>().group.id;
+    final media = _allDeviceMedia
+        .where((media) => _selectedMediaIds.contains(media.id))
+        .toList();
     setState(() => _isSubmitting = true);
     try {
-      final draft = await _service.createDraftAndQuestion(
-        tokens: tokens,
-        title: title,
-        situationText: situation,
-        recordDate: _recordDate,
-        groupId: context.read<AppData>().group.id,
-        mediaList: _allDeviceMedia
-            .where((media) => _selectedMediaIds.contains(media.id))
-            .toList(),
-      );
-      if (!mounted) return;
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => DiaryEmotionExploreScreen(draft: draft),
+          builder: (_) => DiaryLoadingScreen(
+            loadNext: () async {
+              final draft = await _service.createDraftAndQuestion(
+                tokens: tokens,
+                title: title,
+                situationText: situation,
+                recordDate: _recordDate,
+                groupId: groupId,
+                mediaList: media,
+              );
+              return DiaryEmotionExploreScreen(draft: draft);
+            },
+          ),
         ),
       );
-    } on DiaryException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -210,33 +214,62 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   }
 
   // 팝업 내부에서 갤러리 추가 선택
-  Future<void> _pickFromSystemGallery(StateSetter setModalState) async {
+  Future<void> _pickFromSystemGallery(
+    StateSetter setModalState, {
+    BuildContext? modalContext,
+  }) async {
+    if (_isPickingMedia) return;
+    _isPickingMedia = true;
+    final type = _activeMediaType;
     try {
-      final List<XFile> images = await _picker.pickMultiImage();
-      if (images.isNotEmpty) {
+      final paths = <String>[];
+      if (type == 'image') {
+        final images = await _picker.pickMultiImage();
+        paths.addAll(images.map((image) => image.path));
+      } else if (type == 'video') {
+        final video = await _picker.pickVideo(source: ImageSource.gallery);
+        if (video != null) paths.add(video.path);
+      } else {
+        final useFiles = defaultTargetPlatform == TargetPlatform.iOS;
+        final files = await FilePicker.platform.pickFiles(
+          type: useFiles ? FileType.custom : FileType.audio,
+          allowedExtensions: useFiles
+              ? ['mp3', 'm4a', 'wav', 'aac', 'flac']
+              : null,
+          allowMultiple: true,
+        );
+        if (files != null) paths.addAll(files.paths.whereType<String>());
+      }
+      if (!mounted) return;
+      if (paths.isNotEmpty) {
         setState(() {
-          for (final image in images) {
+          for (final path in paths) {
             final media = Media(
               id:
                   DateTime.now().microsecondsSinceEpoch +
                   _allDeviceMedia.length,
               memoryId: null,
               diaryId: null,
-              fileUrl: image.path,
-              fileType: 'image',
+              fileUrl: path,
+              fileType: type,
               duration: 0,
               sortOrder: _allDeviceMedia.length + 1,
               createdAt: DateTime.now(),
             );
             _allDeviceMedia.insert(0, media);
-            _recentDeviceMedia.insert(0, media);
             _selectedMediaIds.add(media.id);
           }
+          _updateActiveMediaList(_activeMediaType);
         });
-        setModalState(() {});
+        if (modalContext == null || modalContext.mounted) setModalState(() {});
       }
-    } catch (e) {
-      debugPrint('Error picking system gallery: $e');
+    } on Exception {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('첨부 파일을 선택하지 못했어요. 다시 시도해주세요.')),
+      );
+    } finally {
+      _isPickingMedia = false;
     }
   }
 
@@ -300,7 +333,10 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                         ),
                       ),
                       TextButton.icon(
-                        onPressed: () => _pickFromSystemGallery(setModalState),
+                        onPressed: () => _pickFromSystemGallery(
+                          setModalState,
+                          modalContext: modalContext,
+                        ),
                         icon: const Icon(
                           Icons.photo_library_outlined,
                           size: 18,

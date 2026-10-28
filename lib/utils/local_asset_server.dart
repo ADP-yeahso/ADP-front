@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
@@ -17,7 +16,9 @@ class LocalAssetServer {
   Future<void> start() async {
     final handler = const Pipeline().addHandler(_handleRequest);
     _server = await io.serve(handler, InternetAddress.loopbackIPv4, port);
-    debugPrint('LocalAssetServer listening on http://localhost:${_server!.port}');
+    debugPrint(
+      'LocalAssetServer listening on http://localhost:${_server!.port}',
+    );
   }
 
   Future<void> stop() async {
@@ -35,21 +36,34 @@ class LocalAssetServer {
       // e.g. path = 'www/index.html' -> assetPath = 'assets/www/index.html'
       final assetPath = '$assetBase/$path';
       final ByteData data = await rootBundle.load(assetPath);
-      final buffer = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-      
-      String contentType = 'application/octet-stream';
-      if (path.endsWith('.html')) contentType = 'text/html; charset=utf-8';
-      else if (path.endsWith('.js')) contentType = 'application/javascript; charset=utf-8';
-      else if (path.endsWith('.css')) contentType = 'text/css; charset=utf-8';
-      else if (path.endsWith('.png')) contentType = 'image/png';
-      else if (path.endsWith('.glb')) contentType = 'model/gltf-binary';
-      else if (path.endsWith('.gltf')) contentType = 'model/gltf+json';
+      final buffer = data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
 
-      return Response.ok(buffer, headers: {
-        'Content-Type': contentType,
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-      });
+      String contentType = 'application/octet-stream';
+      if (path.endsWith('.html')) {
+        contentType = 'text/html; charset=utf-8';
+      } else if (path.endsWith('.js')) {
+        contentType = 'application/javascript; charset=utf-8';
+      } else if (path.endsWith('.css')) {
+        contentType = 'text/css; charset=utf-8';
+      } else if (path.endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (path.endsWith('.glb')) {
+        contentType = 'model/gltf-binary';
+      } else if (path.endsWith('.gltf')) {
+        contentType = 'model/gltf+json';
+      }
+
+      return Response.ok(
+        buffer,
+        headers: {
+          'Content-Type': contentType,
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      );
     } catch (e) {
       return Response.notFound('Asset not found: $path');
     }

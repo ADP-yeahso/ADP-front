@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../data/auth_session.dart';
 import '../../../services/diary_service.dart';
 import 'diary_emotion_select_screen.dart';
+import 'diary_loading_screen.dart';
 
 class DiaryEmotionExploreScreen extends StatefulWidget {
   const DiaryEmotionExploreScreen({super.key, required this.draft});
@@ -19,10 +20,12 @@ class DiaryEmotionExploreScreen extends StatefulWidget {
 class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
   final TextEditingController _controller = TextEditingController();
   bool _isSubmitting = false;
+  final _service = DiaryService();
 
   @override
   void dispose() {
     _controller.dispose();
+    _service.close();
     super.dispose();
   }
 
@@ -39,25 +42,23 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      final suggestions = await DiaryService().saveAnswerAndGetSuggestions(
-        tokens: tokens,
-        diaryId: widget.draft.id,
-        answer: answer,
-      );
-      if (!mounted) return;
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => DiaryEmotionSelectScreen(
-            draft: widget.draft,
-            suggestions: suggestions,
+          builder: (_) => DiaryLoadingScreen(
+            loadNext: () async {
+              final suggestions = await _service.saveAnswerAndGetSuggestions(
+                tokens: tokens,
+                diaryId: widget.draft.id,
+                answer: answer,
+              );
+              return DiaryEmotionSelectScreen(
+                draft: widget.draft,
+                suggestions: suggestions,
+              );
+            },
           ),
         ),
-      );
-    } on DiaryException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -73,7 +74,13 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
     return _tryPath(candidatePaths, 0, fallback, width, height);
   }
 
-  Widget _tryPath(List<String> paths, int index, Widget fallback, double? width, double? height) {
+  Widget _tryPath(
+    List<String> paths,
+    int index,
+    Widget fallback,
+    double? width,
+    double? height,
+  ) {
     if (index >= paths.length) return fallback;
     final path = paths[index];
     final isSvg = path.toLowerCase().endsWith('.svg');
@@ -91,7 +98,8 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
         width: width,
         height: height,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => _tryPath(paths, index + 1, fallback, width, height),
+        errorBuilder: (context, error, stackTrace) =>
+            _tryPath(paths, index + 1, fallback, width, height),
       );
     }
   }
@@ -106,7 +114,11 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
         backgroundColor: backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black87,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -162,17 +174,26 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                   style: const TextStyle(fontSize: 15, color: Colors.black87),
                   decoration: InputDecoration(
                     hintText: '텍스트 입력',
-                    hintStyle: const TextStyle(fontSize: 15, color: Colors.grey),
+                    hintStyle: const TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey,
+                    ),
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.all(16),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade300,
+                        width: 1,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade400,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -192,7 +213,9 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                             ? _submitAnswer
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isFormValid ? const Color(0xFFA5DD82) : const Color(0xFFFFF2B2),
+                          backgroundColor: isFormValid
+                              ? const Color(0xFFA5DD82)
+                              : const Color(0xFFFFF2B2),
                           disabledBackgroundColor: const Color(0xFFFFF2B2),
                           foregroundColor: Colors.black87,
                           disabledForegroundColor: Colors.black45,
@@ -221,5 +244,3 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
     );
   }
 }
-
-

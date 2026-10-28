@@ -65,19 +65,21 @@ void main() {
                     'patient_id': 43,
                     'user_id': userId,
                     'context': '산책한 날',
+                    'title': '산책 기록',
                     'record_date': '2026-10-20',
                   },
                 ]);
               case '/api/v1/diaries':
                 expect(request.url.queryParameters['group_id'], '7');
                 return jsonResponse([
-                  {'id': 92, 'final_emotion_id': 5},
+                  {'id': 92, 'status': 'completed', 'final_emotion_id': 5},
                 ]);
               case '/api/v1/diaries/92':
                 return jsonResponse({
                   'id': 92,
                   'user_id': userId,
                   'situation_text': '고마운 하루',
+                  'title': '감사 일기',
                   'finalized_at': '2026-10-21T12:00:00Z',
                   'emotion': {
                     'id': 5,
@@ -114,6 +116,8 @@ void main() {
       expect(data.patient.id, 43);
       expect(data.memories.single.id, 81);
       expect(data.diaries.single.id, 92);
+      expect(data.diaries.single.title, '감사 일기');
+      expect(data.memories.single.title, '산책 기록');
       expect(
         data.diaries.single.mediaList.single.fileUrl,
         'https://storage.example/photo.jpg',

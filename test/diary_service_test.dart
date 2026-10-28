@@ -75,6 +75,7 @@ void main() {
             jsonEncode([
               {
                 'display_name': '불안',
+                'emotion_id': 2,
                 'tags': [
                   {'id': 1, 'tag_name': '걱정'},
                   {'id': 2, 'tag_name': '초조함'},
@@ -103,6 +104,7 @@ void main() {
 
     expect(tags.map((tag) => tag.name), ['걱정', '초조함', '외로움']);
     expect(tags.first.emotionName, '불안');
+    expect(tags.first.emotionId, 2);
     expect(requests.map((request) => request.method), ['PATCH', 'GET']);
   });
 
@@ -117,13 +119,21 @@ void main() {
           jsonEncode([
             {
               'id': 12,
+              'status': 'completed',
               'final_emotion_id': 2,
               'finalized_at': '2026-09-17T23:30:00Z',
             },
             {
               'id': 13,
+              'status': 'completed',
               'final_emotion_id': 5,
               'finalized_at': '2026-10-01T00:00:00Z',
+            },
+            {
+              'id': 14,
+              'status': 'draft',
+              'final_emotion_id': 0,
+              'updated_at': '2026-09-18T12:00:00Z',
             },
           ]),
         ),
@@ -140,4 +150,43 @@ void main() {
     expect(entries.single.emotionId, 2);
     expect(entries.single.finalizedAt.day, 18);
   });
+
+  test(
+    'finalization retries send selected tags atomically and preserve neutral 0',
+    () async {
+      var attempts = 0;
+      final service = DiaryService(
+        client: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.path, '/api/v1/diaries/42/finalize');
+          expect(jsonDecode(request.body), {
+            'emotion_tag_ids': [11, 21, 22],
+          });
+          if (++attempts == 1) return http.Response('{"detail":"retry"}', 503);
+          return http.Response.bytes(
+            utf8.encode(
+              jsonEncode({
+                'final_emotion_id': 0,
+                'emotion': {'id': 0, 'display_name': '중립'},
+                'flower': {'flower_name': '오늘의 꽃', 'sentence': '편안한 하루'},
+              }),
+            ),
+            200,
+          );
+        }),
+      );
+      addTearDown(service.close);
+      Future<DiaryFinalization> save() => service.saveTagsAndFinalize(
+        tokens: tokens,
+        diaryId: 42,
+        tagIds: [11, 21, 22],
+      );
+      await expectLater(save(), throwsA(isA<DiaryException>()));
+      final result = await save();
+      expect(attempts, 2);
+      expect(result.emotionId, 0);
+      expect(result.flowerName, '오늘의 꽃');
+      expect(result.flowerSentence, '편안한 하루');
+    },
+  );
 }

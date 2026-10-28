@@ -180,7 +180,7 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
       if (widget.mediaList.isNotEmpty) ...[
         const SizedBox(height: 24),
         Text(
-          '첨부한 미디어 ${widget.mediaList.length}개는 서버 업로드 API가 준비되면 함께 저장됩니다.',
+          '첨부한 미디어 ${widget.mediaList.length}개를 업로드했어요.',
           style: const TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],

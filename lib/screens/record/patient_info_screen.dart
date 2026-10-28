@@ -194,15 +194,12 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     }
     setState(() => _isSaving = true);
     try {
-      final api = ApiService();
-      final memory = await MemoryRecordApi(api)
-          .create(tokens, appData.patient.id, {
-            'title': _titleController.text.trim(),
-            'context': _contentController.text.trim(),
-            'record_date': _date.toIso8601String().split('T').first,
-          });
-      appData.cacheMemory(memory);
-      if (!mounted) return;
+      final saved = await appData.createMemory({
+        'title': _titleController.text.trim(),
+        'context': _contentController.text.trim(),
+        'record_date': _date.toIso8601String().split('T').first,
+      });
+      if (!mounted || !saved) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(
         context,

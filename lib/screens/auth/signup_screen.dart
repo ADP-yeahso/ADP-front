@@ -151,19 +151,23 @@ class _SignupScreenState extends State<SignupScreen> {
                   alignment: Alignment.centerLeft,
                   child: Container(
                     padding: EdgeInsets.all(5 * wScale),
-                    child: _step == 2
-                        ? GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: _isSubmitting
-                                ? null
-                                : () => setState(() => _step = 1),
-                            child: SvgPicture.asset(
-                              'assets/auth/signup/icon_back.svg',
-                              width: 21 * wScale,
-                              height: 31 * wScale,
-                            ),
-                          )
-                        : SizedBox(height: 31 * wScale, width: 21 * wScale),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _isSubmitting
+                          ? null
+                          : () {
+                              if (_step == 2) {
+                                setState(() => _step = 1);
+                              } else {
+                                Navigator.pop(context);
+                              }
+                            },
+                      child: SvgPicture.asset(
+                        'assets/auth/signup/icon_back.svg',
+                        width: 21 * wScale,
+                        height: 31 * wScale,
+                      ),
+                    ),
                   ),
                 ),
               ),

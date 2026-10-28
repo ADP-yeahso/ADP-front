@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 
 import '../../../data/auth_session.dart';
 import '../../../data/app_data.dart';
-import '../../../services/api_service.dart';
 import '../../../models/emotion_model.dart';
 import '../../../services/diary_service.dart';
 import 'diary_result_screen.dart';
+import 'diary_loading_screen.dart';
 
 class DiaryEmotionSelectScreen extends StatefulWidget {
   const DiaryEmotionSelectScreen({
@@ -61,17 +61,17 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
   static const List<List<EmotionModel>> _defaultEmotions = [
     [
       EmotionModel(name: '미안함', color: Color(0xFFD09ED7)),
-      EmotionModel(name: '안쓰러움', color: Color(0xFFFFE367)),
+      EmotionModel(name: '안쓰러움', color: Color(0xFFFF9131)),
       EmotionModel(name: '속상함', color: Color(0xFFE36887)),
     ],
     [
       EmotionModel(name: '억울함', color: Color(0xFFE36887)),
       EmotionModel(name: '고마움', color: Color(0xFFFFE367)),
-      EmotionModel(name: '후회스러움', color: Color(0xFF5EA7FF)),
+      EmotionModel(name: '후회스러움', color: Color(0xFFD09ED7)),
       EmotionModel(name: '자책감', color: Color(0xFFD09ED7)),
     ],
     [
-      EmotionModel(name: '사랑스러움', color: Color(0xFFE36887)),
+      EmotionModel(name: '사랑스러움', color: Color(0xFFFF9131)),
       EmotionModel(name: '다행스러움', color: Color(0xFFFFE367)),
       EmotionModel(name: '무력감', color: Color(0xFF5EA7FF)),
     ],
@@ -84,10 +84,12 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
       final grouped = <String, List<EmotionModel>>{};
       for (final suggestion in widget.suggestions) {
         _tagIdsByName[suggestion.name] = suggestion.id;
-        final category = EmotionCategories.categories.values.firstWhere(
-          (item) => item.label == suggestion.emotionName,
-          orElse: () => EmotionCategories.categories['0']!,
-        );
+        final category =
+            EmotionCategories.categories['${suggestion.emotionId}'] ??
+            EmotionCategories.categories.values.firstWhere(
+              (item) => item.label == suggestion.emotionName,
+              orElse: () => EmotionCategories.categories['0']!,
+            );
         grouped
             .putIfAbsent(suggestion.emotionName, () => [])
             .add(EmotionModel(name: suggestion.name, color: category.color));
@@ -131,31 +133,24 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     }
 
     setState(() => _isSaving = true);
+    final data = context.read<AppData>();
     try {
-      final finalization = await _service.saveTagsAndFinalize(
-        tokens: tokens,
-        diaryId: widget.draft.id,
-        tagIds: tagIds,
-      );
-      if (!mounted) return;
-      final data = context.read<AppData>();
-      try {
-        await data.refreshDiary(widget.draft.id);
-      } on ApiException catch (error) {
-        data.loadError = error.message;
-      }
-      if (!mounted) return;
-      Navigator.pushReplacement(
+      await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => DiaryResultScreen(finalization: finalization),
+          builder: (_) => DiaryLoadingScreen(
+            loadNext: () async {
+              final finalization = await _service.saveTagsAndFinalize(
+                tokens: tokens,
+                diaryId: widget.draft.id,
+                tagIds: tagIds,
+              );
+              await data.refreshDiary(widget.draft.id);
+              return DiaryResultScreen(finalization: finalization);
+            },
+          ),
         ),
       );
-    } on DiaryException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

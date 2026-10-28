@@ -27,11 +27,13 @@ class EmotionTagOption {
     required this.id,
     required this.name,
     required this.emotionName,
+    this.emotionId,
   });
 
   final int id;
   final String name;
   final String emotionName;
+  final int? emotionId;
 }
 
 class DiaryFinalization {
@@ -68,6 +70,7 @@ class CalendarDiaryEntry {
   static CalendarDiaryEntry? fromJson(Map<String, dynamic> json) {
     final id = json['id'];
     if (id is! int) return null;
+    if (json['status'] != 'completed') return null;
 
     final emotion = json['final_emotion'] ?? json['emotion'];
     final emotionMap = emotion is Map<String, dynamic>
@@ -123,8 +126,9 @@ class DiaryService {
         },
       ).query;
       final response = await _get('/diaries?$query', tokens);
-      if (response is! List)
+      if (response is! List) {
         throw const DiaryException('일기 목록 응답 형식이 올바르지 않습니다.');
+      }
       for (final row in response.cast<Map<String, dynamic>>()) {
         final entry = CalendarDiaryEntry.fromJson(row);
         if (entry != null &&
@@ -276,7 +280,12 @@ class DiaryService {
         final name = tag['tag_name'];
         if (id is int && name is String) {
           tags.add(
-            EmotionTagOption(id: id, name: name, emotionName: emotionName),
+            EmotionTagOption(
+              id: id,
+              name: name,
+              emotionName: emotionName,
+              emotionId: item['emotion_id'] as int?,
+            ),
           );
         }
       }
@@ -292,13 +301,12 @@ class DiaryService {
     required int diaryId,
     required List<int> tagIds,
   }) async {
-    if (tagIds.length != 3) {
+    if (tagIds.length != 3 || tagIds.toSet().length != 3) {
       throw const DiaryException('감정 태그를 정확히 3개 선택해주세요.');
     }
-    await _put('/diaries/$diaryId/emotion-tags', tokens, {
+    final result = await _post('/diaries/$diaryId/finalize', tokens, {
       'emotion_tag_ids': tagIds,
     });
-    final result = await _post('/diaries/$diaryId/finalize', tokens, null);
     final emotion = result['emotion'];
     final flower = result['flower'];
     final emotionMap = emotion is Map<String, dynamic>
@@ -308,7 +316,7 @@ class DiaryService {
         ? flower
         : const <String, dynamic>{};
     return DiaryFinalization(
-      emotionId: (emotionMap['id'] ?? json['final_emotion_id']) as int?,
+      emotionId: (emotionMap['id'] ?? result['final_emotion_id']) as int?,
       emotionName:
           (emotionMap['display_name'] ?? emotionMap['emotion'] ?? '오늘의 감정')
               .toString(),
@@ -344,18 +352,6 @@ class DiaryService {
     Map<String, dynamic> body,
   ) => _write(
     () => _client.patch(
-      _uri(path),
-      headers: _headers(tokens),
-      body: jsonEncode(body),
-    ),
-  );
-
-  Future<Map<String, dynamic>> _put(
-    String path,
-    AuthTokens tokens,
-    Map<String, dynamic> body,
-  ) => _write(
-    () => _client.put(
       _uri(path),
       headers: _headers(tokens),
       body: jsonEncode(body),

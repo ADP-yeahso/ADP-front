@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
-import '../../data/emotion_analyzer.dart';
 import '../../models/diary.dart';
 import '../../models/emotions.dart';
 import '../../utils/emotion_utils.dart';
@@ -277,11 +276,11 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
     };
 
     for (final diary in diaries) {
-      final result = analyzeEmotion(diary.context);
-
-      for (final entry in result.scores.entries) {
-        totals[entry.key] = (totals[entry.key] ?? 0) + entry.value;
-      }
+      final emotion = EmotionValues.values.firstWhere(
+        (value) => value.id == diary.flowerType.emotionId.id,
+        orElse: () => EmotionValues.neutral,
+      );
+      totals[emotion] = totals[emotion]! + 1;
     }
 
     final totalScore = totals.values.fold<double>(
@@ -1365,59 +1364,6 @@ class _EmptyTrendData extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _SectionPlaceholder extends StatelessWidget {
-  final String title;
-  final String description;
-  final double height;
-
-  const _SectionPlaceholder({
-    required this.title,
-    required this.description,
-    required this.height,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          height: height,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              description,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.black45,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

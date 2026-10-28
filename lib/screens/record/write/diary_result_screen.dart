@@ -256,7 +256,7 @@ class DiaryResultScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const DiaryCareContentScreen(),
+                            builder: (context) => DiaryCareContentScreen(emotion: emotion),
                           ),
                         );
                       },

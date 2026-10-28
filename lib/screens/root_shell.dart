@@ -7,6 +7,7 @@ import 'garden/garden_screen.dart';
 import 'profile/profile_screen.dart';
 import 'record/record_choice_sheet.dart';
 import 'gallery/gallery_screen.dart';
+import '../utils/garden_route_observers.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -15,22 +16,33 @@ class RootShell extends StatefulWidget {
   State<RootShell> createState() => _RootShellState();
 }
 
-class _RootShellState extends State<RootShell> {
-  int _index = 0;
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+class _RootShellState extends State<RootShell> with RouteAware {
+  final ValueNotifier<int> _tabIndex = ValueNotifier<int>(0);
+  final ValueNotifier<bool> _rootRouteVisible = ValueNotifier<bool>(true);
 
-  static const _screens = [
-    GardenScreen(),
-    CalendarScreen(),
-    GalleryScreen(),
-    ProfileScreen(),
-  ];
+  final GlobalKey<NavigatorState> _navigatorKey =
+      GlobalKey<NavigatorState>();
 
+  final RouteObserver<PageRoute<dynamic>> _gardenInnerRouteObserver =
+      RouteObserver<PageRoute<dynamic>>();
+
+  PageRoute<dynamic>? _observedRootRoute;
   GardenNavController? _navController;
+
+  int get _index => _tabIndex.value;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic> &&
+        !identical(route, _observedRootRoute)) {
+      gardenRootRouteObserver.unsubscribe(this);
+      _observedRootRoute = route;
+      gardenRootRouteObserver.subscribe(this, route);
+    }
+
     final nav = context.read<GardenNavController>();
     if (_navController != nav) {
       _navController?.removeListener(_handleNavRequest);
@@ -39,15 +51,36 @@ class _RootShellState extends State<RootShell> {
   }
 
   @override
-  void dispose() {
-    _navController?.removeListener(_handleNavRequest);
-    super.dispose();
+  void didPushNext() {
+    _rootRouteVisible.value = false;
+  }
+
+  @override
+  void didPopNext() {
+    _rootRouteVisible.value = true;
+  }
+
+  void _selectTab(int index) {
+    if (_index == index) return;
+
+    setState(() {
+      _tabIndex.value = index;
+    });
   }
 
   void _handleNavRequest() {
-    if (_navController?.pendingDate != null && _index != 0) {
-      setState(() => _index = 0);
+    if (_navController?.pendingDate != null) {
+      _selectTab(0);
     }
+  }
+
+  @override
+  void dispose() {
+    gardenRootRouteObserver.unsubscribe(this);
+    _navController?.removeListener(_handleNavRequest);
+    _tabIndex.dispose();
+    _rootRouteVisible.dispose();
+    super.dispose();
   }
 
   Future<void> _openRecordChoice() async {
@@ -64,8 +97,33 @@ class _RootShellState extends State<RootShell> {
     return Scaffold(
       body: Navigator(
         key: _navigatorKey,
+        observers: [_gardenInnerRouteObserver],
         onGenerateRoute: (settings) => MaterialPageRoute(
-          builder: (context) => IndexedStack(index: _index, children: _screens),
+          settings: settings,
+          builder: (_) => ValueListenableBuilder<int>(
+            valueListenable: _tabIndex,
+            builder: (context, index, child) {
+              return ValueListenableBuilder<bool>(
+                valueListenable: _rootRouteVisible,
+                builder: (context, routeVisible, child) {
+                  return IndexedStack(
+                    index: index,
+                    children: [
+                      GardenScreen(
+                        key: const ValueKey('garden-screen'),
+                        isActive: index == 0,
+                        isRouteVisible: routeVisible,
+                        routeObserver: _gardenInnerRouteObserver,
+                      ),
+                      const CalendarScreen(),
+                      const GalleryScreen(),
+                      const ProfileScreen(),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -134,9 +192,7 @@ class _RootShellState extends State<RootShell> {
     return InkWell(
       onTap: () {
         _navigatorKey.currentState?.popUntil((route) => route.isFirst);
-        if (_index != index) {
-          setState(() => _index = index);
-        }
+        _selectTab(index);
       },
       borderRadius: BorderRadius.circular(12),
       child: Padding(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/diary.dart';
+import '../screens/care_notebook/care_record_view_data.dart';
 import '../models/emotions.dart';
 import '../models/flower.dart';
 import '../models/groups.dart';
@@ -25,6 +26,14 @@ extension UserUIInfo on User {
 }
 
 class AppData extends ChangeNotifier {
+  final List<CareRecordViewData> _careRecords = [];
+  List<CareRecordViewData> get careRecords => List.unmodifiable(_careRecords);
+  void addCareRecord(CareRecordViewData record) {
+    _careRecords.add(record);
+    _careRecords.sort((a, b) => b.date.compareTo(a.date));
+    notifyListeners();
+  }
+
   AppData() {
     _seed();
   }
@@ -615,7 +624,16 @@ class AppData extends ChangeNotifier {
       title: '옛 동네 방문',
       content: '예전에 살던 동네를 차로 둘러보았다. 기억이 조금씩 나시는 듯했다.',
       mediaList: [
-        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+        Media(
+          id: 0,
+          memoryId: null,
+          diaryId: null,
+          fileUrl: 'dummy.jpg',
+          fileType: 'image',
+          duration: 0,
+          sortOrder: 1,
+          createdAt: DateTime.now(),
+        ),
       ],
     );
     addMemory(
@@ -628,7 +646,16 @@ class AppData extends ChangeNotifier {
       title: '손주와의 영상통화',
       content: '손주와 영상통화를 하며 활짝 웃으시는 모습을 보니 내 마음도 따뜻해졌다.',
       mediaList: [
-        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+        Media(
+          id: 0,
+          memoryId: null,
+          diaryId: null,
+          fileUrl: 'dummy.jpg',
+          fileType: 'image',
+          duration: 0,
+          sortOrder: 1,
+          createdAt: DateTime.now(),
+        ),
       ],
     );
 

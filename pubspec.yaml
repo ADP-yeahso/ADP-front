@@ -76,6 +76,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/images/
+    - assets/images/care_note/
     - assets/images/flower/
     - assets/www/
     - assets/auth/login/

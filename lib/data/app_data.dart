@@ -58,6 +58,36 @@ class AppData extends ChangeNotifier {
   );
   final List<UserGroup> userGroups = [];
   final List<User> users = [];
+  List<Group> _joinedGroups = const [];
+
+  List<Group> get joinedGroups => _joinedGroups;
+
+  void updateJoinedGroups(List<Group> groups) {
+    _joinedGroups = List.unmodifiable(groups);
+    notifyListeners();
+  }
+
+  Future<void> refreshJoinedGroups(AuthTokens tokens) async {
+    final generation = _generation;
+    final rows = await GroupApi(_api).list(tokens);
+    if (generation != _generation) return;
+    updateJoinedGroups(
+      rows
+          .map(
+            (row) => Group(
+              id: row['id'] as int,
+              groupName: (row['group_name'] ?? row['name'] ?? '가족 그룹')
+                  .toString(),
+              inviteCode: (row['invite_code'] ?? '').toString(),
+              groupProfileImageUrl: row['group_profile_image_url'] as String?,
+              members: row['member_count'] as int? ?? 0,
+              createdAt: _time(row['created_at']),
+            ),
+          )
+          .toList(),
+    );
+  }
+
   Map<String, dynamic> patientDetails = {};
   bool patientLookupAvailable = false;
 
@@ -79,6 +109,7 @@ class AppData extends ChangeNotifier {
     _tokens = null;
     currentUserId = '';
     users.clear();
+    _joinedGroups = const [];
     userGroups.clear();
     memories.clear();
     diaries.clear();

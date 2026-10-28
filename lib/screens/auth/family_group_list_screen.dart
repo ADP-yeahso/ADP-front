@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../data/auth_session.dart';
 import '../../data/app_data.dart';
 import '../../services/api_service.dart';
+import '../../models/groups.dart';
 import 'create_family_screen.dart';
 import 'group_created_screen.dart';
 
@@ -18,7 +19,6 @@ class FamilyGroupListScreen extends StatefulWidget {
 class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
   final TextEditingController _codeController = TextEditingController();
   final FocusNode _codeFocusNode = FocusNode();
-  List<Map<String, dynamic>> _groups = const [];
   bool _isLoadingGroups = true;
   bool _isOpening = false;
   String? _groupLoadError;
@@ -45,16 +45,15 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
   }
 
   Future<void> _loadGroups() async {
-    final tokens = context.read<AuthSession>().tokens;
+    final tokens = context.read<AuthSession?>()?.tokens;
     if (tokens == null) {
       if (mounted) setState(() => _isLoadingGroups = false);
       return;
     }
     try {
-      final groups = await GroupApi(ApiService()).list(tokens);
+      await context.read<AppData>().refreshJoinedGroups(tokens);
       if (!mounted) return;
       setState(() {
-        _groups = groups;
         _groupLoadError = null;
         _isLoadingGroups = false;
       });
@@ -77,7 +76,10 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
       if (!mounted) return;
       await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const GroupCreatedScreen()),
+        MaterialPageRoute(
+          builder: (_) =>
+              GroupCreatedScreen(group: context.read<AppData>().group),
+        ),
       );
       if (mounted) await _loadGroups();
     } on ApiException catch (error) {
@@ -89,54 +91,6 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
     } finally {
       if (mounted) setState(() => _isOpening = false);
     }
-  }
-
-  String _groupName(Map<String, dynamic> group) =>
-      (group['group_name'] ?? group['name'] ?? '가족 그룹').toString();
-
-  Widget _buildGroupCard(Map<String, dynamic> group, double scale) {
-    return GestureDetector(
-      onTap: _isOpening ? null : () => _openGroup(group['id'] as int),
-      child: SizedBox(
-        width: 296 * scale,
-        height: 101 * scale,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned.fill(
-              child: SvgPicture.asset(
-                'assets/auth/family_group/group_box_1.svg',
-                fit: BoxFit.fill,
-              ),
-            ),
-            Positioned(
-              left: 22 * scale,
-              right: 110 * scale,
-              child: Text(
-                _groupName(group),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: 'Pretendard',
-                  fontSize: 16 * scale,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF315646),
-                ),
-              ),
-            ),
-            Positioned(
-              right: 20 * scale,
-              child: Image.asset(
-                'assets/auth/family_group/enter_text.png',
-                width: 85 * scale,
-                height: 85 * (112 / 292) * scale,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<void> _joinGroup() async {
@@ -159,6 +113,8 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final groups = context.watch<AppData>().joinedGroups;
+
     // 0번 로그인 화면과 동일하게 시안 해상도(351 x 727) 기준 스케일 계산
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -233,16 +189,21 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                     ],
                   ),
                 )
-              else if (_groups.isEmpty)
+              else if (groups.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 28),
                   child: Text('참여 중인 가족 그룹이 없습니다.'),
                 )
               else
-                ..._groups.map(
+                ...groups.map(
                   (group) => Padding(
                     padding: EdgeInsets.only(bottom: 10 * hScale),
-                    child: _buildGroupCard(group, wScale),
+                    child: _FamilyGroupCard(
+                      key: ValueKey(group.id),
+                      group: group,
+                      scale: wScale,
+                      onTap: () => _openGroup(group.id),
+                    ),
                   ),
                 ),
 
@@ -353,6 +314,98 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
               ),
 
               SizedBox(height: 20 * hScale),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FamilyGroupCard extends StatelessWidget {
+  const _FamilyGroupCard({
+    super.key,
+    required this.group,
+    required this.scale,
+    required this.onTap,
+  });
+
+  final Group group;
+  final double scale;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '${group.groupName}, 구성원 ${group.members}명, 입장하기',
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          width: 296 * scale,
+          height: 101 * scale,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: SvgPicture.asset(
+                  'assets/auth/family_group/group_card_background.svg',
+                  fit: BoxFit.fill,
+                ),
+              ),
+              Positioned(
+                left: 94 * scale,
+                right: 113 * scale,
+                top: 15 * scale,
+                bottom: 15 * scale,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        group.groupName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 16 * scale,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFFFFDF6),
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8 * scale),
+                    Text(
+                      '구성원 ${group.members}명',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 12 * scale,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFFFFFDF6),
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                right: 20 * scale,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Image.asset(
+                    'assets/auth/family_group/enter_text.png',
+                    width: 85 * scale,
+                    height: 85 * (112 / 292) * scale,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

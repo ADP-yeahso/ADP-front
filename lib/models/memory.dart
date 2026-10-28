@@ -3,7 +3,7 @@ import 'media.dart';
 class Memory {
   final int id;
   final int patientId;
-  final int userId;
+  final String userId;
   final String? contextText;
   final List<Media> mediaList;
   final bool isPublic;

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../data/app_data.dart';
 
 import '../../models/media.dart';
 import '../../services/auth_service.dart';
@@ -30,6 +32,7 @@ class DiaryLoadingScreen extends StatefulWidget {
 class _DiaryLoadingScreenState extends State<DiaryLoadingScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
+  final _service = DiaryService();
 
   @override
   void initState() {
@@ -44,16 +47,19 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    _service.close();
     super.dispose();
   }
 
   Future<void> _createDiary() async {
     try {
-      final draft = await DiaryService().createDraftAndQuestion(
+      final draft = await _service.createDraftAndQuestion(
         tokens: widget.tokens,
         title: widget.title.isEmpty ? null : widget.title,
         situationText: widget.content,
         recordDate: widget.date,
+        groupId: context.read<AppData>().group.id,
+        mediaList: widget.mediaList,
       );
       if (!mounted) return;
       Navigator.pushReplacement(

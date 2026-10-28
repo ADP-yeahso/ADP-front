@@ -1,6 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
-import 'package:path/path.dart' as p;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
@@ -29,7 +27,6 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   final _contentController = TextEditingController();
   final _contentScrollController = ScrollController();
   DateTime _date = DateTime.now();
-  bool _isPublic = true;
   final List<Media> _attachedMedia = [];
   final ImagePicker _picker = ImagePicker();
   bool _isPickingMedia = false;
@@ -167,96 +164,60 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
     });
   }
 
-  String _contentType(String fileType, String path) {
-    final extension = p.extension(path).toLowerCase();
-    if (fileType == 'image') return extension == '.png' ? 'image/png' : 'image/jpeg';
-    if (fileType == 'video') {
-      return extension == '.mov' ? 'video/quicktime' : 'video/mp4';
-    }
-    return extension == '.wav' ? 'audio/wav' : 'audio/mpeg';
-  }
-
   Future<void> _save() async {
+    if (_isSaving) return;
     if (!_isFormValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('제목과 내용을 입력해 주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('제목과 내용을 입력해 주세요.')));
       return;
     }
     final tokens = context.read<AuthSession>().tokens;
     if (tokens == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('로그인 후 기록을 저장할 수 있어요.')));
+      return;
+    }
+    final appData = context.read<AppData>();
+    if (!appData.hasPatient || _attachedMedia.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 후 기록을 저장할 수 있어요.')),
+        SnackBar(
+          content: Text(
+            !appData.hasPatient
+                ? '환자 정보를 먼저 불러와주세요.'
+                : '환자 기록 첨부는 아직 지원되지 않습니다. 첨부 파일을 제거한 뒤 저장해주세요.',
+          ),
+        ),
       );
       return;
     }
     setState(() => _isSaving = true);
-    final appData = context.read<AppData>();
     try {
       final api = ApiService();
-      final memory = await MemoryRecordApi(api).create(
-        tokens,
-        appData.patient.id,
-        {
-          'title': _titleController.text.trim(),
-          'context': _contentController.text.trim(),
-          'record_date': _date.toIso8601String().split('T').first,
-        },
-      );
-      final memoryId = (memory['id'] ?? memory['memory_record_id']) as int?;
-      if (memoryId == null) throw const ApiException('저장된 기록 ID를 받지 못했습니다.');
-
-      for (final media in _attachedMedia) {
-        final bytes = await File(media.fileUrl).readAsBytes();
-        final signed = await MediaApi(api).presign(
-          tokens,
-          fileName: p.basename(media.fileUrl),
-          fileType: media.fileType,
-        );
-        final uploadUrl =
-            (signed['upload_url'] ?? signed['presigned_url']) as String?;
-        final fileUrl =
-            (signed['file_url'] ?? signed['public_url'] ?? signed['object_url'])
-                as String?;
-        if (uploadUrl == null || fileUrl == null) {
-          throw const ApiException('첨부 파일 업로드 정보를 받지 못했습니다.');
-        }
-        await api.uploadBytes(
-          uploadUrl: uploadUrl,
-          bytes: Uint8List.fromList(bytes),
-          contentType: _contentType(media.fileType, media.fileUrl),
-        );
-        await MediaApi(api).register(tokens, appData.patient.groupId, {
-          'file_url': fileUrl,
-          'file_type': media.fileType,
-          'memory_record_id': memoryId,
-          'duration': media.duration ?? 0,
-          'sort_order': media.sortOrder,
-        });
-      }
-
-      // 로컬 캐시는 서버 저장이 성공한 뒤에만 갱신한다.
-      appData.addMemory(
-        date: _date,
-        title: _titleController.text.trim(),
-        content: _contentController.text.trim(),
-        mediaList: _attachedMedia,
-        isPublic: _isPublic,
-      );
+      final memory = await MemoryRecordApi(api)
+          .create(tokens, appData.patient.id, {
+            'title': _titleController.text.trim(),
+            'context': _contentController.text.trim(),
+            'record_date': _date.toIso8601String().split('T').first,
+          });
+      appData.cacheMemory(memory);
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('나무에 새 잎이 달렸어요 🌿')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('나무에 새 잎이 달렸어요 🌿')));
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } on Exception {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('기록 저장 중 오류가 발생했습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('기록 저장 중 오류가 발생했습니다.')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -277,7 +238,10 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
         children: [
           Icon(icon, color: Colors.black45, size: 24),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: Colors.black54),
+          ),
         ],
       ),
     );
@@ -313,6 +277,16 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                     _buildBodyField(),
                     const SizedBox(height: 24),
                     // 첨부 버튼들
+                    const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 8,
+                      ),
+                      child: Text(
+                        '현재 환자 기록은 글만 저장할 수 있어요.',
+                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                    ),
                     _buildAttachButtons(),
                     // 첨부된 미디어 목록
                     if (_attachedMedia.isNotEmpty) ...[
@@ -408,10 +382,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
             errorBuilder: (e, err, st) => const Text(
               '오늘 있었던 일을 기록해 보세요',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF6F8962),
-              ),
+              style: TextStyle(fontSize: 13, color: Color(0xFF6F8962)),
             ),
           ),
         ),
@@ -450,7 +421,10 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                         fit: BoxFit.contain,
                         errorBuilder: (e, err, st) => const Text(
                           '날짜',
-                          style: TextStyle(fontSize: 13, color: Color(0xFF6F8962)),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF6F8962),
+                          ),
                         ),
                       ),
                     ),
@@ -464,7 +438,11 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF6F8962)),
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 16,
+                      color: Color(0xFF6F8962),
+                    ),
                   ],
                 ),
               ),
@@ -504,7 +482,10 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                       fit: BoxFit.contain,
                       errorBuilder: (e, err, st) => const Text(
                         '제목',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF6F8962)),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF6F8962),
+                        ),
                       ),
                     ),
                   ),
@@ -513,7 +494,8 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                     child: TextField(
                       controller: _titleController,
                       focusNode: _titleFocusNode,
-                      contextMenuBuilder: (context, editableTextState) => const SizedBox.shrink(),
+                      contextMenuBuilder: (context, editableTextState) =>
+                          const SizedBox.shrink(),
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF3A3A3A),
@@ -577,7 +559,10 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                             fit: BoxFit.contain,
                             errorBuilder: (e, err, st) => const Text(
                               '텍스트 입력',
-                              style: TextStyle(fontSize: 13, color: Color(0xFF6F8962)),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF6F8962),
+                              ),
                             ),
                           ),
                         ),
@@ -593,7 +578,8 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                       maxLines: null,
                       expands: true,
                       textAlignVertical: TextAlignVertical.top,
-                      contextMenuBuilder: (context, editableTextState) => const SizedBox.shrink(),
+                      contextMenuBuilder: (context, editableTextState) =>
+                          const SizedBox.shrink(),
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF3A3A3A),
@@ -777,7 +763,10 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                 ),
               );
             } else {
-              content = _buildPlaceholderIcon(Icons.insert_drive_file, media.fileType);
+              content = _buildPlaceholderIcon(
+                Icons.insert_drive_file,
+                media.fileType,
+              );
             }
 
             return Stack(
@@ -794,7 +783,11 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                         color: Colors.black54,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.close, color: Colors.white, size: 14),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -823,7 +816,9 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
               width: 213,
               height: 48,
               decoration: BoxDecoration(
-                color: _isFormValid ? const Color(0xFFA2D97C) : const Color(0xFFFFEFB5),
+                color: _isFormValid
+                    ? const Color(0xFFA2D97C)
+                    : const Color(0xFFFFEFB5),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Center(

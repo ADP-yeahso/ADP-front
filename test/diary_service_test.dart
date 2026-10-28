@@ -110,19 +110,19 @@ void main() {
     final client = MockClient((request) async {
       expect(request.method, 'GET');
       expect(request.url.path, '/api/v1/diaries');
-      expect(request.url.queryParameters['start_date'], '2026-09-01');
-      expect(request.url.queryParameters['end_date'], '2026-09-30');
+      expect(request.url.queryParameters['page'], '1');
+      expect(request.url.queryParameters['size'], '100');
       return http.Response.bytes(
         utf8.encode(
           jsonEncode([
             {
               'id': 12,
-              'emotion': {'id': 2, 'display_name': '불안/초조'},
+              'final_emotion_id': 2,
               'finalized_at': '2026-09-17T23:30:00Z',
             },
             {
               'id': 13,
-              'emotion': {'id': 5, 'display_name': '감사/안도'},
+              'final_emotion_id': 5,
               'finalized_at': '2026-10-01T00:00:00Z',
             },
           ]),

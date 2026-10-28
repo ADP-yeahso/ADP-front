@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../data/app_data.dart';
+import '../../services/api_service.dart';
 
 import '../../models/media.dart';
 import '../../services/auth_service.dart';
@@ -31,6 +34,7 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
   @override
   void dispose() {
     _answerController.dispose();
+    _service.close();
     super.dispose();
   }
 
@@ -75,6 +79,13 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
         diaryId: widget.draft.id,
         tagIds: _selectedTagIds.toList(),
       );
+      if (!mounted) return;
+      final data = context.read<AppData>();
+      try {
+        await data.refreshDiary(widget.draft.id);
+      } on ApiException catch (error) {
+        data.loadError = error.message;
+      }
       if (mounted) setState(() => _finalization = result);
     } on DiaryException catch (error) {
       _showMessage(error.message);

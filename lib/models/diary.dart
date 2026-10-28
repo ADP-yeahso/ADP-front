@@ -3,7 +3,7 @@ import 'media.dart';
 
 class Diary {
   final int id;
-  final int userId;
+  final String userId;
   final String context;
   final Flower flowerType;
   final List<Media> mediaList;

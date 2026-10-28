@@ -1,4 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
+
+import '../models/media.dart';
+import 'api_service.dart';
 
 import 'package:http/http.dart' as http;
 
@@ -69,7 +73,7 @@ class CalendarDiaryEntry {
     final emotionMap = emotion is Map<String, dynamic>
         ? emotion
         : const <String, dynamic>{};
-    if (emotionMap.isEmpty) return null;
+    if (emotionMap.isEmpty && json['final_emotion_id'] is! int) return null;
 
     final timestamp =
         json['finalized_at'] ??
@@ -84,7 +88,7 @@ class CalendarDiaryEntry {
 
     return CalendarDiaryEntry(
       id: id,
-      emotionId: emotionMap['id'] as int?,
+      emotionId: (emotionMap['id'] ?? json['final_emotion_id']) as int?,
       emotionName: (emotionMap['display_name'] ?? emotionMap['emotion'] ?? '')
           .toString(),
       finalizedAt: finalizedAt.toLocal(),
@@ -96,69 +100,41 @@ class DiaryService {
   DiaryService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+  int? _pendingDraftId;
+  String? _pendingKey;
+  final Set<String> _uploadedAttachments = {};
 
-  Future<Map<int, int>> fetchCalendarMonth({
-    required AuthTokens tokens,
-    required int groupId,
-    required DateTime month,
-  }) async {
-    final response = await _send(
-      () => _client.get(
-        _uri(
-          '/groups/$groupId/calendar?year=${month.year}&month=${month.month}',
-        ),
-        headers: _headers(tokens),
-      ),
-    );
-    final body = _bodyOrThrow(response);
-    final days = body is Map<String, dynamic> ? body['days'] : null;
-    final result = <int, int>{};
-    if (days is List) {
-      for (final item in days.whereType<Map<String, dynamic>>()) {
-        final date = item['date'];
-        final count = item['record_count'];
-        if (date is String && count is int) {
-          final parsed = DateTime.tryParse(date);
-          if (parsed != null) result[parsed.day] = count;
-        }
-      }
-    }
-    return result;
-  }
+  void close() => _client.close();
 
-  /// Fetches finalized diaries for one calendar month.
-  ///
-  /// The API accepts the date range for efficient filtering. The client also
-  /// filters the result because older servers may ignore those query values.
+  /// The list endpoint accepts group and pagination filters. Date filtering is
+  /// performed locally using finalized_at, since the server has no date filter.
   Future<List<CalendarDiaryEntry>> fetchFinalizedForMonth({
     required AuthTokens tokens,
     required DateTime month,
+    int? groupId,
   }) async {
-    final firstDay = DateTime(month.year, month.month, 1);
-    final lastDay = DateTime(month.year, month.month + 1, 0);
-    final response = await _get(
-      '/diaries?start_date=${_dateOnly(firstDay)}&end_date=${_dateOnly(lastDay)}',
-      tokens,
-    );
-    final rawEntries = response is List
-        ? response
-        : response is Map<String, dynamic>
-        ? (response['items'] ?? response['diaries'] ?? response['data'])
-        : null;
-    if (rawEntries is! List) {
-      throw const DiaryException('일기 목록 응답 형식이 올바르지 않습니다.');
+    final result = <CalendarDiaryEntry>[];
+    for (var page = 1; ; page++) {
+      final query = Uri(
+        queryParameters: {
+          'page': '$page',
+          'size': '100',
+          if (groupId != null) 'group_id': '$groupId',
+        },
+      ).query;
+      final response = await _get('/diaries?$query', tokens);
+      if (response is! List)
+        throw const DiaryException('일기 목록 응답 형식이 올바르지 않습니다.');
+      for (final row in response.cast<Map<String, dynamic>>()) {
+        final entry = CalendarDiaryEntry.fromJson(row);
+        if (entry != null &&
+            entry.finalizedAt.year == month.year &&
+            entry.finalizedAt.month == month.month) {
+          result.add(entry);
+        }
+      }
+      if (response.length < 100) return result;
     }
-
-    return rawEntries
-        .whereType<Map<String, dynamic>>()
-        .map(CalendarDiaryEntry.fromJson)
-        .whereType<CalendarDiaryEntry>()
-        .where(
-          (entry) =>
-              entry.finalizedAt.year == month.year &&
-              entry.finalizedAt.month == month.month,
-        )
-        .toList();
   }
 
   Future<DiaryDraft> createDraftAndQuestion({
@@ -166,33 +142,89 @@ class DiaryService {
     required String situationText,
     String? title,
     required DateTime recordDate,
+    int? groupId,
+    List<Media> mediaList = const [],
   }) async {
-    final groupsResponse = await _get('/groups', tokens);
-    final groups = groupsResponse is List
-        ? groupsResponse
-        : groupsResponse is Map<String, dynamic>
-        ? (groupsResponse['groups'] ??
-              groupsResponse['items'] ??
-              groupsResponse['data'])
-        : null;
-    if (groups is! List || groups.isEmpty) {
-      throw const DiaryException('일기를 작성하려면 먼저 가족 그룹에 참여해주세요.');
+    if (groupId == null) {
+      final response = await _get('/groups', tokens);
+      final groups = response is List
+          ? response
+          : response is Map<String, dynamic>
+          ? (response['groups'] ?? response['items'] ?? response['data'])
+          : null;
+      if (groups is! List || groups.isEmpty) {
+        throw const DiaryException('일기를 작성하려면 먼저 가족 그룹에 참여해주세요.');
+      }
+      groupId = (groups.first as Map<String, dynamic>)['id'] as int;
     }
-    final firstGroup = groups.first;
-    if (firstGroup is! Map<String, dynamic> || firstGroup['id'] is! int) {
-      throw const DiaryException('가족 그룹 정보를 읽을 수 없습니다.');
+    final key = jsonEncode([
+      tokens.accessToken,
+      groupId,
+      title,
+      situationText,
+      recordDate.toIso8601String(),
+    ]);
+    if (_pendingKey != key) {
+      _pendingDraftId = null;
+      _uploadedAttachments.clear();
+      _pendingKey = key;
     }
-
-    // 현재 배포된 백엔드는 /diaries를 초안 생성 endpoint로 사용한다.
-    final created = await _post('/diaries', tokens, {
-      'group_id': firstGroup['id'],
-      'situation_text': situationText,
-      if (title != null && title.isNotEmpty) 'title': title,
-      'record_date': recordDate.toIso8601String(),
-    });
-    final diaryId = created['id'] ?? created['diary_id'];
-    if (diaryId is! int) {
-      throw const DiaryException('일기 저장 응답 형식이 올바르지 않습니다.');
+    if (_pendingDraftId == null) {
+      final created = await _post('/diaries', tokens, {
+        'group_id': groupId,
+        'situation_text': situationText,
+        if (title != null && title.isNotEmpty) 'title': title,
+        'record_date': recordDate.toIso8601String(),
+      });
+      final id = created['id'] ?? created['diary_id'];
+      if (id is! int) throw const DiaryException('일기 저장 응답 형식이 올바르지 않습니다.');
+      _pendingDraftId = id;
+    }
+    final diaryId = _pendingDraftId!;
+    for (final media in mediaList) {
+      final attachmentKey = '${media.fileUrl}:${media.sortOrder}';
+      if (_uploadedAttachments.contains(attachmentKey)) continue;
+      try {
+        final extension = media.fileUrl.split('.').last.toLowerCase();
+        final mimeType = const {
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+          'heic': 'image/heic',
+          'webp': 'image/webp',
+          'gif': 'image/gif',
+          'mp4': 'video/mp4',
+          'mov': 'video/quicktime',
+          'm4v': 'video/x-m4v',
+          'mp3': 'audio/mpeg',
+          'm4a': 'audio/mp4',
+          'wav': 'audio/wav',
+          'aac': 'audio/aac',
+          'ogg': 'audio/ogg',
+          'flac': 'audio/flac',
+        }[extension];
+        if (mimeType == null) {
+          throw const DiaryException('지원하지 않는 첨부 파일 형식입니다.');
+        }
+        final file = File(media.fileUrl);
+        if (await file.length() > 50 * 1024 * 1024) {
+          throw const DiaryException('첨부 파일은 50MB 이하로 선택해주세요.');
+        }
+        await MediaApi(ApiService(client: _client)).uploadDiary(
+          tokens,
+          diaryId,
+          bytes: await file.readAsBytes(),
+          filename: file.uri.pathSegments.last,
+          contentType: mimeType,
+          duration: media.duration,
+          sortOrder: media.sortOrder,
+        );
+        _uploadedAttachments.add(attachmentKey);
+      } on ApiException catch (error) {
+        throw DiaryException(error.message);
+      } on FileSystemException {
+        throw const DiaryException('첨부 파일을 읽을 수 없습니다. 파일을 다시 선택해주세요.');
+      }
     }
 
     final question = await _post(
@@ -276,7 +308,7 @@ class DiaryService {
         ? flower
         : const <String, dynamic>{};
     return DiaryFinalization(
-      emotionId: emotionMap['id'] as int?,
+      emotionId: (emotionMap['id'] ?? json['final_emotion_id']) as int?,
       emotionName:
           (emotionMap['display_name'] ?? emotionMap['emotion'] ?? '오늘의 감정')
               .toString(),
@@ -358,7 +390,7 @@ class DiaryService {
     try {
       body = response.body.isEmpty
           ? const <String, dynamic>{}
-          : jsonDecode(response.body);
+          : jsonDecode(utf8.decode(response.bodyBytes));
     } on FormatException {
       body = const <String, dynamic>{};
     }
@@ -379,9 +411,6 @@ class DiaryService {
   }
 
   Uri _uri(String path) => Uri.parse('${ApiConfig.baseUrl}$path');
-
-  String _dateOnly(DateTime value) =>
-      '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
   Map<String, String> _headers(AuthTokens tokens) => {
     'Content-Type': 'application/json',

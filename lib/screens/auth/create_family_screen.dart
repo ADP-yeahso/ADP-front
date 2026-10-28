@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'group_created_screen.dart';
+import 'package:provider/provider.dart';
+import '../../data/app_data.dart';
+import '../../data/auth_session.dart';
+import '../../services/api_service.dart';
 
 class CreateFamilyScreen extends StatefulWidget {
   const CreateFamilyScreen({super.key});
@@ -16,6 +20,10 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
   final TextEditingController _relationController = TextEditingController();
   final FocusNode _relationFocusNode = FocusNode();
   bool _isCustomRelation = false;
+  bool _isSaving = false;
+  int? _createdGroupId;
+  Map<String, dynamic>? _createdPatient;
+  String _gender = '선택 안 함';
 
   @override
   void initState() {
@@ -46,6 +54,51 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
       _birthController.text.isNotEmpty &&
       _relationController.text.isNotEmpty;
 
+  Future<void> _createFamily() async {
+    if (!_isAllFilled || _isSaving) return;
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) return;
+    setState(() => _isSaving = true);
+    final api = ApiService();
+    try {
+      if (_createdGroupId == null) {
+        final group = await GroupApi(
+          api,
+        ).create(tokens, groupName: '${_nameController.text.trim()} 가족');
+        _createdGroupId = group['id'] as int;
+      }
+      _createdPatient ??= await PatientApi(api)
+          .create(tokens, _createdGroupId!, {
+            'patient_name': _nameController.text.trim(),
+            'patient_birth_date': _birthController.text.replaceAll('.', '-'),
+            'gender': _gender,
+          });
+      await GroupApi(api).updateMembership(
+        tokens,
+        _createdGroupId!,
+        patientsNickname: _relationController.text.trim(),
+      );
+      if (!mounted) return;
+      final data = context.read<AppData>();
+      data.rememberPatient(_createdGroupId!, _createdPatient!);
+      await data.openGroup(tokens, _createdGroupId!);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const GroupCreatedScreen()),
+      );
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      api.close();
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // 0번 로그인 화면과 동일하게 시안 해상도(351 x 727) 기준 스케일 계산
@@ -69,14 +122,23 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
                   behavior: HitTestBehavior.opaque,
                   onTap: () => Navigator.pop(context),
                   child: Container(
-                    padding: EdgeInsets.only(left: 20 * wScale, top: 10 * hScale, right: 20 * wScale, bottom: 10 * hScale),
-                    child: SvgPicture.asset('assets/auth/create_family/icon_back.svg', width: 21 * wScale, height: 31 * wScale),
+                    padding: EdgeInsets.only(
+                      left: 20 * wScale,
+                      top: 10 * hScale,
+                      right: 20 * wScale,
+                      bottom: 10 * hScale,
+                    ),
+                    child: SvgPicture.asset(
+                      'assets/auth/create_family/icon_back.svg',
+                      width: 21 * wScale,
+                      height: 31 * wScale,
+                    ),
                   ),
                 ),
               ),
-              
+
               SizedBox(height: 10 * hScale),
-              
+
               // 2. 가족 그룹 아이콘 + 플러스 아이콘
               SizedBox(
                 width: 102 * wScale,
@@ -86,26 +148,42 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
                     Positioned(
                       top: 0,
                       left: 0,
-                      child: SvgPicture.asset('assets/auth/create_family/icon_new_family.svg', width: 98 * wScale, height: 98 * wScale),
+                      child: SvgPicture.asset(
+                        'assets/auth/create_family/icon_new_family.svg',
+                        width: 98 * wScale,
+                        height: 98 * wScale,
+                      ),
                     ),
                     Positioned(
                       bottom: 0,
                       right: 0,
-                      child: SvgPicture.asset('assets/auth/create_family/icon_plus.svg', width: 28 * wScale, height: 28 * wScale),
+                      child: SvgPicture.asset(
+                        'assets/auth/create_family/icon_plus.svg',
+                        width: 28 * wScale,
+                        height: 28 * wScale,
+                      ),
                     ),
                   ],
                 ),
               ),
-              
+
               SizedBox(height: 24 * hScale),
-              
+
               // 3. 타이틀 및 부제
-              SvgPicture.asset('assets/auth/create_family/text_title.svg', width: 166 * wScale, height: 28 * wScale),
+              SvgPicture.asset(
+                'assets/auth/create_family/text_title.svg',
+                width: 166 * wScale,
+                height: 28 * wScale,
+              ),
               SizedBox(height: 10 * hScale),
-              SvgPicture.asset('assets/auth/create_family/text_subtitle.svg', width: 147 * wScale, height: 28 * wScale),
-              
+              SvgPicture.asset(
+                'assets/auth/create_family/text_subtitle.svg',
+                width: 147 * wScale,
+                height: 28 * wScale,
+              ),
+
               SizedBox(height: 50 * hScale),
-              
+
               // 4. 환자 정보 입력 폼
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -114,7 +192,11 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
                   // 왼쪽 라벨 이미지
                   Padding(
                     padding: EdgeInsets.only(top: 20 * hScale),
-                    child: SvgPicture.asset('assets/auth/create_family/label_patient_info.svg', width: 59 * wScale, height: 133 * wScale),
+                    child: SvgPicture.asset(
+                      'assets/auth/create_family/label_patient_info.svg',
+                      width: 59 * wScale,
+                      height: 133 * wScale,
+                    ),
                   ),
                   SizedBox(width: 16 * wScale),
                   // 오른쪽 텍스트 필드들
@@ -126,18 +208,20 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
                       children: [
                         _buildInputField(_nameController, wScale, hScale),
                         _buildInputField(
-                          _birthController, 
-                          wScale, 
+                          _birthController,
+                          wScale,
                           hScale,
                           readOnly: true,
                           onTap: () => _showDatePicker(context),
                         ),
                         _buildInputField(
-                          _relationController, 
-                          wScale, 
+                          _relationController,
+                          wScale,
                           hScale,
                           readOnly: !_isCustomRelation,
-                          onTap: _isCustomRelation ? null : () => _showRelationPicker(context),
+                          onTap: _isCustomRelation
+                              ? null
+                              : () => _showRelationPicker(context),
                           focusNode: _relationFocusNode,
                         ),
                       ],
@@ -145,18 +229,34 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
                   ),
                 ],
               ),
-              
-              SizedBox(height: 130 * hScale),//
-              
+
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 16,
+                ),
+                child: DropdownButtonFormField<String>(
+                  initialValue: _gender,
+                  decoration: const InputDecoration(labelText: '성별'),
+                  items: ['선택 안 함', '남성', '여성']
+                      .map(
+                        (value) =>
+                            DropdownMenuItem(value: value, child: Text(value)),
+                      )
+                      .toList(),
+                  onChanged: _isSaving
+                      ? null
+                      : (value) => setState(() => _gender = value!),
+                ),
+              ),
+              if (_isSaving) const CircularProgressIndicator(),
+              SizedBox(height: 55 * hScale),
+
               // 5. 만들기 버튼
               GestureDetector(
-                onTap: () {
-                  if (_isAllFilled) {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
-                  }
-                },
+                onTap: _isSaving ? null : _createFamily,
                 child: Image.asset(
-                  _isAllFilled 
+                  _isAllFilled
                       ? 'assets/auth/create_family/btn_create_active.png'
                       : 'assets/auth/create_family/btn_create_inactive.png',
                   width: 261 * wScale,
@@ -164,7 +264,7 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
                   fit: BoxFit.fill,
                 ),
               ),
-              
+
               SizedBox(height: 40 * hScale),
             ],
           ),
@@ -174,10 +274,18 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
   }
 
   void _showRelationPicker(BuildContext context) {
-    final List<String> relations = ['아버지', '어머니', '남편', '아내', '할아버지', '할머니', '기타'];
+    final List<String> relations = [
+      '아버지',
+      '어머니',
+      '남편',
+      '아내',
+      '할아버지',
+      '할머니',
+      '기타',
+    ];
     String tempSelected = _isCustomRelation ? '기타' : _relationController.text;
     if (tempSelected.isEmpty || !relations.contains(tempSelected)) {
-       tempSelected = _isCustomRelation ? '기타' : ''; 
+      tempSelected = _isCustomRelation ? '기타' : '';
     }
 
     showModalBottomSheet(
@@ -191,7 +299,12 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return Container(
-              padding: const EdgeInsets.only(left: 24, right: 24, top: 30, bottom: 40),
+              padding: const EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 30,
+                bottom: 40,
+              ),
               height: MediaQuery.of(context).size.height * 0.6,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,32 +341,44 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
                             setModalState(() {
                               tempSelected = rel;
                             });
-                            Future.delayed(const Duration(milliseconds: 150), () {
-                              if (!mounted) return;
-                              setState(() {
-                                if (rel == '기타') {
-                                  _isCustomRelation = true;
-                                  _relationController.clear();
-                                  Future.delayed(const Duration(milliseconds: 100), () {
-                                    if (mounted) _relationFocusNode.requestFocus();
-                                  });
-                                } else {
-                                  _isCustomRelation = false;
-                                  _relationController.text = rel;
+                            Future.delayed(
+                              const Duration(milliseconds: 150),
+                              () {
+                                if (!mounted) return;
+                                setState(() {
+                                  if (rel == '기타') {
+                                    _isCustomRelation = true;
+                                    _relationController.clear();
+                                    Future.delayed(
+                                      const Duration(milliseconds: 100),
+                                      () {
+                                        if (mounted) {
+                                          _relationFocusNode.requestFocus();
+                                        }
+                                      },
+                                    );
+                                  } else {
+                                    _isCustomRelation = false;
+                                    _relationController.text = rel;
+                                  }
+                                });
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx);
                                 }
-                              });
-                              if (ctx.mounted) {
-                                Navigator.pop(ctx);
-                              }
-                            });
+                              },
+                            );
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             child: Row(
                               children: [
                                 Icon(
-                                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                                  color: isSelected ? const Color(0xFF2A5948) : const Color(0xFFDDDDDD),
+                                  isSelected
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_unchecked,
+                                  color: isSelected
+                                      ? const Color(0xFF2A5948)
+                                      : const Color(0xFFDDDDDD),
                                   size: 24,
                                 ),
                                 const SizedBox(width: 12),
@@ -262,7 +387,9 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
                                   style: TextStyle(
                                     fontFamily: 'Pretendard',
                                     fontSize: 16,
-                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
                                     color: Colors.black87,
                                   ),
                                 ),
@@ -284,7 +411,7 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
 
   void _showDatePicker(BuildContext context) {
     DateTime tempDate = DateTime.now();
-    
+
     showCupertinoModalPopup(
       context: context,
       builder: (_) => Container(
@@ -302,7 +429,8 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
               child: GestureDetector(
                 onTap: () {
                   setState(() {
-                    _birthController.text = "${tempDate.year}.${tempDate.month.toString().padLeft(2, '0')}.${tempDate.day.toString().padLeft(2, '0')}";
+                    _birthController.text =
+                        "${tempDate.year}.${tempDate.month.toString().padLeft(2, '0')}.${tempDate.day.toString().padLeft(2, '0')}";
                   });
                   Navigator.pop(context);
                 },
@@ -334,7 +462,14 @@ class _CreateFamilyScreenState extends State<CreateFamilyScreen> {
     );
   }
 
-  Widget _buildInputField(TextEditingController controller, double wScale, double hScale, {bool readOnly = false, VoidCallback? onTap, FocusNode? focusNode}) {
+  Widget _buildInputField(
+    TextEditingController controller,
+    double wScale,
+    double hScale, {
+    bool readOnly = false,
+    VoidCallback? onTap,
+    FocusNode? focusNode,
+  }) {
     return SizedBox(
       width: 196 * wScale,
       height: 40 * hScale,

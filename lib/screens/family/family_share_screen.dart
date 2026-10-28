@@ -18,7 +18,7 @@ class FamilyShareScreen extends StatefulWidget {
 }
 
 class _FamilyShareScreenState extends State<FamilyShareScreen> {
-  int? _filterMemberId;
+  String? _filterMemberId;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +34,10 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
         : feedItems.where((f) => f.authorId == _filterMemberId).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('가족 공유'), automaticallyImplyLeading: false),
+      appBar: AppBar(
+        title: const Text('가족 공유'),
+        automaticallyImplyLeading: false,
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
@@ -60,7 +63,9 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
                     isMe: appData.isCurrentUser(member.id),
                     relation: appData.userRelationOf(member.id),
                     onTap: () => setState(() {
-                      _filterMemberId = _filterMemberId == member.id ? null : member.id;
+                      _filterMemberId = _filterMemberId == member.id
+                          ? null
+                          : member.id;
                     }),
                   ),
               ],
@@ -74,7 +79,9 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text(
-              _filterMemberId == null ? '전체 공유 기록' : '${appData.userById(_filterMemberId!).name}의 공유 기록',
+              _filterMemberId == null
+                  ? '전체 공유 기록'
+                  : '${appData.userById(_filterMemberId!).name}의 공유 기록',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
           ),
@@ -82,7 +89,10 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
           if (filtered.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Text('아직 공유된 기록이 없어요.', style: TextStyle(color: Colors.black45)),
+              child: Text(
+                '아직 공유된 기록이 없어요.',
+                style: TextStyle(color: Colors.black45),
+              ),
             )
           else
             for (final item in filtered)
@@ -130,9 +140,13 @@ class _MemberAvatar extends StatelessWidget {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? member.color.withValues(alpha: 0.12) : Colors.transparent,
+          color: selected
+              ? member.color.withValues(alpha: 0.12)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: selected ? member.color : Colors.transparent),
+          border: Border.all(
+            color: selected ? member.color : Colors.transparent,
+          ),
         ),
         child: Column(
           children: [
@@ -166,7 +180,10 @@ class _MemberAvatar extends StatelessWidget {
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
               overflow: TextOverflow.ellipsis,
             ),
-            Text(relation, style: const TextStyle(fontSize: 10, color: Colors.black45)),
+            Text(
+              relation,
+              style: const TextStyle(fontSize: 10, color: Colors.black45),
+            ),
           ],
         ),
       ),
@@ -182,7 +199,7 @@ class _FeedItem {
   _FeedItem.diary(this.diary) : memory = null;
 
   DateTime get date => (memory?.recordDate ?? diary!.recordDate);
-  int get authorId => (memory?.userId ?? diary!.userId);
+  String get authorId => (memory?.userId ?? diary!.userId);
 }
 
 class _FeedCard extends StatelessWidget {
@@ -190,13 +207,19 @@ class _FeedCard extends StatelessWidget {
   final User author;
   final VoidCallback onTap;
 
-  const _FeedCard({required this.item, required this.author, required this.onTap});
+  const _FeedCard({
+    required this.item,
+    required this.author,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isMemory = item.memory != null;
     final title = isMemory ? '가족 기록' : '감정 일기';
-    final content = isMemory ? (item.memory!.contextText ?? '') : item.diary!.context;
+    final content = isMemory
+        ? (item.memory!.contextText ?? '')
+        : item.diary!.context;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -205,19 +228,35 @@ class _FeedCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
-          ]),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: (isMemory ? const Color(0xFF6FBF8B) : item.diary!.flowerType.emotionId.color).withValues(alpha: 0.15),
+                backgroundColor:
+                    (isMemory
+                            ? const Color(0xFF6FBF8B)
+                            : item.diary!.flowerType.emotionId.color)
+                        .withValues(alpha: 0.15),
                 child: Icon(
-                  isMemory ? Icons.eco : item.diary!.flowerType.emotionId.flowerIcon,
+                  isMemory
+                      ? Icons.eco
+                      : item.diary!.flowerType.emotionId.flowerIcon,
                   size: 18,
-                  color: isMemory ? const Color(0xFF6FBF8B) : item.diary!.flowerType.emotionId.color,
+                  color: isMemory
+                      ? const Color(0xFF6FBF8B)
+                      : item.diary!.flowerType.emotionId.color,
                 ),
               ),
               const SizedBox(width: 12),
@@ -227,21 +266,46 @@ class _FeedCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(author.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text(
+                          author.name,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const SizedBox(width: 6),
-                        Text('· ${item.date.month}월 ${item.date.day}일', style: const TextStyle(fontSize: 11, color: Colors.black38)),
+                        Text(
+                          '· ${item.date.month}월 ${item.date.day}일',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.black38,
+                          ),
+                        ),
                         const Spacer(),
-                        if (!isMemory) EmotionChip(emotion: item.diary!.flowerType.emotionId),
+                        if (!isMemory)
+                          EmotionChip(
+                            emotion: item.diary!.flowerType.emotionId,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       content,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54, height: 1.4),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                        height: 1.4,
+                      ),
                     ),
                   ],
                 ),

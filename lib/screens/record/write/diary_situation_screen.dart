@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../data/auth_session.dart';
+import '../../../data/app_data.dart';
 import '../../../models/media.dart';
 import '../../../services/diary_service.dart';
 import 'diary_emotion_explore_screen.dart';
@@ -38,6 +39,8 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
 
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
+  final _service = DiaryService();
+  final _recordDate = DateTime.now();
 
   @override
   void initState() {
@@ -49,6 +52,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _service.close();
     super.dispose();
   }
 
@@ -59,19 +63,23 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
 
     final tokens = context.read<AuthSession>().tokens;
     if (tokens == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('일기를 저장하려면 먼저 로그인해주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('일기를 저장하려면 먼저 로그인해주세요.')));
       return;
     }
 
     setState(() => _isSubmitting = true);
     try {
-      final draft = await DiaryService().createDraftAndQuestion(
+      final draft = await _service.createDraftAndQuestion(
         tokens: tokens,
         title: title,
         situationText: situation,
-        recordDate: DateTime.now(),
+        recordDate: _recordDate,
+        groupId: context.read<AppData>().group.id,
+        mediaList: _allDeviceMedia
+            .where((media) => _selectedMediaIds.contains(media.id))
+            .toList(),
       );
       if (!mounted) return;
       await Navigator.push(
@@ -82,9 +90,9 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
       );
     } on DiaryException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

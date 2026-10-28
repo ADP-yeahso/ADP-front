@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import '../config/api_config.dart';
 import 'auth_service.dart';
@@ -16,13 +17,37 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-/// Thin client for the endpoints in API_X.pdf.
+/// Shared client for the deployed REST API.
 /// Feature services should use this class so auth headers and error handling
 /// stay identical across the app.
 class ApiService {
   ApiService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+
+  void close() => _client.close();
+
+  Future<dynamic> upload(
+    String path,
+    AuthTokens tokens, {
+    required Uint8List bytes,
+    required String filename,
+    required String contentType,
+    Map<String, String> fields = const {},
+  }) => _send(() async {
+    final request = http.MultipartRequest('POST', _uri(path))
+      ..headers['Authorization'] = 'Bearer ${tokens.accessToken}'
+      ..fields.addAll(fields)
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: filename,
+          contentType: MediaType.parse(contentType),
+        ),
+      );
+    return http.Response.fromStream(await _client.send(request));
+  }, tokens);
 
   Future<dynamic> get(String path, AuthTokens tokens) =>
       _send(() => _client.get(_uri(path), headers: _headers(tokens)), tokens);
@@ -96,14 +121,22 @@ class ApiService {
   }) async {
     try {
       final response = await request().timeout(const Duration(seconds: 30));
-      final body = response.body.isEmpty ? null : _decode(response.body);
+      final body = response.bodyBytes.isEmpty
+          ? null
+          : _decode(utf8.decode(response.bodyBytes));
       final okay = expectedStatus == null
           ? response.statusCode >= 200 && response.statusCode < 300
           : response.statusCode == expectedStatus;
       if (!okay) {
         final detail = body is Map<String, dynamic> ? body['detail'] : null;
         throw ApiException(
-          detail is String && detail.isNotEmpty ? detail : 'API 요청에 실패했습니다.',
+          response.statusCode == 401
+              ? '로그인이 만료되었습니다. 다시 로그인해주세요.'
+              : detail is String && detail.isNotEmpty
+              ? detail
+              : detail is List
+              ? '입력한 정보를 확인해주세요.'
+              : 'API 요청에 실패했습니다. (${response.statusCode})',
           statusCode: response.statusCode,
         );
       }
@@ -150,7 +183,7 @@ class GroupApi {
       tokens,
       body: {
         'group_name': groupName,
-        if (profileImageUrl != null) 'group_profile_image_url': profileImageUrl,
+        'group_profile_image_url': ?profileImageUrl,
       },
     ),
   );
@@ -177,8 +210,8 @@ class GroupApi {
     String? patientRelation,
   }) async => _map(
     await _api.patch('/groups/$groupId/members/me', tokens, {
-      if (patientsNickname != null) 'patients_nickname': patientsNickname,
-      if (patientRelation != null) 'patient_relation': patientRelation,
+      'patients_nickname': ?patientsNickname,
+      'patient_relation': ?patientRelation,
     }),
   );
 }
@@ -244,79 +277,38 @@ class MemoryRecordApi {
 
   Future<void> remove(AuthTokens tokens, int id) =>
       _api.delete('/memory-records/$id', tokens);
-
-  Future<bool> setBookmark(AuthTokens tokens, int id, bool value) async {
-    if (value) {
-      final body = await _api.put('/memory-records/$id/bookmark', tokens);
-      return (body as Map<String, dynamic>)['bookmarked'] == true;
-    }
-    await _api.delete('/memory-records/$id/bookmark', tokens);
-    return false;
-  }
-
-  Future<List<Map<String, dynamic>>> comments(
-    AuthTokens tokens,
-    int id,
-  ) async => _maps(await _api.get('/memory-records/$id/comments', tokens));
-
-  Future<Map<String, dynamic>> addComment(
-    AuthTokens tokens,
-    int id,
-    String text,
-  ) async => _map(
-    await _api.post(
-      '/memory-records/$id/comments',
-      tokens,
-      body: {'comment_text': text},
-    ),
-  );
-
-  Future<void> removeComment(AuthTokens tokens, int id) =>
-      _api.delete('/comments/$id', tokens);
 }
 
 class MediaApi {
   MediaApi(this._api);
   final ApiService _api;
 
-  Future<Map<String, dynamic>> presign(
-    AuthTokens tokens, {
-    required String fileName,
-    required String fileType,
+  Future<Map<String, dynamic>> uploadDiary(
+    AuthTokens tokens,
+    int diaryId, {
+    required Uint8List bytes,
+    required String filename,
+    required String contentType,
+    int? duration,
+    int sortOrder = 0,
   }) async => _map(
-    await _api.post(
-      '/media/presign',
+    await _api.upload(
+      '/diaries/$diaryId/media',
       tokens,
-      body: {'file_name': fileName, 'file_type': fileType},
+      bytes: bytes,
+      filename: filename,
+      contentType: contentType,
+      fields: {
+        'sort_order': '$sortOrder',
+        if (duration != null) 'duration': '$duration',
+      },
     ),
   );
-
-  Future<Map<String, dynamic>> register(
-    AuthTokens tokens,
-    int groupId,
-    Map<String, dynamic> body,
-  ) async =>
-      _map(await _api.post('/groups/$groupId/gallery', tokens, body: body));
-
-  Future<List<Map<String, dynamic>>> gallery(
-    AuthTokens tokens,
-    int groupId, {
-    int page = 1,
-    int size = 20,
-  }) async => _maps(
-    await _api.get('/groups/$groupId/gallery?page=$page&size=$size', tokens),
-  );
-
-  Future<void> remove(AuthTokens tokens, int groupId, int mediaId) =>
-      _api.delete('/groups/$groupId/gallery/$mediaId', tokens);
 }
 
 class UserApi {
   UserApi(this._api);
   final ApiService _api;
-
-  Future<Map<String, dynamic>> authMe(AuthTokens tokens) async =>
-      _map(await _api.get('/auth/me', tokens));
 
   Future<Map<String, dynamic>> profile(AuthTokens tokens) async =>
       _map(await _api.get('/users/me', tokens));
@@ -324,56 +316,7 @@ class UserApi {
   Future<Map<String, dynamic>> updateProfile(
     AuthTokens tokens,
     Map<String, dynamic> body,
-  ) async => _map(await _api.patch('/users/me', tokens, body));
-
-  Future<void> changePassword(
-    AuthTokens tokens,
-    String currentPassword,
-    String newPassword,
-  ) async {
-    await _api.patch('/users/me/password', tokens, {
-      'current_password': currentPassword,
-      'new_password': newPassword,
-    });
-  }
-}
-
-class CalendarApi {
-  CalendarApi(this._api);
-  final ApiService _api;
-
-  Future<Map<String, dynamic>> month(
-    AuthTokens tokens,
-    int groupId,
-    DateTime value,
-  ) async => _map(
-    await _api.get(
-      '/groups/$groupId/calendar?year=${value.year}&month=${value.month}',
-      tokens,
-    ),
-  );
-
-  Future<Map<String, dynamic>> day(
-    AuthTokens tokens,
-    int groupId,
-    DateTime value,
-  ) async =>
-      _map(await _api.get('/groups/$groupId/calendar/${_date(value)}', tokens));
-
-  Future<Map<String, dynamic>> garden(
-    AuthTokens tokens,
-    DateTime value, {
-    int? groupId,
-  }) async {
-    final query = Uri(
-      queryParameters: {
-        'year': '${value.year}',
-        'month': '${value.month}',
-        if (groupId != null) 'group_id': '$groupId',
-      },
-    ).query;
-    return _map(await _api.get('/gardens?$query', tokens));
-  }
+  ) async => _map(await _api.put('/users/me', tokens, body: body));
 }
 
 class CareApi {
@@ -386,9 +329,9 @@ class CareApi {
     Map<String, dynamic> body,
   ) async => _map(
     await _api.post(
-      '/patients/$patientId/daily-conditions',
+      '/care-notes/daily-conditions',
       tokens,
-      body: body,
+      body: {'patient_id': patientId, ...body},
     ),
   );
 
@@ -398,7 +341,7 @@ class CareApi {
     DateTime? recordDate,
   }) async => _maps(
     await _api.get(
-      '/patients/$patientId/daily-conditions${recordDate == null ? '' : '?record_date=${_date(recordDate)}'}',
+      '/care-notes/daily-conditions?patient_id=$patientId${recordDate == null ? '' : '&start_date=${_date(recordDate)}&end_date=${_date(recordDate)}'}',
       tokens,
     ),
   );
@@ -409,11 +352,7 @@ class CareApi {
     int conditionId,
     Map<String, dynamic> body,
   ) async => _map(
-    await _api.patch(
-      '/patients/$patientId/daily-conditions/$conditionId',
-      tokens,
-      body,
-    ),
+    await _api.patch('/care-notes/daily-conditions/$conditionId', tokens, body),
   );
 
   Future<Map<String, dynamic>> createBehaviorLog(
@@ -421,21 +360,30 @@ class CareApi {
     int patientId,
     Map<String, dynamic> body,
   ) async => _map(
-    await _api.post('/patients/$patientId/behavior-logs', tokens, body: body),
+    await _api.post(
+      '/care-notes/behavior-logs',
+      tokens,
+      body: {'patient_id': patientId, ...body},
+    ),
   );
 
   Future<List<Map<String, dynamic>>> behaviorLogs(
     AuthTokens tokens,
     int patientId,
-  ) async =>
-      _maps(await _api.get('/patients/$patientId/behavior-logs', tokens));
+  ) async => _maps(
+    await _api.get('/care-notes/behavior-logs?patient_id=$patientId', tokens),
+  );
 
   Future<Map<String, dynamic>> addMedication(
     AuthTokens tokens,
     int patientId,
     Map<String, dynamic> body,
   ) async => _map(
-    await _api.post('/patients/$patientId/medications', tokens, body: body),
+    await _api.post(
+      '/care-notes/medications',
+      tokens,
+      body: {'patient_id': patientId, ...body},
+    ),
   );
 
   Future<List<Map<String, dynamic>>> medications(
@@ -444,7 +392,7 @@ class CareApi {
     bool activeOnly = false,
   }) async => _maps(
     await _api.get(
-      '/patients/$patientId/medications?active_only=$activeOnly',
+      '/care-notes/medications?patient_id=$patientId${activeOnly ? '&is_active=true' : ''}',
       tokens,
     ),
   );
@@ -455,40 +403,56 @@ class CareApi {
     DateTime logDate,
     Map<String, dynamic> body,
   ) async => _map(
-    await _api.put(
-      '/medications/$medicationId/intake-logs/${_date(logDate)}',
+    await _api.post(
+      '/care-notes/medication-intake-logs',
       tokens,
-      body: body,
+      body: {
+        'medication_id': medicationId,
+        'log_date': _date(logDate),
+        ...body,
+      },
     ),
   );
 
   Future<List<Map<String, dynamic>>> intakeLogs(
     AuthTokens tokens,
-    int medicationId,
-  ) async =>
-      _maps(await _api.get('/medications/$medicationId/intake-logs', tokens));
+    int patientId,
+  ) async => _maps(
+    await _api.get(
+      '/care-notes/medication-intake-logs?patient_id=$patientId',
+      tokens,
+    ),
+  );
 
   Future<Map<String, dynamic>> createHospitalVisit(
     AuthTokens tokens,
     int patientId,
     Map<String, dynamic> body,
   ) async => _map(
-    await _api.post('/patients/$patientId/hospital-visits', tokens, body: body),
+    await _api.post(
+      '/care-notes/hospital-visits',
+      tokens,
+      body: {'patient_id': patientId, ...body},
+    ),
   );
 
   Future<List<Map<String, dynamic>>> hospitalVisits(
     AuthTokens tokens,
     int patientId,
-  ) async =>
-      _maps(await _api.get('/patients/$patientId/hospital-visits', tokens));
+  ) async => _maps(
+    await _api.get('/care-notes/hospital-visits?patient_id=$patientId', tokens),
+  );
 }
 
 String _date(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
-Map<String, dynamic> _map(dynamic value) =>
-    value is Map<String, dynamic> ? value : <String, dynamic>{};
+Map<String, dynamic> _map(dynamic value) {
+  if (value is Map<String, dynamic>) return value;
+  throw const ApiException('서버 응답 형식이 올바르지 않습니다.');
+}
 
-List<Map<String, dynamic>> _maps(dynamic value) => value is List
-    ? value.whereType<Map<String, dynamic>>().toList()
-    : <Map<String, dynamic>>[];
+List<Map<String, dynamic>> _maps(dynamic value) {
+  if (value is List) return value.cast<Map<String, dynamic>>();
+  throw const ApiException('서버 응답 형식이 올바르지 않습니다.');
+}

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../data/app_data.dart';
+import '../../data/auth_session.dart';
+import '../../services/api_service.dart';
+import '../../services/care_notebook_service.dart';
 
 import 'care_notebook_write_screen.dart';
 import 'care_record_view_data.dart';
@@ -9,27 +14,54 @@ class CareNotebookListScreen extends StatefulWidget {
   const CareNotebookListScreen({super.key});
 
   @override
-  State<CareNotebookListScreen> createState() =>
-      _CareNotebookListScreenState();
+  State<CareNotebookListScreen> createState() => _CareNotebookListScreenState();
 }
 
-class _CareNotebookListScreenState
-    extends State<CareNotebookListScreen> {
-  late final List<CareRecordViewData> _records;
+class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
+  List<CareRecordViewData> _records = [];
+  bool _isLoading = true;
+  String? _error;
   DateTime? _selectedDate;
 
   @override
   void initState() {
     super.initState();
 
-    _records = List.of(mockCareRecords)
-      ..sort((a, b) => b.date.compareTo(a.date));
+    _loadRecords();
+  }
+
+  Future<void> _loadRecords() async {
+    final data = context.read<AppData>();
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null || !data.hasPatient) {
+      setState(() {
+        _error = '환자 정보를 먼저 불러와주세요.';
+        _isLoading = false;
+      });
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    final api = ApiService();
+    try {
+      final records = await CareNotebookService(
+        api,
+      ).list(tokens, data.patient.id);
+      if (mounted) setState(() => _records = records);
+    } on ApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } finally {
+      api.close();
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   bool _isSameDay(DateTime first, DateTime second) {
     return first.year == second.year &&
-      first.month == second.month &&
-      first.day == second.day;
+        first.month == second.month &&
+        first.day == second.day;
   }
 
   List<CareRecordViewData> get _visibleRecords {
@@ -38,25 +70,23 @@ class _CareNotebookListScreenState
     }
 
     return _records
-      .where(
-        (record) => _isSameDay(record.date, _selectedDate!),
-      )
-      .toList();
+        .where((record) => _isSameDay(record.date, _selectedDate!))
+        .toList();
   }
 
   Future<void> _pickFilterDate() async {
     final pickedDate = await showDatePicker(
-     context: context,
-     initialDate: _selectedDate ?? DateTime.now(),
-     firstDate: DateTime(2020),
-    lastDate: DateTime.now(),
-     helpText: '확인할 돌봄 기록 날짜를 선택해 주세요',
-     cancelText: '취소',
-     confirmText: '확인',
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      helpText: '확인할 돌봄 기록 날짜를 선택해 주세요',
+      cancelText: '취소',
+      confirmText: '확인',
     );
 
     if (pickedDate == null) {
-     return;
+      return;
     }
 
     setState(() {
@@ -65,8 +95,8 @@ class _CareNotebookListScreenState
   }
 
   void _showAllRecords() {
-   setState(() {
-     _selectedDate = null;
+    setState(() {
+      _selectedDate = null;
     });
   }
 
@@ -74,20 +104,15 @@ class _CareNotebookListScreenState
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CareNotebookDetailScreen(
-          record: record,
-        ),
+        builder: (_) => CareNotebookDetailScreen(record: record),
       ),
     );
   }
 
   Future<void> _openWriteScreen() async {
-    final createdRecord =
-        await Navigator.push<CareRecordViewData>(
+    final createdRecord = await Navigator.push<CareRecordViewData>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const CareNotebookWriteScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const CareNotebookWriteScreen()),
     );
 
     if (createdRecord == null || !mounted) {
@@ -101,11 +126,9 @@ class _CareNotebookListScreenState
       _selectedDate = createdRecord.date;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('돌봄 기록이 임시로 저장되었어요.'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('돌봄 기록이 저장되었어요.')));
   }
 
   @override
@@ -114,6 +137,12 @@ class _CareNotebookListScreenState
 
     return Scaffold(
       appBar: AppBar(
+        actions: [
+          IconButton(
+            onPressed: _isLoading ? null : _loadRecords,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
         title: const Text('돌봄 수첩'),
       ),
       body: SafeArea(
@@ -137,16 +166,12 @@ class _CareNotebookListScreenState
                     onPressed: _openWriteScreen,
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(0, 54),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
                     ),
                     icon: const Icon(Icons.edit_note),
                     label: const Text(
                       '기록 작성하기',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                   ),
                 ],
@@ -154,29 +179,39 @@ class _CareNotebookListScreenState
               const SizedBox(height: 8),
               const Text(
                 '날짜별로 기록한 돌봄 내용을 확인할 수 있어요.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.black54,
-                ),
+                style: TextStyle(fontSize: 13, color: Colors.black54),
               ),
               const SizedBox(height: 16),
 
               _DateFilterBar(
-               selectedDate: _selectedDate,
-               onDatePressed: _pickFilterDate,
-               onShowAllPressed: _showAllRecords,
+                selectedDate: _selectedDate,
+                onDatePressed: _pickFilterDate,
+                onShowAllPressed: _showAllRecords,
               ),
 
               const SizedBox(height: 22),
 
               Expanded(
-               child: visibleRecords.isEmpty
-                    ? _EmptyCareRecordView(
-                       selectedDate: _selectedDate,
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_error!, textAlign: TextAlign.center),
+                            TextButton(
+                              onPressed: _loadRecords,
+                              child: const Text('다시 시도'),
+                            ),
+                          ],
+                        ),
                       )
+                    : visibleRecords.isEmpty
+                    ? _EmptyCareRecordView(selectedDate: _selectedDate)
                     : ListView.builder(
-                       itemCount: visibleRecords.length,
-                       itemBuilder: (context, index) {
+                        itemCount: visibleRecords.length,
+                        itemBuilder: (context, index) {
                           final record = visibleRecords[index];
 
                           return _TimelineRecordTile(
@@ -184,7 +219,7 @@ class _CareNotebookListScreenState
                             isLast: index == visibleRecords.length - 1,
                             onTap: () => _openDetailScreen(record),
                           );
-                       },
+                        },
                       ),
               ),
             ],
@@ -216,23 +251,14 @@ class _DateFilterBar extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
               alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
             ),
-            icon: const Icon(
-              Icons.calendar_month_outlined,
-            ),
+            icon: const Icon(Icons.calendar_month_outlined),
             label: Text(
               selectedDate == null
                   ? '날짜 선택'
-                  : DateFormat('yyyy년 M월 d일').format(
-                      selectedDate!,
-                    ),
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
+                  : DateFormat('yyyy년 M월 d일').format(selectedDate!),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
           ),
         ),
@@ -240,14 +266,10 @@ class _DateFilterBar extends StatelessWidget {
           const SizedBox(width: 8),
           TextButton(
             onPressed: onShowAllPressed,
-            style: TextButton.styleFrom(
-              minimumSize: const Size(0, 52),
-            ),
+            style: TextButton.styleFrom(minimumSize: const Size(0, 52)),
             child: const Text(
               '전체 보기',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -285,10 +307,7 @@ class _TimelineRecordTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: primary,
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white,
-                      width: 3,
-                    ),
+                    border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
                         color: primary.withValues(alpha: 0.25),
@@ -309,9 +328,7 @@ class _TimelineRecordTile extends StatelessWidget {
           ),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(
-                bottom: isLast ? 0 : 16,
-              ),
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
               child: Card(
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
@@ -330,13 +347,10 @@ class _TimelineRecordTile extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                DateFormat('M월 d일').format(
-                                  record.date,
-                                ),
+                                DateFormat('M월 d일').format(record.date),
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
@@ -366,10 +380,7 @@ class _TimelineRecordTile extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const Icon(
-                          Icons.chevron_right,
-                          color: Colors.black38,
-                        ),
+                        const Icon(Icons.chevron_right, color: Colors.black38),
                       ],
                     ),
                   ),
@@ -386,9 +397,7 @@ class _TimelineRecordTile extends StatelessWidget {
 class _EmptyCareRecordView extends StatelessWidget {
   final DateTime? selectedDate;
 
-  const _EmptyCareRecordView({
-    this.selectedDate,
-  });
+  const _EmptyCareRecordView({this.selectedDate});
 
   @override
   Widget build(BuildContext context) {
@@ -396,26 +405,16 @@ class _EmptyCareRecordView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.note_alt_outlined,
-            size: 54,
-            color: Colors.black26,
-          ),
+          const Icon(Icons.note_alt_outlined, size: 54, color: Colors.black26),
           const SizedBox(height: 14),
           const Text(
             '아직 작성된 돌봄 기록이 없어요.',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           const Text(
             '첫 번째 돌봄 기록을 작성해 보세요.',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.black45,
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.black45),
           ),
         ],
       ),

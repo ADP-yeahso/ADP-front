@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
-import '../../models/comment.dart';
 import '../../models/diary.dart';
 import '../../models/memory.dart';
 import '../../widgets/emotion_chip.dart';
@@ -35,7 +34,8 @@ class _MemoryListSheet extends StatefulWidget {
 
 class _MemoryListSheetState extends State<_MemoryListSheet> {
   bool _showOnlyMine = false;
-  final DraggableScrollableController _sheetController = DraggableScrollableController();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
 
   @override
   void dispose() {
@@ -64,7 +64,8 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
     if (_showOnlyMine) {
       filtered = filtered.where((m) => m.userId == me.id).toList();
     }
-    filtered = List.from(filtered)..sort((a, b) => b.recordDate.compareTo(a.recordDate));
+    filtered = List.from(filtered)
+      ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
 
     // 날짜별 그룹화
     final Map<String, List<Memory>> grouped = {};
@@ -102,69 +103,85 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
                 // velocity > 0: 아래로 드래그 (닫기 방향)
                 // velocity < 0: 위로 드래그 (열기 방향)
                 if (velocity > 300) {
-                  _sheetController.animateTo(0.4, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+                  _sheetController.animateTo(
+                    0.4,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                  );
                 } else if (velocity < -300) {
-                  _sheetController.animateTo(1.0, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+                  _sheetController.animateTo(
+                    1.0,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                  );
                 } else {
                   // 스피드가 느릴 경우 위치 기준으로 스냅
                   // 전체화면(1.0)에서 1~2할만 내려도(0.85 미만) 40%로 내려가도록 기준을 0.85로 높게 설정
                   if (_sheetController.size > 0.85) {
-                    _sheetController.animateTo(1.0, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+                    _sheetController.animateTo(
+                      1.0,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                    );
                   } else {
-                    _sheetController.animateTo(0.4, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+                    _sheetController.animateTo(
+                      0.4,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                    );
                   }
                 }
               },
               child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.black12,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const SizedBox(width: 40),
-                      const Text(
-                        '나무 기억보기',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF333333),
+                padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.black12,
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.black45),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      _buildFilterChip('전체 기록', !_showOnlyMine, () {
-                        setState(() => _showOnlyMine = false);
-                      }),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('내 기록', _showOnlyMine, () {
-                        setState(() => _showOnlyMine = true);
-                      }),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const SizedBox(width: 40),
+                        const Text(
+                          '나무 기억보기',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.black45),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        _buildFilterChip('전체 기록', !_showOnlyMine, () {
+                          setState(() => _showOnlyMine = false);
+                        }),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('내 기록', _showOnlyMine, () {
+                          setState(() => _showOnlyMine = true);
+                        }),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
               ),
-            ),
             ), // GestureDetector 닫기
             const Divider(height: 1, color: Colors.black12),
             // DraggableScrollableSheet의 scrollController를 숨긴 스크롤뷰에 연결
@@ -176,15 +193,26 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
             Expanded(
               child: filtered.isEmpty
                   ? const Center(
-                      child: Text('기록이 없습니다.', style: TextStyle(color: Colors.black45)),
+                      child: Text(
+                        '기록이 없습니다.',
+                        style: TextStyle(color: Colors.black45),
+                      ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
                       itemCount: grouped.length,
                       itemBuilder: (context, index) {
                         final label = grouped.keys.elementAt(index);
                         final items = grouped[label]!;
-                        return _buildTimelineGroup(label, items, appData, index == grouped.length - 1);
+                        return _buildTimelineGroup(
+                          label,
+                          items,
+                          appData,
+                          index == grouped.length - 1,
+                        );
                       },
                     ),
             ),
@@ -218,7 +246,12 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
     );
   }
 
-  Widget _buildTimelineGroup(String label, List<Memory> items, AppData appData, bool isLastGroup) {
+  Widget _buildTimelineGroup(
+    String label,
+    List<Memory> items,
+    AppData appData,
+    bool isLastGroup,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -236,7 +269,11 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
             const SizedBox(width: 12),
             Text(
               label,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
             ),
           ],
         ),
@@ -254,7 +291,9 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
                 child: Padding(
                   padding: const EdgeInsets.only(top: 12, bottom: 24),
                   child: Column(
-                    children: items.map((m) => _buildMemoryCard(m, appData)).toList(),
+                    children: items
+                        .map((m) => _buildMemoryCard(m, appData))
+                        .toList(),
                   ),
                 ),
               ),
@@ -266,7 +305,8 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
   }
 
   Widget _buildMemoryCard(Memory memory, AppData appData) {
-    final timeStr = '${memory.recordDate.hour.toString().padLeft(2, '0')}:${memory.recordDate.minute.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${memory.recordDate.hour.toString().padLeft(2, '0')}:${memory.recordDate.minute.toString().padLeft(2, '0')}';
 
     return GestureDetector(
       onTap: () {
@@ -285,7 +325,7 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
               color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 4,
               offset: const Offset(0, 2),
-            )
+            ),
           ],
         ),
         child: Row(
@@ -310,19 +350,26 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    memory.contextText != null && memory.contextText!.isNotEmpty 
-                        ? memory.contextText! 
+                    memory.contextText != null && memory.contextText!.isNotEmpty
+                        ? memory.contextText!
                         : '나무에 남겨진 기억입니다.',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF333333)),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF333333),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Text(
                         '${memory.recordDate.year}.${memory.recordDate.month.toString().padLeft(2, '0')}.${memory.recordDate.day.toString().padLeft(2, '0')} $timeStr',
-                        style: const TextStyle(fontSize: 11, color: Colors.black45),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.black45,
+                        ),
                       ),
                       const Spacer(),
                       // Profile dummy
@@ -331,10 +378,18 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
                           CircleAvatar(
                             radius: 9,
                             backgroundColor: const Color(0xFFE0E0E0),
-                            child: const Icon(Icons.person, size: 12, color: Colors.white),
+                            child: const Icon(
+                              Icons.person,
+                              size: 12,
+                              color: Colors.white,
+                            ),
                           ),
                           const SizedBox(width: 4),
-                          const Icon(Icons.more_horiz, size: 16, color: Colors.black38),
+                          const Icon(
+                            Icons.more_horiz,
+                            size: 16,
+                            color: Colors.black38,
+                          ),
                         ],
                       ),
                     ],
@@ -391,9 +446,9 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
   void _submitComment(AppData appData) {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
-    appData.addMemoryComment(memoryRecordId: widget.memory.id, commentText: text);
-    _commentController.clear();
-    FocusScope.of(context).unfocus();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('댓글 기능은 준비 중입니다.')));
   }
 
   @override
@@ -408,9 +463,15 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_fmtDate(memory.recordDate), style: const TextStyle(color: Colors.black54)),
+            Text(
+              _fmtDate(memory.recordDate),
+              style: const TextStyle(color: Colors.black54),
+            ),
             const SizedBox(height: 8),
-            const Text('가족 기록', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            const Text(
+              '가족 기록',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 12),
             if (memory.mediaList.isNotEmpty)
               Container(
@@ -427,11 +488,17 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
                   children: [
                     Icon(Icons.photo_outlined, size: 32, color: Colors.black38),
                     SizedBox(height: 4),
-                    Text('사진이 첨부되었어요', style: TextStyle(color: Colors.black45, fontSize: 12)),
+                    Text(
+                      '사진이 첨부되었어요',
+                      style: TextStyle(color: Colors.black45, fontSize: 12),
+                    ),
                   ],
                 ),
               ),
-            Text(memory.contextText ?? '', style: const TextStyle(fontSize: 15, height: 1.5)),
+            Text(
+              memory.contextText ?? '',
+              style: const TextStyle(fontSize: 15, height: 1.5),
+            ),
             const SizedBox(height: 16),
             _AuthorAndVisibility(
               nickname: author.name,
@@ -446,7 +513,11 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
             // ── 댓글 섹션 ──
             const Text(
               '댓글',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF333333)),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF333333),
+              ),
             ),
             const SizedBox(height: 14),
 
@@ -454,7 +525,10 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
             if (comments.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text('첫 댓글을 남겨보세요.', style: TextStyle(fontSize: 13, color: Colors.black38)),
+                child: Text(
+                  '첫 댓글을 남겨보세요.',
+                  style: TextStyle(fontSize: 13, color: Colors.black38),
+                ),
               )
             else
               ListView.separated(
@@ -473,9 +547,16 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
                         height: 34,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFF4A6B8A), width: 1.5),
+                          border: Border.all(
+                            color: const Color(0xFF4A6B8A),
+                            width: 1.5,
+                          ),
                         ),
-                        child: const Icon(Icons.person_outline, size: 20, color: Color(0xFF4A6B8A)),
+                        child: const Icon(
+                          Icons.person_outline,
+                          size: 20,
+                          color: Color(0xFF4A6B8A),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -484,12 +565,19 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
                           children: [
                             Text(
                               commentAuthor.name,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF333333)),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF333333),
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               comment.commentText,
-                              style: const TextStyle(fontSize: 13, color: Color(0xFF444444)),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF444444),
+                              ),
                             ),
                           ],
                         ),
@@ -497,7 +585,10 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
                       const SizedBox(width: 8),
                       Text(
                         _formatTimeAgo(comment.createdAt),
-                        style: const TextStyle(fontSize: 11, color: Colors.black38),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.black38,
+                        ),
                       ),
                     ],
                   );
@@ -514,16 +605,26 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
                   height: 36,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF4A6B8A), width: 1.5),
+                    border: Border.all(
+                      color: const Color(0xFF4A6B8A),
+                      width: 1.5,
+                    ),
                   ),
-                  child: const Icon(Icons.person_outline, size: 20, color: Color(0xFF4A6B8A)),
+                  child: const Icon(
+                    Icons.person_outline,
+                    size: 20,
+                    color: Color(0xFF4A6B8A),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFF4A6B8A), width: 1.2),
+                      border: Border.all(
+                        color: const Color(0xFF4A6B8A),
+                        width: 1.2,
+                      ),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     child: Row(
@@ -533,17 +634,26 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
                             controller: _commentController,
                             decoration: const InputDecoration(
                               hintText: '댓글을 입력하세요...',
-                              hintStyle: TextStyle(fontSize: 13, color: Colors.black38),
+                              hintStyle: TextStyle(
+                                fontSize: 13,
+                                color: Colors.black38,
+                              ),
                               border: InputBorder.none,
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(vertical: 10),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 10,
+                              ),
                             ),
                             style: const TextStyle(fontSize: 13),
                             onSubmitted: (_) => _submitComment(appData),
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.send_rounded, size: 18, color: Color(0xFF4A6B8A)),
+                          icon: const Icon(
+                            Icons.send_rounded,
+                            size: 18,
+                            color: Color(0xFF4A6B8A),
+                          ),
                           onPressed: () => _submitComment(appData),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -583,14 +693,25 @@ Future<void> showDiaryDetailSheet(BuildContext context, Diary diary) {
             children: [
               Row(
                 children: [
-                  Expanded(child: Text(_fmtDate(diary.recordDate), style: const TextStyle(color: Colors.black54))),
+                  Expanded(
+                    child: Text(
+                      _fmtDate(diary.recordDate),
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                  ),
                   EmotionChip(emotion: emotion),
                 ],
               ),
               const SizedBox(height: 14),
-              Text(diary.context, style: const TextStyle(fontSize: 15, height: 1.5)),
+              Text(
+                diary.context,
+                style: const TextStyle(fontSize: 15, height: 1.5),
+              ),
               const SizedBox(height: 18),
-              RecommendationCard(emotion: emotion, recommendation: recommendation),
+              RecommendationCard(
+                emotion: emotion,
+                recommendation: recommendation,
+              ),
               const SizedBox(height: 18),
               _AuthorAndVisibility(
                 nickname: author.name,
@@ -625,13 +746,22 @@ class _AuthorAndVisibility extends StatelessWidget {
       children: [
         const Icon(Icons.person_outline, size: 16, color: Colors.black45),
         const SizedBox(width: 4),
-        Text(nickname, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+        Text(
+          nickname,
+          style: const TextStyle(fontSize: 13, color: Colors.black54),
+        ),
         const Spacer(),
-        Icon(isPublic ? Icons.visibility_outlined : Icons.lock_outline, size: 16, color: Colors.black45),
+        Icon(
+          isPublic ? Icons.visibility_outlined : Icons.lock_outline,
+          size: 16,
+          color: Colors.black45,
+        ),
         const SizedBox(width: 4),
-        Text(isPublic ? '가족에게 공개' : '비공개', style: const TextStyle(fontSize: 13, color: Colors.black54)),
-        if (isOwner)
-          Switch(value: isPublic, onChanged: (_) => onToggle()),
+        Text(
+          isPublic ? '가족에게 공개' : '비공개',
+          style: const TextStyle(fontSize: 13, color: Colors.black54),
+        ),
+        if (isOwner) Switch(value: isPublic, onChanged: null),
       ],
     );
   }
@@ -664,10 +794,20 @@ class _SheetScaffold extends StatelessWidget {
                 width: 40,
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(4)),
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
-            Text(title, style: const TextStyle(fontSize: 13, color: Colors.black45, fontWeight: FontWeight.w600)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black45,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 8),
             child,
           ],
@@ -676,5 +816,3 @@ class _SheetScaffold extends StatelessWidget {
     );
   }
 }
-
-

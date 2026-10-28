@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
@@ -16,7 +17,7 @@ class FamilyManagementScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('아래 초대 코드를 가족에게 공유해 주세요. 코드는 24시간 동안 유효해요.'),
+            const Text('아래 초대 코드를 가족에게 공유해 주세요.'),
             const SizedBox(height: 16),
             Container(
               width: double.infinity,
@@ -43,11 +44,13 @@ class FamilyManagementScreen extends StatelessWidget {
             child: const Text('닫기'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: inviteCode));
+              if (!ctx.mounted || !context.mounted) return;
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('초대 코드가 복사되었어요 (데모)')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('초대 코드가 복사되었어요')));
             },
             child: const Text('코드 복사'),
           ),
@@ -127,14 +130,12 @@ class FamilyManagementScreen extends StatelessWidget {
     );
   }
 }
+
 class _GroupInfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _GroupInfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _GroupInfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -145,19 +146,13 @@ class _GroupInfoRow extends StatelessWidget {
           width: 88,
           child: Text(
             label,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Colors.black54,
-            ),
+            style: const TextStyle(fontSize: 13, color: Colors.black54),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ),
       ],

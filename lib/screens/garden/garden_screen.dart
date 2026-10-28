@@ -28,7 +28,10 @@ class _GardenScreenState extends State<GardenScreen> {
 
   late final WebViewController _webViewController;
   late final LocalAssetServer _localhostServer;
-  
+
+  AppData? _data;
+  bool _isPageReady = false;
+  bool _webViewReady = false;
   bool _isFocusing = false;
   bool _isServerStarted = false;
 
@@ -40,10 +43,28 @@ class _GardenScreenState extends State<GardenScreen> {
     _localhostServer = LocalAssetServer(assetBase: 'assets');
     _initWebViewAndServer();
   }
-  
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final data = context.read<AppData>();
+    if (_data != data) {
+      _data?.removeListener(_onRecordsChanged);
+      _data = data..addListener(_onRecordsChanged);
+    }
+  }
+
+  void _onRecordsChanged() {
+    if (mounted && _isPageReady) _reload3DScene();
+  }
+
   Future<void> _initWebViewAndServer() async {
     await _localhostServer.start();
-    
+    if (!mounted) {
+      await _localhostServer.stop();
+      return;
+    }
+
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
@@ -64,13 +85,20 @@ class _GardenScreenState extends State<GardenScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
+            if (!mounted) return;
+            _isPageReady = true;
             _reload3DScene();
           },
         ),
       );
 
+    _webViewReady = true;
     await _webViewController.clearCache();
-    await _webViewController.loadRequest(Uri.parse('http://localhost:8080/www/index.html?v=\${DateTime.now().millisecondsSinceEpoch}'));
+    await _webViewController.loadRequest(
+      Uri.parse(
+        'http://localhost:8080/www/index.html?v=\${DateTime.now().millisecondsSinceEpoch}',
+      ),
+    );
 
     if (mounted) {
       setState(() {
@@ -81,31 +109,40 @@ class _GardenScreenState extends State<GardenScreen> {
 
   @override
   void dispose() {
-    _webViewController.runJavaScript('if (typeof window.disposeGarden === "function") window.disposeGarden();');
+    _data?.removeListener(_onRecordsChanged);
+    if (_webViewReady) {
+      _webViewController.runJavaScript(
+        'if (typeof window.disposeGarden === "function") window.disposeGarden();',
+      );
+    }
     _localhostServer.stop();
     super.dispose();
   }
 
   void _prevMonth() => setState(() {
-        if (_pageIndex > 0) {
-          _pageIndex--;
-          _reload3DScene();
-        }
-      });
+    if (_pageIndex > 0) {
+      _pageIndex--;
+      _reload3DScene();
+    }
+  });
 
   void _nextMonth() => setState(() {
-        if (_pageIndex < gardenTotalPages - 1) {
-          _pageIndex++;
-          _reload3DScene();
-        }
-      });
+    if (_pageIndex < gardenTotalPages - 1) {
+      _pageIndex++;
+      _reload3DScene();
+    }
+  });
 
   /// 달이 변경될 때마다 3D Scene의 데이터를 다시 주입
   void _reload3DScene() {
     final appData = context.read<AppData>();
     final diaries = appData.diariesForMonth(_currentMonth);
-    
-    final diariesJson = jsonEncode(diaries.map((e) => {'id': e.id, 'emotion': e.flowerType.emotionId.name}).toList());
+
+    final diariesJson = jsonEncode(
+      diaries
+          .map((e) => {'id': e.id, 'emotion': e.flowerType.emotionId.name})
+          .toList(),
+    );
     final ts = DateTime.now().millisecondsSinceEpoch;
     final treeUrl = 'http://localhost:8080/images/worldtree.glb?v=$ts';
     final Map<String, List<String>> emotionToFlowers = {
@@ -115,11 +152,19 @@ class _GardenScreenState extends State<GardenScreen> {
         'http://localhost:8080/images/flower/Guilt_Clematis.glb?v=$ts',
       ],
       'sadness': ['http://localhost:8080/images/flower/Sadness_ebw.glb?v=$ts'],
-      'joy': ['http://localhost:8080/images/flower/Affection_lisian_low.glb?v=$ts'],
-      'calm': ['http://localhost:8080/images/flower/Affection_lisian_low.glb?v=$ts'],
+      'joy': [
+        'http://localhost:8080/images/flower/Affection_lisian_low.glb?v=$ts',
+      ],
+      'calm': [
+        'http://localhost:8080/images/flower/Affection_lisian_low.glb?v=$ts',
+      ],
     };
+    emotionToFlowers['anxiety'] = emotionToFlowers['calm']!;
+    emotionToFlowers['gratitude'] = emotionToFlowers['joy']!;
+    emotionToFlowers['affection'] = emotionToFlowers['joy']!;
+    emotionToFlowers['neutral'] = emotionToFlowers['calm']!;
     final flowerUrlsMapJson = jsonEncode(emotionToFlowers);
-    
+
     _webViewController.runJavaScript('''
       function tryInitGarden() {
         if (typeof window.initGarden === 'function') {
@@ -157,9 +202,7 @@ class _GardenScreenState extends State<GardenScreen> {
             Positioned.fill(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.2),
-                ),
+                child: Container(color: Colors.black.withValues(alpha: 0.2)),
               ),
             ),
 
@@ -210,7 +253,9 @@ class _GardenScreenState extends State<GardenScreen> {
                         onTap: () => showMemoryListSheet(context, memories),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(20),
@@ -245,14 +290,18 @@ class _GardenScreenState extends State<GardenScreen> {
   Future<void> _handleFlowerTap(String diaryId) async {
     // 더미 데이터 클릭 시 무시 (아이디가 dummy로 시작)
     if (diaryId.startsWith('dummy')) {
-      _webViewController.runJavaScript('if(typeof window.resetCamera === "function") window.resetCamera()');
+      _webViewController.runJavaScript(
+        'if(typeof window.resetCamera === "function") window.resetCamera()',
+      );
       return;
     }
 
     final appData = context.read<AppData>();
     final diary = appData.diaryById(int.tryParse(diaryId) ?? -1);
     if (diary == null) {
-      _webViewController.runJavaScript('if(typeof window.resetCamera === "function") window.resetCamera()');
+      _webViewController.runJavaScript(
+        'if(typeof window.resetCamera === "function") window.resetCamera()',
+      );
       return;
     }
 
@@ -266,7 +315,9 @@ class _GardenScreenState extends State<GardenScreen> {
       setState(() {
         _isFocusing = false;
       });
-      _webViewController.runJavaScript('if(typeof window.resetCamera === "function") window.resetCamera()');
+      _webViewController.runJavaScript(
+        'if(typeof window.resetCamera === "function") window.resetCamera()',
+      );
     }
   }
 
@@ -285,7 +336,9 @@ class _GardenScreenState extends State<GardenScreen> {
         _isFocusing = false;
       });
       // 나무에서 멀어질 경우 리셋 카메라(선택적)
-      _webViewController.runJavaScript('if(typeof window.resetCamera === "function") window.resetCamera()');
+      _webViewController.runJavaScript(
+        'if(typeof window.resetCamera === "function") window.resetCamera()',
+      );
     }
   }
 
@@ -326,7 +379,10 @@ class _GardenScreenState extends State<GardenScreen> {
                     padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF4A6B8A), width: 1.5),
+                      border: Border.all(
+                        color: const Color(0xFF4A6B8A),
+                        width: 1.5,
+                      ),
                     ),
                     child: const Icon(
                       Icons.keyboard_arrow_down_rounded,
@@ -346,7 +402,10 @@ class _GardenScreenState extends State<GardenScreen> {
                 'assets/icons/spiral_notebook.svg',
                 width: 28,
                 height: 28,
-                colorFilter: const ColorFilter.mode(Color(0xFF4A6B8A), BlendMode.srcIn),
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFF4A6B8A),
+                  BlendMode.srcIn,
+                ),
               ),
               onPressed: () {
                 Navigator.push(

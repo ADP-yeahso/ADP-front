@@ -10,10 +10,12 @@ class VisibilitySettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
-    final myMemories = appData.memories.where((m) => m.userId == appData.me.id).toList()
-      ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
-    final myDiaries = appData.diaries.where((d) => d.userId == appData.me.id).toList()
-      ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
+    final myMemories =
+        appData.memories.where((m) => m.userId == appData.me.id).toList()
+          ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
+    final myDiaries =
+        appData.diaries.where((d) => d.userId == appData.me.id).toList()
+          ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
 
     return Scaffold(
       appBar: AppBar(title: const Text('기록 공개 범위 관리')),
@@ -21,14 +23,17 @@ class VisibilitySettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           const Text(
-            '공개로 설정한 기록만 가족 공유 화면에 표시돼요. 언제든 바꿀 수 있어요.',
+            '환자 기록은 가족 그룹에서 함께 볼 수 있고, 감정 일기는 작성자만 볼 수 있어요. 공개 범위 변경은 준비 중입니다.',
             style: TextStyle(fontSize: 13, color: Colors.black54),
           ),
           const SizedBox(height: 16),
           if (myMemories.isEmpty && myDiaries.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
-              child: Text('아직 작성한 기록이 없어요.', style: TextStyle(color: Colors.black45)),
+              child: Text(
+                '아직 작성한 기록이 없어요.',
+                style: TextStyle(color: Colors.black45),
+              ),
             ),
           if (myMemories.isNotEmpty) ...[
             const _SectionLabel('나무 기록 (잎)'),
@@ -69,7 +74,14 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4, top: 4),
-      child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black45)),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: Colors.black45,
+        ),
+      ),
     );
   }
 }
@@ -96,19 +108,35 @@ class _RecordRow extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), boxShadow: [
-        BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2)),
-      ]),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         clipBehavior: Clip.antiAlias,
         child: ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: CircleAvatar(backgroundColor: iconColor.withValues(alpha: 0.15), child: Icon(icon, color: iconColor, size: 18)),
-          title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-          subtitle: Text('${date.month}월 ${date.day}일', style: const TextStyle(fontSize: 12)),
-          trailing: Switch(value: isPublic, onChanged: (_) => onToggle()),
+          leading: CircleAvatar(
+            backgroundColor: iconColor.withValues(alpha: 0.15),
+            child: Icon(icon, color: iconColor, size: 18),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            '${date.month}월 ${date.day}일',
+            style: const TextStyle(fontSize: 12),
+          ),
+          trailing: Switch(value: isPublic, onChanged: null),
         ),
       ),
     );

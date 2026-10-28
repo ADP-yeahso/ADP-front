@@ -21,6 +21,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   DateTime? _selectedBirthDate;
   String _selectedRelation = '아내';
   bool _initialized = false;
+  bool _isSaving = false;
 
   static const List<String> _relationOptions = [
     '아버지',
@@ -123,6 +124,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
   }
 
   Future<void> _savePatientInfo() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -146,26 +148,46 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
       return;
     }
 
-    try {
-      final appData = context.read<AppData>();
-      await PatientApi(ApiService()).update(tokens, appData.patient.id, {
-        'patient_name': _patientNameController.text.trim(),
-        'patient_birth_date': _selectedBirthDate!.toIso8601String().split('T').first,
-      });
-      await GroupApi(ApiService()).updateMembership(
-        tokens,
-        appData.group.id,
-        patientsNickname: relation,
-      );
-      if (!mounted) return;
-    } on ApiException catch (error) {
-      if (!mounted) return;
+    final appData = context.read<AppData>();
+    if (!appData.hasPatient && !appData.patientLookupAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
+        const SnackBar(content: Text('환자 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.')),
       );
       return;
     }
+    setState(() => _isSaving = true);
+    final api = ApiService();
+    try {
+      final body = <String, dynamic>{
+        'patient_name': _patientNameController.text.trim(),
+        'patient_birth_date': _selectedBirthDate!
+            .toIso8601String()
+            .split('T')
+            .first,
+      };
+      final saved = appData.hasPatient
+          ? await PatientApi(api).update(tokens, appData.patient.id, body)
+          : await PatientApi(
+              api,
+            ).create(tokens, appData.group.id, {...body, 'gender': '선택 안 함'});
+      appData.rememberPatient(appData.group.id, saved);
+      await GroupApi(
+        api,
+      ).updateMembership(tokens, appData.group.id, patientsNickname: relation);
+      if (!mounted) return;
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+      return;
+    } finally {
+      api.close();
+      if (mounted) setState(() => _isSaving = false);
+    }
 
+    await appData.refreshGroup();
+    if (!mounted) return;
     context.read<AppData>().updatePatientInfo(
       patientName: _patientNameController.text.trim(),
       patientBirthDate: _dateTimeToInt(_selectedBirthDate!),
@@ -303,7 +325,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
               ],
               const SizedBox(height: 28),
               FilledButton(
-                onPressed: _savePatientInfo,
+                onPressed: _isSaving ? null : _savePatientInfo,
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),
                 ),

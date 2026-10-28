@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../root_shell.dart';
+import 'package:provider/provider.dart';
+import '../../data/app_data.dart';
 
 class GroupCreatedScreen extends StatelessWidget {
   const GroupCreatedScreen({super.key});
@@ -25,9 +27,13 @@ class GroupCreatedScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               Center(
-                child: SvgPicture.asset(
-                  'assets/auth/group_created/text_group_name.svg',
-                  height: 36,
+                child: Text(
+                  context.watch<AppData>().group.groupName,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
               const SizedBox(height: 12),

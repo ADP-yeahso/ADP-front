@@ -6,10 +6,7 @@ import 'care_record_view_data.dart';
 class CareNotebookDetailScreen extends StatelessWidget {
   final CareRecordViewData record;
 
-  const CareNotebookDetailScreen({
-    super.key,
-    required this.record,
-  });
+  const CareNotebookDetailScreen({super.key, required this.record});
 
   String _displayValue(String value) {
     return value.trim().isEmpty ? '미입력' : value;
@@ -20,9 +17,7 @@ class CareNotebookDetailScreen extends StatelessWidget {
     final primary = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('돌봄 기록 상세'),
-      ),
+      appBar: AppBar(title: const Text('돌봄 기록 상세')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
@@ -53,9 +48,7 @@ class CareNotebookDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          DateFormat('yyyy년 M월 d일').format(
-                            record.date,
-                          ),
+                          DateFormat('yyyy년 M월 d일').format(record.date),
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -81,25 +74,28 @@ class CareNotebookDetailScreen extends StatelessWidget {
               title: '생활 상태',
               child: Column(
                 children: [
+                  _DetailRow(label: '식사', value: record.mealStatus),
+                  const Divider(height: 1),
+                  _DetailRow(label: '수면', value: record.sleepStatus),
+                  const Divider(height: 1),
+                  _DetailRow(label: '배변', value: record.bowelStatus),
+                  const Divider(height: 1),
                   _DetailRow(
-                    label: '식사',
-                    value: record.mealStatus,
+                    label: '활동·운동',
+                    value: _displayValue(record.activityStatus),
                   ),
                   const Divider(height: 1),
                   _DetailRow(
-                    label: '수면',
-                    value: record.sleepStatus,
+                    label: '인지 상태',
+                    value: _displayValue(record.cognitiveStatus),
                   ),
                   const Divider(height: 1),
                   _DetailRow(
-                    label: '배변',
-                    value: record.bowelStatus,
+                    label: '기분·정서',
+                    value: _displayValue(record.moodStatus),
                   ),
                   const Divider(height: 1),
-                  _DetailRow(
-                    label: '복약 여부',
-                    value: record.medicationStatus,
-                  ),
+                  _DetailRow(label: '복약 여부', value: record.medicationStatus),
                 ],
               ),
             ),
@@ -110,17 +106,13 @@ class CareNotebookDetailScreen extends StatelessWidget {
               child: record.unusualChanges.isEmpty
                   ? const Text(
                       '없음',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.black54,
-                      ),
+                      style: TextStyle(fontSize: 15, color: Colors.black54),
                     )
                   : Wrap(
                       spacing: 10,
                       runSpacing: 10,
                       children: [
-                        for (final change
-                            in record.unusualChanges)
+                        for (final change in record.unusualChanges)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
@@ -130,8 +122,7 @@ class CareNotebookDetailScreen extends StatelessWidget {
                               color: primary.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color:
-                                    primary.withValues(alpha: 0.35),
+                                color: primary.withValues(alpha: 0.35),
                               ),
                             ),
                             child: Text(
@@ -150,9 +141,7 @@ class CareNotebookDetailScreen extends StatelessWidget {
             _DetailSection(
               title: '특이사항',
               child: Text(
-                record.note.trim().isEmpty
-                    ? '작성된 특이사항이 없어요.'
-                    : record.note,
+                record.note.trim().isEmpty ? '작성된 특이사항이 없어요.' : record.note,
                 style: TextStyle(
                   fontSize: 15,
                   height: 1.55,
@@ -171,41 +160,32 @@ class CareNotebookDetailScreen extends StatelessWidget {
                       children: [
                         _DetailRow(
                           label: '병원/진료과',
-                          value: _displayValue(
-                            record.hospitalDepartment,
-                          ),
+                          value: _displayValue(record.hospitalDepartment),
                         ),
                         const Divider(height: 1),
                         _DetailRow(
                           label: '진료 내용',
-                          value: _displayValue(
-                            record.visitDetails,
-                          ),
+                          value: _displayValue(record.visitDetails),
                         ),
                         const Divider(height: 1),
                         _DetailRow(
                           label: '약 변경',
-                          value: _displayValue(
-                            record.medicationChanges,
-                          ),
+                          value: _displayValue(record.medicationChanges),
                         ),
                         const Divider(height: 1),
                         _DetailRow(
                           label: '다음 진료일',
                           value: record.nextVisitDate == null
                               ? '미입력'
-                              : DateFormat('yyyy.MM.dd').format(
-                                  record.nextVisitDate!,
-                                ),
+                              : DateFormat(
+                                  'yyyy.MM.dd',
+                                ).format(record.nextVisitDate!),
                         ),
                       ],
                     )
                   : const Text(
                       '추가된 진료·약 변경 내용이 없어요.',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.black45,
-                      ),
+                      style: TextStyle(fontSize: 15, color: Colors.black45),
                     ),
             ),
           ],
@@ -219,10 +199,7 @@ class _DetailSection extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _DetailSection({
-    required this.title,
-    required this.child,
-  });
+  const _DetailSection({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -239,10 +216,7 @@ class _DetailSection extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
           child,
@@ -256,10 +230,7 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _DetailRow({
-    required this.label,
-    required this.value,
-  });
+  const _DetailRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -274,10 +245,7 @@ class _DetailRow extends StatelessWidget {
             width: 110,
             child: Text(
               label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ),
           Expanded(
@@ -297,9 +265,7 @@ class _DetailRow extends StatelessWidget {
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     fontSize: 14,
-                    color: value == '미입력'
-                        ? Colors.black38
-                        : Colors.black87,
+                    color: value == '미입력' ? Colors.black38 : Colors.black87,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

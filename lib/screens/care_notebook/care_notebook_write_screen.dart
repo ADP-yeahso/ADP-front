@@ -1,48 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../data/app_data.dart';
+import '../../data/auth_session.dart';
+import '../../services/api_service.dart';
+import '../../services/care_notebook_service.dart';
 
 import '../profile/patient_info_screen.dart';
 import './care_record_view_data.dart';
 
 class CareNotebookWriteScreen extends StatefulWidget {
-  final PatientSummaryViewData patientSummary;
+  final PatientSummaryViewData? patientSummary;
 
-  const CareNotebookWriteScreen({
-    super.key,
-    this.patientSummary = mockPatientSummary,
-  });
+  const CareNotebookWriteScreen({super.key, this.patientSummary});
 
   @override
   State<CareNotebookWriteScreen> createState() =>
       _CareNotebookWriteScreenState();
 }
 
-class _CareNotebookWriteScreenState
-    extends State<CareNotebookWriteScreen> {
-  static const _mealOptions = [
-    '좋음',
-    '보통',
-    '적음',
-    '거의 못함',
-  ];
+class _CareNotebookWriteScreenState extends State<CareNotebookWriteScreen> {
+  static const _mealOptions = ['좋음', '보통', '적음', '거의 못함'];
 
-  static const _sleepOptions = [
-    '좋음',
-    '보통',
-    '나쁨',
-  ];
+  static const _sleepOptions = ['좋음', '보통', '나쁨'];
 
-  static const _bowelOptions = [
-    '정상',
-    '변화 있음',
-    '없음',
-  ];
+  static const _bowelOptions = ['정상', '변화 있음', '없음'];
 
-  static const _medicationOptions = [
-    '완료',
-    '일부 누락',
-    '미복용',
-  ];
+  static const _medicationOptions = ['완료', '일부 누락', '미복용'];
 
   static const _unusualChangeOptions = [
     '같은 질문 반복',
@@ -57,6 +41,11 @@ class _CareNotebookWriteScreenState
   DateTime _selectedDate = DateTime.now();
   DateTime? _nextVisitDate;
 
+  String? _activityStatus;
+  String? _cognitiveStatus;
+  final _moodController = TextEditingController();
+  final _saveProgress = CareSaveProgress();
+  bool _isSaving = false;
   String? _mealStatus;
   String? _sleepStatus;
   String? _bowelStatus;
@@ -74,6 +63,7 @@ class _CareNotebookWriteScreenState
 
   @override
   void dispose() {
+    _moodController.dispose();
     _noteController.dispose();
     _hospitalDepartmentController.dispose();
     _visitDetailsController.dispose();
@@ -82,6 +72,7 @@ class _CareNotebookWriteScreenState
   }
 
   Future<void> _pickRecordDate() async {
+    if (_saveProgress.conditionId != null) return;
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -102,8 +93,8 @@ class _CareNotebookWriteScreenState
   }
 
   Future<void> _pickNextVisitDate() async {
-    final initialDate = _nextVisitDate ??
-        _selectedDate.add(const Duration(days: 30));
+    final initialDate =
+        _nextVisitDate ?? _selectedDate.add(const Duration(days: 30));
 
     final pickedDate = await showDatePicker(
       context: context,
@@ -127,45 +118,41 @@ class _CareNotebookWriteScreenState
   void _openPatientInfo() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const PatientInfoScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const PatientInfoScreen()),
     );
   }
 
-  void _saveRecord() {
+  Future<void> _saveRecord() async {
+    if (_isSaving) return;
     if (_mealStatus == null ||
         _sleepStatus == null ||
         _bowelStatus == null ||
-        _medicationStatus == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('식사, 수면, 배변, 복약 상태를 모두 선택해 주세요.'),
-        ),
-      );
+        _medicationStatus == null ||
+        _activityStatus == null ||
+        _cognitiveStatus == null ||
+        _moodController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('환자 상태 항목을 모두 입력해 주세요.')));
       return;
     }
 
     if (_hasUnusualChanges == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('평소와 다른 점이 있었는지 선택해 주세요.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('평소와 다른 점이 있었는지 선택해 주세요.')));
       return;
     }
 
-    if (_hasUnusualChanges == true &&
-        _selectedUnusualChanges.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('평소와 다른 점을 하나 이상 선택해 주세요.'),
-        ),
-      );
+    if (_hasUnusualChanges == true && _selectedUnusualChanges.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('평소와 다른 점을 하나 이상 선택해 주세요.')));
       return;
     }
 
-    final hasMedicalContent = _showMedicalSection &&
+    final hasMedicalContent =
+        _showMedicalSection &&
         (_hospitalDepartmentController.text.trim().isNotEmpty ||
             _visitDetailsController.text.trim().isNotEmpty ||
             _medicationChangesController.text.trim().isNotEmpty ||
@@ -177,46 +164,75 @@ class _CareNotebookWriteScreenState
 
     final record = CareRecordViewData(
       date: _selectedDate,
+      activityStatus: _activityStatus!,
+      cognitiveStatus: _cognitiveStatus!,
+      moodStatus: _moodController.text.trim(),
       mealStatus: _mealStatus!,
       sleepStatus: _sleepStatus!,
       bowelStatus: _bowelStatus!,
       medicationStatus: _medicationStatus!,
-      unusualChanges:
-          _hasUnusualChanges == true ? selectedChanges : const [],
+      unusualChanges: _hasUnusualChanges == true ? selectedChanges : const [],
       note: _noteController.text.trim(),
       hasMedicalUpdate: hasMedicalContent,
-      hospitalDepartment:
-          _hospitalDepartmentController.text.trim(),
+      hospitalDepartment: _hospitalDepartmentController.text.trim(),
       visitDetails: _visitDetailsController.text.trim(),
-      medicationChanges:
-          _medicationChangesController.text.trim(),
+      medicationChanges: _medicationChangesController.text.trim(),
       nextVisitDate: _nextVisitDate,
     );
 
-    // 현재는 서버 저장 대신 최근 기록 화면으로 데이터를 돌려줍니다.
-    Navigator.pop(context, record);
+    final tokens = context.read<AuthSession>().tokens;
+    final appData = context.read<AppData>();
+    if (tokens == null || !appData.hasPatient) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('로그인과 환자 정보 조회가 필요합니다.')));
+      return;
+    }
+    setState(() => _isSaving = true);
+    final api = ApiService();
+    try {
+      await CareNotebookService(
+        api,
+      ).save(tokens, appData.patient.id, record, _saveProgress);
+      if (mounted) Navigator.pop(context, record);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      api.close();
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final appData = context.watch<AppData>();
+    final summary =
+        widget.patientSummary ??
+        PatientSummaryViewData(
+          name: appData.patient.patientName,
+          birthDate: appData.patientBirthDateLabel,
+          diagnosisMonth: (appData.patientDetails['diagnosis_date'] ?? '미등록')
+              .toString(),
+          hospitalName: (appData.patientDetails['primary_hospital'] ?? '미등록')
+              .toString(),
+        );
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('돌봄 수첩'),
-      ),
+      appBar: AppBar(title: const Text('돌봄 수첩')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
           children: [
             _PatientSummaryCard(
-              patient: widget.patientSummary,
+              patient: summary,
               onDetailPressed: _openPatientInfo,
             ),
             const SizedBox(height: 20),
 
-            _DateTitle(
-              selectedDate: _selectedDate,
-              onTap: _pickRecordDate,
-            ),
+            _DateTitle(selectedDate: _selectedDate, onTap: _pickRecordDate),
             const SizedBox(height: 16),
 
             _SectionCard(
@@ -256,6 +272,27 @@ class _CareNotebookWriteScreenState
                         _bowelStatus = value;
                       });
                     },
+                  ),
+                  const Divider(height: 28),
+                  _StatusSelector(
+                    label: '활동·운동',
+                    options: const ['평소와 비슷', '적음', '많음'],
+                    selectedValue: _activityStatus,
+                    onSelected: (value) =>
+                        setState(() => _activityStatus = value),
+                  ),
+                  const Divider(height: 28),
+                  _StatusSelector(
+                    label: '인지 상태',
+                    options: const ['평소와 비슷', '혼란 증가', '기억력 저하 체감'],
+                    selectedValue: _cognitiveStatus,
+                    onSelected: (value) =>
+                        setState(() => _cognitiveStatus = value),
+                  ),
+                  const Divider(height: 28),
+                  TextField(
+                    controller: _moodController,
+                    decoration: const InputDecoration(labelText: '기분·정서 상태'),
                   ),
                   const Divider(height: 28),
                   _StatusSelector(
@@ -299,29 +336,26 @@ class _CareNotebookWriteScreenState
                     duration: const Duration(milliseconds: 200),
                     child: _hasUnusualChanges == true
                         ? Padding(
-                            key: const ValueKey(
-                              'unusual-change-options',
-                            ),
+                            key: const ValueKey('unusual-change-options'),
                             padding: const EdgeInsets.only(top: 20),
                             child: Wrap(
                               spacing: 10,
                               runSpacing: 10,
                               children: [
-                                for (final option
-                                    in _unusualChangeOptions)
+                                for (final option in _unusualChangeOptions)
                                   _FilterOptionChip(
                                     label: option,
-                                    selected:
-                                        _selectedUnusualChanges
-                                            .contains(option),
+                                    selected: _selectedUnusualChanges.contains(
+                                      option,
+                                    ),
                                     onSelected: (selected) {
                                       setState(() {
                                         if (selected) {
-                                          _selectedUnusualChanges
-                                              .add(option);
+                                          _selectedUnusualChanges.add(option);
                                         } else {
-                                          _selectedUnusualChanges
-                                              .remove(option);
+                                          _selectedUnusualChanges.remove(
+                                            option,
+                                          );
                                         }
                                       });
                                     },
@@ -330,9 +364,7 @@ class _CareNotebookWriteScreenState
                             ),
                           )
                         : const SizedBox.shrink(
-                            key: ValueKey(
-                              'unusual-change-empty',
-                            ),
+                            key: ValueKey('unusual-change-empty'),
                           ),
                   ),
                 ],
@@ -364,8 +396,7 @@ class _CareNotebookWriteScreenState
                   OutlinedButton.icon(
                     onPressed: () {
                       setState(() {
-                        _showMedicalSection =
-                            !_showMedicalSection;
+                        _showMedicalSection = !_showMedicalSection;
                       });
                     },
                     style: OutlinedButton.styleFrom(
@@ -373,14 +404,10 @@ class _CareNotebookWriteScreenState
                       alignment: Alignment.centerLeft,
                     ),
                     icon: Icon(
-                      _showMedicalSection
-                          ? Icons.expand_less
-                          : Icons.add,
+                      _showMedicalSection ? Icons.expand_less : Icons.add,
                     ),
                     label: Text(
-                      _showMedicalSection
-                          ? '진료·약 변경 내용 닫기'
-                          : '진료·약 변경 내용 추가',
+                      _showMedicalSection ? '진료·약 변경 내용 닫기' : '진료·약 변경 내용 추가',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -391,59 +418,46 @@ class _CareNotebookWriteScreenState
                     duration: const Duration(milliseconds: 200),
                     child: _showMedicalSection
                         ? Padding(
-                            key: const ValueKey(
-                              'medical-section',
-                            ),
+                            key: const ValueKey('medical-section'),
                             padding: const EdgeInsets.only(top: 18),
                             child: Column(
                               children: [
                                 TextField(
-                                  controller:
-                                      _hospitalDepartmentController,
-                                  textInputAction:
-                                      TextInputAction.next,
-                                  decoration:
-                                      const InputDecoration(
+                                  controller: _hospitalDepartmentController,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(
                                     labelText: '병원/진료과',
                                     hintText: '예: ○○병원 신경과',
                                   ),
                                 ),
                                 const SizedBox(height: 14),
                                 TextField(
-                                  controller:
-                                      _visitDetailsController,
+                                  controller: _visitDetailsController,
                                   minLines: 2,
                                   maxLines: 4,
-                                  decoration:
-                                      const InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: '진료 내용',
-                                    hintText:
-                                        '진료에서 안내받은 내용을 입력해 주세요.',
+                                    hintText: '진료에서 안내받은 내용을 입력해 주세요.',
                                     alignLabelWithHint: true,
                                   ),
                                 ),
                                 const SizedBox(height: 14),
                                 TextField(
-                                  controller:
-                                      _medicationChangesController,
+                                  controller: _medicationChangesController,
                                   minLines: 2,
                                   maxLines: 4,
-                                  decoration:
-                                      const InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: '약 변경',
-                                    hintText:
-                                        '추가되거나 변경된 약을 입력해 주세요.',
+                                    hintText: '추가되거나 변경된 약을 입력해 주세요.',
                                     alignLabelWithHint: true,
                                   ),
                                 ),
                                 const SizedBox(height: 14),
                                 InkWell(
                                   onTap: _pickNextVisitDate,
-                                  borderRadius:
-                                      BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14),
                                   child: InputDecorator(
-                                    decoration:
-                                        const InputDecoration(
+                                    decoration: const InputDecoration(
                                       labelText: '다음 진료일',
                                       suffixIcon: Icon(
                                         Icons.calendar_month_outlined,
@@ -454,14 +468,11 @@ class _CareNotebookWriteScreenState
                                           ? '날짜를 선택해 주세요.'
                                           : DateFormat(
                                               'yyyy.MM.dd',
-                                            ).format(
-                                              _nextVisitDate!,
-                                            ),
+                                            ).format(_nextVisitDate!),
                                       style: TextStyle(
-                                        color:
-                                            _nextVisitDate == null
-                                                ? Colors.black45
-                                                : Colors.black87,
+                                        color: _nextVisitDate == null
+                                            ? Colors.black45
+                                            : Colors.black87,
                                       ),
                                     ),
                                   ),
@@ -470,9 +481,7 @@ class _CareNotebookWriteScreenState
                             ),
                           )
                         : const SizedBox.shrink(
-                            key: ValueKey(
-                              'medical-section-empty',
-                            ),
+                            key: ValueKey('medical-section-empty'),
                           ),
                   ),
                 ],
@@ -481,16 +490,13 @@ class _CareNotebookWriteScreenState
             const SizedBox(height: 24),
 
             FilledButton(
-              onPressed: _saveRecord,
+              onPressed: _isSaving ? null : _saveRecord,
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(58),
               ),
               child: const Text(
                 '저장하기',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
               ),
             ),
           ],
@@ -523,11 +529,7 @@ class _PatientSummaryCard extends StatelessWidget {
           const CircleAvatar(
             radius: 34,
             backgroundColor: Color(0xFFE9E9E9),
-            child: Icon(
-              Icons.person,
-              size: 38,
-              color: Colors.black38,
-            ),
+            child: Icon(Icons.person, size: 38, color: Colors.black38),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -544,34 +546,22 @@ class _PatientSummaryCard extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   '생년월일 ${patient.birthDate}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black54,
-                  ),
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   '치매 진단 ${patient.diagnosisMonth}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black54,
-                  ),
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   patient.hospitalName,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black54,
-                  ),
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
                 ),
               ],
             ),
           ),
-          TextButton(
-            onPressed: onDetailPressed,
-            child: const Text('자세히 보기'),
-          ),
+          TextButton(onPressed: onDetailPressed, child: const Text('자세히 보기')),
         ],
       ),
     );
@@ -582,10 +572,7 @@ class _DateTitle extends StatelessWidget {
   final DateTime selectedDate;
   final VoidCallback onTap;
 
-  const _DateTitle({
-    required this.selectedDate,
-    required this.onTap,
-  });
+  const _DateTitle({required this.selectedDate, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -598,10 +585,7 @@ class _DateTitle extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
           child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
@@ -625,10 +609,7 @@ class _DateTitle extends StatelessWidget {
         ),
         const Text(
           '의 돌봄 기록',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
         ),
       ],
     );
@@ -660,19 +641,13 @@ class _SectionCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
           ),
           if (description != null) ...[
             const SizedBox(height: 5),
             Text(
               description!,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
-              ),
+              style: const TextStyle(fontSize: 13, color: Colors.black54),
             ),
           ],
           const SizedBox(height: 18),
@@ -705,10 +680,7 @@ class _StatusSelector extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -727,9 +699,7 @@ class _StatusSelector extends StatelessWidget {
                 selectedColor: primary,
                 backgroundColor: Colors.white,
                 side: BorderSide(
-                  color: selectedValue == option
-                      ? primary
-                      : Colors.black26,
+                  color: selectedValue == option ? primary : Colors.black26,
                 ),
                 labelStyle: TextStyle(
                   color: selectedValue == option
@@ -765,15 +735,10 @@ class _FilterOptionChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       showCheckmark: false,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       selectedColor: primary,
       backgroundColor: Colors.white,
-      side: BorderSide(
-        color: selected ? primary : Colors.black26,
-      ),
+      side: BorderSide(color: selected ? primary : Colors.black26),
       labelStyle: TextStyle(
         color: selected ? Colors.white : Colors.black87,
         fontWeight: FontWeight.w600,

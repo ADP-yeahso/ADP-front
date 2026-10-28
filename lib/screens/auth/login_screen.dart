@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/auth_session.dart';
+import '../../data/app_data.dart';
 import '../../services/auth_service.dart';
 import 'signup_screen.dart';
 import 'family_group_list_screen.dart';
@@ -39,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final tokens = await _authService.login(email: email, password: password);
       if (!mounted) return;
+      context.read<AppData>().clear();
       context.read<AuthSession>().signIn(tokens);
       Navigator.pushReplacement(
         context,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/garden_nav_controller.dart';
+import '../data/app_data.dart';
 import 'calendar/calendar_screen.dart';
 import 'garden/garden_screen.dart';
 import 'profile/profile_screen.dart';
@@ -17,6 +18,7 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   int _index = 0;
+  final _tabIndex = ValueNotifier<int>(0);
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   static const _screens = [
@@ -41,12 +43,16 @@ class _RootShellState extends State<RootShell> {
   @override
   void dispose() {
     _navController?.removeListener(_handleNavRequest);
+    _tabIndex.dispose();
     super.dispose();
   }
 
   void _handleNavRequest() {
     if (_navController?.pendingDate != null && _index != 0) {
-      setState(() => _index = 0);
+      setState(() {
+        _index = 0;
+        _tabIndex.value = 0;
+      });
     }
   }
 
@@ -61,12 +67,38 @@ class _RootShellState extends State<RootShell> {
 
   @override
   Widget build(BuildContext context) {
+    final data = context.watch<AppData>();
     return Scaffold(
-      body: Navigator(
-        key: _navigatorKey,
-        onGenerateRoute: (settings) => MaterialPageRoute(
-          builder: (context) => IndexedStack(index: _index, children: _screens),
-        ),
+      body: Column(
+        children: [
+          if (data.loadError != null || !data.hasPatient)
+            SafeArea(
+              bottom: false,
+              child: MaterialBanner(
+                content: Text(
+                  data.loadError ?? '환자 정보를 불러오지 못했습니다. 그룹 정보에서 확인해주세요.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: data.isLoading ? null : data.refreshGroup,
+                    child: const Text('다시 불러오기'),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: Navigator(
+              key: _navigatorKey,
+              onGenerateRoute: (settings) => MaterialPageRoute(
+                builder: (context) => ValueListenableBuilder<int>(
+                  valueListenable: _tabIndex,
+                  builder: (context, index, _) =>
+                      IndexedStack(index: index, children: _screens),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openRecordChoice,
@@ -129,13 +161,18 @@ class _RootShellState extends State<RootShell> {
     required String label,
   }) {
     final isSelected = _index == index;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey[600];
+    final color = isSelected
+        ? Theme.of(context).primaryColor
+        : Colors.grey[600];
 
     return InkWell(
       onTap: () {
         _navigatorKey.currentState?.popUntil((route) => route.isFirst);
         if (_index != index) {
-          setState(() => _index = index);
+          setState(() {
+            _index = index;
+            _tabIndex.value = index;
+          });
         }
       },
       borderRadius: BorderRadius.circular(12),
@@ -145,11 +182,7 @@ class _RootShellState extends State<RootShell> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isSelected ? selectedIcon : icon,
-              color: color,
-              size: 24,
-            ),
+            Icon(isSelected ? selectedIcon : icon, color: color, size: 24),
             const SizedBox(height: 2),
             Text(
               label,
@@ -165,4 +198,3 @@ class _RootShellState extends State<RootShell> {
     );
   }
 }
-

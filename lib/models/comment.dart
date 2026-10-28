@@ -1,7 +1,7 @@
 class MemoryRecordComment {
   final int id;
   final int memoryRecordId;
-  final int userId;
+  final String userId;
   final String commentText;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -24,11 +24,13 @@ class MemoryRecordComment {
     return MemoryRecordComment(
       id: json['id'] as int,
       memoryRecordId: json['memory_record_id'] as int,
-      userId: json['user_id'] is int ? json['user_id'] as int : int.parse(json['user_id'].toString()),
+      userId: json['user_id'].toString(),
       commentText: json['comment_text'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
-      deletedAt: json['deleted_at'] != null ? DateTime.parse(json['deleted_at'] as String) : null,
+      deletedAt: json['deleted_at'] != null
+          ? DateTime.parse(json['deleted_at'] as String)
+          : null,
     );
   }
 

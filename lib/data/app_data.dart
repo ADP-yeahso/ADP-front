@@ -11,6 +11,8 @@ import '../models/patients.dart';
 import '../models/users.dart';
 import '../models/users_groups.dart';
 import 'emotion_analyzer.dart';
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 bool isSameMonth(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month;
@@ -18,131 +20,369 @@ bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
 extension UserUIInfo on User {
-  bool get isMe => id == 1;
   String get nickname => name;
-  String get relation {
-    if (id == 1) return '딸';
-    if (id == 2) return '아들';
-    return '며느리';
-  }
-
-  Color get color {
-    if (id == 1) return const Color(0xFF6B93D1);
-    if (id == 2) return const Color(0xFF6FBF8B);
-    return const Color(0xFF9B7FC7);
-  }
+  Color get color => const [
+    Color(0xFF6B93D1),
+    Color(0xFF6FBF8B),
+    Color(0xFF9B7FC7),
+  ][id.codeUnits.fold<int>(0, (sum, value) => sum + value) % 3];
 }
 
 class AppData extends ChangeNotifier {
-  AppData() {
-    _seed();
-  }
+  AppData({ApiService? api}) : _api = api ?? ApiService();
 
-  /// 현재 로그인한 유저 ID (데모: 실서버 연결 시 교체)
-  final int currentUserId = 1;
+  final ApiService _api;
+  AuthTokens? _tokens;
+  int _generation = 0;
+  int _recordsRequest = 0;
+  String currentUserId = '';
+  String? loadError;
+  bool isLoading = false;
+  bool get hasPatient => _patient.id > 0;
+  final Map<int, Map<String, dynamic>> _createdPatients = {};
 
-  // ── 새 모델 더미 데이터 ─────────────────────────────
   Patient _patient = Patient(
-    id: 1,
-    groupId: 1,
-    patientName: '고강민',
-    patientBirthDate: 20060515,
-    createdAt: DateTime(2024, 1, 1),
+    id: 0,
+    groupId: 0,
+    patientName: '',
+    patientBirthDate: 0,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(0),
   );
-
   Patient get patient => _patient;
+  Group group = Group(
+    id: 0,
+    inviteCode: '',
+    groupName: '',
+    members: 0,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+  );
+  final List<UserGroup> userGroups = [];
+  final List<User> users = [];
+  Map<String, dynamic> patientDetails = {};
+  bool patientLookupAvailable = false;
 
-  final Group group = Group(
-    id: 1,
-    inviteCode: 'ABCD12',
-    groupName: '고강민 가족',
-    members: 3,
-    createdAt: DateTime(2024, 1, 1),
+  String get patientRelationLabel => userRelationOf(currentUserId).isEmpty
+      ? '환자'
+      : userRelationOf(currentUserId);
+
+  bool isCurrentUser(String userId) => userId == currentUserId;
+
+  String userRelationOf(String userId) {
+    for (final membership in userGroups) {
+      if (membership.userId == userId) return membership.patientsNickname;
+    }
+    return '';
+  }
+
+  void clear() {
+    _generation++;
+    _tokens = null;
+    currentUserId = '';
+    users.clear();
+    userGroups.clear();
+    memories.clear();
+    diaries.clear();
+    comments.clear();
+    _publicDiaryIds.clear();
+    _createdPatients.clear();
+    patientDetails = {};
+    patientLookupAvailable = false;
+    _patient = Patient(
+      id: 0,
+      groupId: 0,
+      patientName: '',
+      patientBirthDate: 0,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+    );
+    group = Group(
+      id: 0,
+      inviteCode: '',
+      groupName: '',
+      members: 0,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+    );
+    loadError = null;
+    isLoading = false;
+    notifyListeners();
+  }
+
+  void rememberPatient(int groupId, Map<String, dynamic> patient) {
+    _createdPatients[groupId] = patient;
+    if (group.id == groupId) {
+      _setPatient(patient);
+      notifyListeners();
+    }
+  }
+
+  Future<void> openGroup(AuthTokens tokens, int groupId) async {
+    final generation = ++_generation;
+    isLoading = true;
+    loadError = null;
+    notifyListeners();
+    try {
+      final profile = await UserApi(_api).profile(tokens);
+      final detail = await GroupApi(_api).detail(tokens, groupId);
+      if (generation != _generation) return;
+      _tokens = tokens;
+      currentUserId = profile['id'] as String;
+      users
+        ..clear()
+        ..add(_user(profile));
+      userGroups.clear();
+      memories.clear();
+      diaries.clear();
+      comments.clear();
+      _publicDiaryIds.clear();
+      group = Group(
+        id: groupId,
+        inviteCode: detail['invite_code'] as String,
+        groupName: detail['group_name'] as String,
+        groupProfileImageUrl: detail['group_profile_image_url'] as String?,
+        members: detail['member_count'] as int,
+        createdAt: _time(detail['created_at']),
+      );
+      for (final member
+          in (detail['members'] as List).cast<Map<String, dynamic>>()) {
+        final id = member['user_id'] as String;
+        if (id != currentUserId) users.add(_user({...member, 'id': id}));
+        userGroups.add(
+          UserGroup(
+            id: userGroups.length,
+            userId: id,
+            groupId: groupId,
+            patientsNickname: (member['patients_nickname'] ?? '환자').toString(),
+            joinedAt: _time(member['joined_at']),
+          ),
+        );
+      }
+      patientLookupAvailable = detail.containsKey('patient');
+      final rawPatient = detail['patient'] ?? _createdPatients[groupId];
+      _setPatient(rawPatient is Map<String, dynamic> ? rawPatient : {});
+      notifyListeners();
+      await refreshRecords();
+    } finally {
+      if (generation == _generation) {
+        isLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  void _setPatient(Map<String, dynamic> value) {
+    patientDetails = value;
+    final birth = DateTime.tryParse('${value['patient_birth_date']}');
+    _patient = Patient(
+      id: value['id'] as int? ?? 0,
+      groupId: group.id,
+      patientName: (value['patient_name'] ?? '').toString(),
+      patientBirthDate: birth == null
+          ? 0
+          : birth.year * 10000 + birth.month * 100 + birth.day,
+      createdAt: _time(value['created_at']),
+    );
+  }
+
+  Future<void> refreshGroup() async {
+    final tokens = _tokens;
+    if (tokens == null) return;
+    try {
+      await openGroup(tokens, group.id);
+    } on ApiException catch (error) {
+      loadError = error.message;
+      notifyListeners();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _allPages(
+    String path,
+    AuthTokens tokens,
+  ) async {
+    final entries = <Map<String, dynamic>>[];
+    for (var page = 1; ; page++) {
+      final value = await _api.get(
+        '$path${path.contains('?') ? '&' : '?'}page=$page&size=100',
+        tokens,
+      );
+      if (value is! List) throw const ApiException('기록 목록 응답 형식이 올바르지 않습니다.');
+      entries.addAll(value.cast<Map<String, dynamic>>());
+      if (value.length < 100) return entries;
+    }
+  }
+
+  Future<Map<String, dynamic>> _diaryDetail(int id, AuthTokens tokens) async {
+    final value =
+        await _api.get('/diaries/$id', tokens) as Map<String, dynamic>;
+    if ((value['media'] as List? ?? []).isNotEmpty) {
+      value['media'] = await _api.get('/diaries/$id/media', tokens);
+    }
+    return value;
+  }
+
+  Future<void> refreshRecords() async {
+    final tokens = _tokens;
+    if (tokens == null) return;
+    final generation = _generation;
+    final request = ++_recordsRequest;
+    try {
+      final memoryRows = hasPatient
+          ? await _allPages('/patients/${patient.id}/memory-records', tokens)
+          : <Map<String, dynamic>>[];
+      final diaryRows = await _allPages(
+        '/diaries?group_id=${group.id}',
+        tokens,
+      );
+      final details = <Map<String, dynamic>>[];
+      for (final row in diaryRows) {
+        if (row['final_emotion_id'] == null || row['deleted_at'] != null) {
+          continue;
+        }
+        details.add(await _diaryDetail(row['id'] as int, tokens));
+      }
+      if (generation != _generation || request != _recordsRequest) return;
+      final loadedMemories = memoryRows.map(_memory).toList();
+      final loadedDiaries = details.map(_diary).toList();
+      memories
+        ..clear()
+        ..addAll(loadedMemories);
+      diaries
+        ..clear()
+        ..addAll(loadedDiaries);
+      _publicDiaryIds.clear();
+      loadError = null;
+    } on ApiException catch (error) {
+      if (generation != _generation) return;
+      loadError = error.message;
+    }
+    if (generation == _generation) notifyListeners();
+  }
+
+  Future<void> refreshDiary(int id) async {
+    final tokens = _tokens;
+    if (tokens == null) return;
+    final generation = _generation;
+    _recordsRequest++;
+    try {
+      final value = await _diaryDetail(id, tokens);
+      if (generation != _generation) return;
+      final diary = _diary(value);
+      diaries.removeWhere((item) => item.id == id);
+      diaries.add(diary);
+    } on ApiException catch (error) {
+      if (generation != _generation) return;
+      loadError = error.message;
+    }
+    notifyListeners();
+  }
+
+  void cacheMemory(Map<String, dynamic> value) {
+    _recordsRequest++;
+    final memory = _memory(value);
+    memories.removeWhere((item) => item.id == memory.id);
+    memories.add(memory);
+    notifyListeners();
+  }
+
+  User _user(Map<String, dynamic> value) => User(
+    id: value['id'] as String,
+    email: (value['email'] ?? '').toString(),
+    password: '',
+    name: (value['name'] ?? '가족').toString(),
+    phoneNumber: (value['phone_number'] ?? '').toString(),
+    profileImageUrl: value['profile_image_url'] as String?,
+    createdAt: _time(value['created_at']),
   );
 
-  final List<UserGroup> userGroups = [
-    UserGroup(
-      id: 1,
-      userId: 1,
-      groupId: 1,
-      patientsNickname: '아버지',
-      joinedAt: DateTime(2024, 1, 1),
-    ),
-    UserGroup(
-      id: 2,
-      userId: 2,
-      groupId: 1,
-      patientsNickname: '아버지',
-      joinedAt: DateTime(2024, 1, 1),
-    ),
-    UserGroup(
-      id: 3,
-      userId: 3,
-      groupId: 1,
-      patientsNickname: '시아버지',
-      joinedAt: DateTime(2024, 1, 1),
-    ),
-  ];
+  List<Media> _media(dynamic value) => value is List
+      ? value
+            .cast<Map<String, dynamic>>()
+            .map(
+              (item) => Media(
+                id: item['id'] as int,
+                memoryId: item['memory_record_id'] as int?,
+                diaryId: item['diary_id'] as int?,
+                fileUrl: (item['download_url'] ?? item['file_url']) as String,
+                fileType: item['file_type'] as String,
+                duration: item['duration'] as int?,
+                sortOrder: item['sort_order'] as int? ?? 0,
+                createdAt: _time(item['created_at']),
+              ),
+            )
+            .toList()
+      : [];
 
-  /// 현재 유저가 환자를 부르는 호칭 (UserGroup.patientsNickname 기반)
-  String get patientRelationLabel {
-    try {
-      return userGroups
-          .firstWhere((ug) => ug.userId == currentUserId)
-          .patientsNickname;
-    } catch (_) {
-      return '환자';
-    }
+  Memory _memory(Map<String, dynamic> value) => Memory(
+    id: value['id'] as int,
+    patientId: value['patient_id'] as int,
+    userId: value['user_id'] as String,
+    contextText: value['context'] as String?,
+    mediaList: _media(value['media']),
+    isPublic: true,
+    recordDate: _time(value['record_date']),
+    createdAt: _time(value['created_at']),
+    updatedAt: _time(value['updated_at'] ?? value['created_at']),
+  );
+
+  Diary _diary(Map<String, dynamic> value) {
+    final emotion = value['emotion'] as Map<String, dynamic>? ?? {};
+    final flower = value['flower'] as Map<String, dynamic>? ?? {};
+    return Diary(
+      id: value['id'] as int,
+      userId: value['user_id'] as String,
+      context: (value['situation_text'] ?? '').toString(),
+      flowerType: Flower(
+        id: flower['id'] as int? ?? 0,
+        emotionId: Emotion(
+          id: emotion['id'] as int? ?? value['final_emotion_id'] as int? ?? 7,
+          name: (emotion['emotion'] ?? '').toString(),
+          displayName: (emotion['display_name'] ?? '').toString(),
+        ),
+        flowerName: (flower['flower_name'] ?? '').toString(),
+        colorCode: '',
+        sentence: (flower['sentence'] ?? '').toString(),
+      ),
+      mediaList: _media(value['media']),
+      recordDate: _time(value['finalized_at'] ?? value['record_date']),
+      createdAt: _time(value['created_at']),
+      updatedAt: _time(value['updated_at']),
+    );
   }
 
-  /// userId가 현재 로그인 유저인지 확인
-  bool isCurrentUser(int userId) => userId == currentUserId;
+  DateTime _time(dynamic value) =>
+      DateTime.tryParse('$value')?.toLocal() ??
+      DateTime.fromMillisecondsSinceEpoch(0);
 
-  /// userId에 해당하는 구성원이 환자를 부르는 호칭
-  String userRelationOf(int userId) {
-    try {
-      return userGroups
-          .firstWhere((ug) => ug.userId == userId)
-          .patientsNickname;
-    } catch (_) {
-      return '';
-    }
+  @override
+  void dispose() {
+    _generation++;
+    _api.close();
+    super.dispose();
   }
 
-  final List<User> users = [
-    User(
-      id: 1,
-      email: 'me@example.com',
+  User get me => users.firstWhere(
+    (user) => user.id == currentUserId,
+    orElse: () => User(
+      id: currentUserId,
+      email: '',
       password: '',
-      name: '강성윤',
+      name: '',
       phoneNumber: '',
       profileImageUrl: null,
-      createdAt: DateTime.now(),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
     ),
-    User(
-      id: 2,
-      email: 'son@example.com',
-      password: '',
-      name: '강지민',
-      phoneNumber: '',
-      profileImageUrl: null,
-      createdAt: DateTime.now(),
-    ),
-    User(
-      id: 3,
-      email: 'inlaw@example.com',
-      password: '',
-      name: '정인선',
-      phoneNumber: '',
-      profileImageUrl: null,
-      createdAt: DateTime.now(),
-    ),
-  ];
+  );
 
-  User get me => users.firstWhere((u) => u.id == currentUserId);
-
-  User userById(int id) =>
-      users.firstWhere((u) => u.id == id, orElse: () => me);
+  User userById(String id) => users.firstWhere(
+    (user) => user.id == id,
+    orElse: () => User(
+      id: id,
+      email: '',
+      password: '',
+      name: '가족',
+      phoneNumber: '',
+      profileImageUrl: null,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+    ),
+  );
 
   void updateCurrentUserProfile({
     required String name,
@@ -205,6 +445,7 @@ class AppData extends ChangeNotifier {
   }
 
   String get patientBirthDateLabel {
+    if (!hasPatient || patient.patientBirthDate == 0) return '등록된 환자 없음';
     final value = patient.patientBirthDate.toString().padLeft(8, '0');
 
     final year = value.substring(0, 4);
@@ -228,7 +469,7 @@ class AppData extends ChangeNotifier {
   void addMemoryComment({
     required int memoryRecordId,
     required String commentText,
-    int? userId,
+    String? userId,
   }) {
     final text = commentText.trim();
     if (text.isEmpty) return;
@@ -281,7 +522,7 @@ class AppData extends ChangeNotifier {
     memories.add(
       Memory(
         id: memoryId,
-        patientId: 1,
+        patientId: patient.id,
         userId: me.id,
         contextText: content,
         mediaList: updatedMedia,
@@ -409,288 +650,10 @@ class AppData extends ChangeNotifier {
       memories.where((m) => m.isPublic).toList()
         ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
 
-  Emotion? latestEmotionFor(int userId) {
+  Emotion? latestEmotionFor(String userId) {
     final entries = diaries.where((d) => d.userId == userId).toList()
       ..sort((a, b) => b.recordDate.compareTo(a.recordDate));
     if (entries.isEmpty) return null;
     return entries.first.flowerType.emotionId;
-  }
-
-  void _seedEmotionAnalysisTestData() {
-    final today = DateTime.now();
-
-    DateTime daysAgo(int days) {
-      final date = today.subtract(Duration(days: days));
-
-      return DateTime(date.year, date.month, date.day);
-    }
-
-    DateTime monthsAgo(int months, int day) {
-      final firstDay = DateTime(today.year, today.month - months, 1);
-
-      final lastDay = DateTime(firstDay.year, firstDay.month + 1, 0).day;
-
-      final safeDay = day > lastDay ? lastDay : day;
-
-      return DateTime(firstDay.year, firstDay.month, safeDay);
-    }
-
-    // ── 최근 1주 테스트 데이터 ──────────────────────
-
-    addDiary(
-      date: daysAgo(0),
-      content: '오늘은 마음이 편안하고 괜찮았다. 잠시 쉴 수 있어서 다행이었다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: daysAgo(1),
-      content: '계속 같은 설명을 반복해야 해서 답답하고 짜증이 났다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: daysAgo(2),
-      content: '오늘은 많이 지치고 속상해서 눈물이 날 것 같았다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: daysAgo(3),
-      content: '오늘은 불안하고 걱정되고 초조했다. 마음이 놓이지 않았다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: daysAgo(4),
-      content: '어제 화를 낸 것이 미안하고 계속 후회가 된다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: daysAgo(5),
-      content: '오늘은 환하게 웃으셔서 기쁘고 행복했다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: daysAgo(6),
-      content: '오늘 하루는 비교적 차분하고 평온하게 지나갔다.',
-      isPublic: false,
-    );
-
-    // ── 지난달 테스트 데이터 ────────────────────────
-
-    addDiary(
-      date: monthsAgo(1, 3),
-      content: '병원에 다녀온 뒤 많이 지치고 힘들었다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(1, 9),
-      content: '내가 조금 더 잘했어야 했다는 생각에 미안하고 후회됐다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(1, 15),
-      content: '오랜만에 함께 웃어서 고맙고 행복한 하루였다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(1, 21),
-      content: '같은 질문이 반복되어 답답하고 짜증이 났다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(1, 27),
-      content: '오늘은 별일 없이 편안하고 괜찮았다.',
-      isPublic: false,
-    );
-
-    // ── 최근 6개월 테스트 데이터 ────────────────────
-
-    addDiary(
-      date: monthsAgo(2, 8),
-      content: '오늘은 속상하고 외로운 마음이 크게 느껴졌다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(2, 20),
-      content: '잠시 웃어 주셔서 기쁘고 감사했다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(3, 6),
-      content: '돌봄이 뜻대로 되지 않아 답답하고 화가 났다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(3, 18),
-      content: '오늘은 마음이 차분하고 평온했다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(4, 10),
-      content: '내가 짜증을 낸 것 같아 미안하고 자책했다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(4, 23),
-      content: '가족과 함께해서 고맙고 행복한 시간이었다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(5, 7),
-      content: '너무 지치고 힘들어서 눈물이 났다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(5, 19),
-      content: '오늘은 비교적 편안하고 괜찮은 하루였다.',
-      isPublic: false,
-    );
-
-    // ── 1년 그래프 테스트용 데이터 ─────────────────
-
-    addDiary(
-      date: monthsAgo(6, 12),
-      content: '오랜만에 웃는 모습을 보니 기쁘고 고마웠다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(7, 14),
-      content: '계속 반복되는 상황이 답답하고 짜증이 났다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(8, 16),
-      content: '오늘은 많이 지치고 외롭고 슬펐다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(9, 18),
-      content: '내가 잘못한 것 같아 미안하고 후회가 됐다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(10, 20),
-      content: '평온하고 차분하게 하루를 마무리했다.',
-      isPublic: false,
-    );
-
-    addDiary(
-      date: monthsAgo(11, 22),
-      content: '함께 웃을 수 있어서 기쁘고 행복했다.',
-      isPublic: false,
-    );
-  }
-
-  void _seed() {
-    final today = DateTime.now();
-    DateTime d(int monthsAgo, int day) =>
-        DateTime(today.year, today.month - monthsAgo, day);
-
-    addMemory(
-      date: d(2, 6),
-      title: '함께 본 옛날 사진',
-      content: '$patientRelationLabel과 함께 젊은 시절 사진을 꺼내 보았다. 잠시 웃으셨다.',
-      mediaList: [],
-    );
-    addMemory(
-      date: d(1, 12),
-      title: '병원 정기 검진',
-      content: '정기 검진을 다녀왔다. 컨디션은 평소와 비슷하다는 소견을 들었다.',
-    );
-    addMemory(
-      date: d(0, 3),
-      title: '산책',
-      content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
-      mediaList: [],
-    );
-    addMemory(
-      date: d(0, 8),
-      title: '가족 모임',
-      content: '오랜만에 온 가족이 모여 식사를 했다. $patientRelationLabel이 무척 즐거워하셨다.',
-    );
-    addMemory(
-      date: d(0, 11),
-      title: '옛 동네 방문',
-      content: '예전에 살던 동네를 차로 둘러보았다. 기억이 조금씩 나시는 듯했다.',
-      mediaList: [
-        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
-      ],
-    );
-    addMemory(
-      date: d(0, 18),
-      title: '좋아하시는 노래',
-      content: '라디오에서 옛날 노래가 나오자 따라 부르셨다.',
-    );
-    addMemory(
-      date: d(0, 22),
-      title: '손주와의 영상통화',
-      content: '손주와 영상통화를 하며 활짝 웃으시는 모습을 보니 내 마음도 따뜻해졌다.',
-      mediaList: [
-        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
-      ],
-    );
-
-    addDiary(date: d(2, 8), content: '오늘은 유난히 지치고 눈물이 났다. 혼자 감당하기 힘든 하루였다.');
-    addDiary(
-      date: d(1, 15),
-      content: '$patientRelationLabel이 나를 못 알아봐서 속상하고 화가 났다.',
-    );
-    addDiary(
-      date: d(1, 22),
-      content: '$patientRelationLabel이 옛날 이야기를 하며 웃어서 오늘은 참 고맙고 행복했다.',
-    );
-    addDiary(
-      date: d(0, 2),
-      content: '어제 짜증을 낸 것 같아 미안하고 후회된다. 더 잘해드리고 싶다.',
-      isPublic: false,
-    );
-    addDiary(date: d(0, 5), content: '오늘은 그냥 편안하고 괜찮은 하루였다.');
-    _seedEmotionAnalysisTestData();
-
-    // ── 댓글 더미 데이터 생성 ────────────────────
-    final now = DateTime.now();
-    for (var m in memories) {
-      if (m.contextText?.contains('라디오') ?? false) {
-        comments.add(
-          Comment(
-            id: _nextId(),
-            memoryRecordId: m.id,
-            userId: 2, // 강지민
-            commentText: '멋진 기록입니다!',
-            createdAt: now.subtract(const Duration(hours: 1)),
-            updatedAt: now.subtract(const Duration(hours: 1)),
-          ),
-        );
-        comments.add(
-          Comment(
-            id: _nextId(),
-            memoryRecordId: m.id,
-            userId: 3, // 정인선
-            commentText: '와, 나도 가보고 싶다.',
-            createdAt: now.subtract(const Duration(hours: 2)),
-            updatedAt: now.subtract(const Duration(hours: 2)),
-          ),
-        );
-      }
-    }
   }
 }

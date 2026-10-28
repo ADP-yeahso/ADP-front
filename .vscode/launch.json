@@ -5,12 +5,14 @@
       "name": "Care Garden (Android Emulator)",
       "request": "launch",
       "type": "dart",
-      "deviceId": "emulator-5554"
+      "deviceId": "emulator-5554",
+      "toolArgs": ["--dart-define-from-file=env.json"]
     },
     {
       "name": "Care Garden (Default Device)",
       "request": "launch",
-      "type": "dart"
+      "type": "dart",
+      "toolArgs": ["--dart-define-from-file=env.json"]
     },
     {
       "name": "Flutter Web (localhost:5173)",

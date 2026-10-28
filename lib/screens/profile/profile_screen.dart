@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
 import '../../data/auth_session.dart';
-import '../../services/auth_service.dart';
 import 'family_management_screen.dart';
 import 'help_screen.dart';
 import 'profile_edit_screen.dart';
@@ -34,14 +33,7 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
     if (confirmed == true && context.mounted) {
-      final tokens = context.read<AuthSession>().tokens;
-      if (tokens != null) {
-        try {
-          await AuthService().logout(tokens);
-        } on AuthException {
-          // 서버 로그아웃이 실패해도 로컬 세션은 정리한다.
-        }
-      }
+      context.read<AppData>().clear();
       context.read<AuthSession>().signOut();
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -307,15 +299,18 @@ class _SettingsTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         clipBehavior: Clip.antiAlias,
         child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-        leading: Icon(icon, color: Colors.black54),
-        title: Text(
-          label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 2,
+          ),
+          leading: Icon(icon, color: Colors.black54),
+          title: Text(
+            label,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          trailing: const Icon(Icons.chevron_right, color: Colors.black26),
+          onTap: onTap,
         ),
-        trailing: const Icon(Icons.chevron_right, color: Colors.black26),
-        onTap: onTap,
-      ),
       ),
     );
   }

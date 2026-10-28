@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/auth_session.dart';
+import '../../data/app_data.dart';
 import '../../services/api_service.dart';
 import 'create_family_screen.dart';
 import 'group_created_screen.dart';
@@ -19,6 +20,7 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
   final FocusNode _codeFocusNode = FocusNode();
   List<Map<String, dynamic>> _groups = const [];
   bool _isLoadingGroups = true;
+  bool _isOpening = false;
   String? _groupLoadError;
 
   @override
@@ -65,15 +67,36 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
     }
   }
 
+  Future<void> _openGroup(int groupId) async {
+    if (_isOpening) return;
+    final tokens = context.read<AuthSession>().tokens;
+    if (tokens == null) return;
+    setState(() => _isOpening = true);
+    try {
+      await context.read<AppData>().openGroup(tokens, groupId);
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const GroupCreatedScreen()),
+      );
+      if (mounted) await _loadGroups();
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _isOpening = false);
+    }
+  }
+
   String _groupName(Map<String, dynamic> group) =>
       (group['group_name'] ?? group['name'] ?? '가족 그룹').toString();
 
   Widget _buildGroupCard(Map<String, dynamic> group, double scale) {
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const GroupCreatedScreen()),
-      ),
+      onTap: _isOpening ? null : () => _openGroup(group['id'] as int),
       child: SizedBox(
         width: 296 * scale,
         height: 101 * scale,
@@ -118,20 +141,14 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
 
   Future<void> _joinGroup() async {
     final code = _codeController.text.trim();
-    if (code.isEmpty) return;
+    if (code.isEmpty || _isOpening) return;
     final tokens = context.read<AuthSession>().tokens;
     if (tokens == null) return;
     try {
-      await GroupApi(ApiService()).join(tokens, code);
+      final group = await GroupApi(ApiService()).join(tokens, code);
       if (!mounted) return;
       _codeController.clear();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('가족 그룹에 참여했습니다.')));
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const GroupCreatedScreen()),
-      );
+      await _openGroup(group['id'] as int);
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -198,7 +215,7 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
               ),
               SizedBox(height: 4 * hScale),
 
-              if (_isLoadingGroups)
+              if (_isLoadingGroups || _isOpening)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 36),
                   child: CircularProgressIndicator(),

@@ -47,6 +47,7 @@ dependencies:
   fc_native_video_thumbnail: ^3.0.1
   file_picker: ^10.3.10
   http: ^1.2.2
+  http_parser: ^4.1.2
 
   fl_chart: ^1.2.0
  
@@ -96,22 +97,6 @@ flutter:
     - assets/record/choice/
     - assets/record/choice/svg/
     - assets/record/choice/png/
-    - assets/record/choice/svg/3-0svg/svg/
-    - assets/record/choice/png/3-0png/png/
-    - assets/record/choice/svg/3-2-0.svg/svg/
-    - assets/record/choice/png/3-2-0.png/png/
-    - assets/record/choice/svg/3-2-1.svg/svg/
-    - assets/record/choice/png/3-2-1.png/png/
-    - assets/record/choice/svg/3-2-2.svg/svg/
-    - assets/record/choice/png/3-2-2.png/png/
-    - assets/record/choice/svg/3-2-3.svg/svg/
-    - assets/record/choice/png/3-2-3.png/png/
-    - assets/record/choice/svg/로딩중.svg/svg/
-    - assets/record/choice/png/로딩중.png/png/
-    - assets/record/choice/svg/3-2-5.svg/svg/
-    - assets/record/choice/png/3-2-5.png/png/
-    - assets/record/choice/svg/3-2-6.svg/svg/
-    - assets/record/choice/png/3-2-6.png/png/
     - assets/record/choice/svg/3-2-5그라데이션 컬러카드.svg/svg/
     - assets/record/choice/png/3-2-5그라데이션 컬러카드.png/png/
     - assets/record/choice/svg/3-0,3-2-1~3-2-5대제목 수정.svg/svg/

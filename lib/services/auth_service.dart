@@ -63,7 +63,7 @@ class AuthService {
       throw const AuthException('서버에 연결할 수 없습니다. 네트워크와 서버 주소를 확인해주세요.');
     }
 
-    final body = _decodeBody(response.body);
+    final body = _decodeBody(utf8.decode(response.bodyBytes));
     if (response.statusCode == 201) {
       final id = body['id'] as String?;
       final responseEmail = body['email'] as String?;
@@ -102,7 +102,7 @@ class AuthService {
       throw const AuthException('서버에 연결할 수 없습니다. 네트워크와 서버 주소를 확인해주세요.');
     }
 
-    final body = _decodeBody(response.body);
+    final body = _decodeBody(utf8.decode(response.bodyBytes));
     if (response.statusCode == 200) {
       final accessToken = body['access_token'] as String?;
       final refreshToken = body['refresh_token'] as String?;
@@ -123,27 +123,6 @@ class AuthService {
       throw const AuthException('이메일과 비밀번호 형식을 확인해주세요.');
     }
     throw const AuthException('로그인에 실패했습니다. 잠시 후 다시 시도해주세요.');
-  }
-
-  Future<void> logout(AuthTokens tokens) async {
-    try {
-      final response = await _client
-          .post(
-            Uri.parse('${ApiConfig.baseUrl}/auth/logout'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ${tokens.accessToken}',
-            },
-          )
-          .timeout(const Duration(seconds: 15));
-      if (response.statusCode != 204 && response.statusCode != 200) {
-        throw const AuthException('로그아웃에 실패했습니다.');
-      }
-    } on AuthException {
-      rethrow;
-    } on Exception {
-      throw const AuthException('서버에 연결할 수 없습니다.');
-    }
   }
 
   Map<String, dynamic> _decodeBody(String body) {

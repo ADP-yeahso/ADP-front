@@ -1,6 +1,6 @@
 class UserGroup {
   final int id;
-  final int userId;
+  final String userId;
   final int groupId;
   final String patientsNickname;
   final DateTime joinedAt;

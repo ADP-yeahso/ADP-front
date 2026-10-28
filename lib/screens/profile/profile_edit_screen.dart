@@ -16,10 +16,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _nameController;
-  late final TextEditingController _passwordController;
   late final TextEditingController _phoneController;
 
-  bool _obscurePassword = true;
   bool _initialized = false;
 
   @override
@@ -33,7 +31,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     final user = context.read<AppData>().me;
 
     _nameController = TextEditingController(text: user.name);
-    _passwordController = TextEditingController(text: user.password);
     _phoneController = TextEditingController(text: user.phoneNumber);
 
     _initialized = true;
@@ -42,17 +39,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _passwordController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
 
   void _showPhotoMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('사진 변경 기능은 추후 추가할 예정이에요.'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('사진 변경 기능은 추후 추가할 예정이에요.')));
   }
 
   Future<void> _saveProfile() async {
@@ -62,9 +56,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
     final tokens = context.read<AuthSession>().tokens;
     if (tokens == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 후 프로필을 수정할 수 있어요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('로그인 후 프로필을 수정할 수 있어요.')));
       return;
     }
 
@@ -73,23 +67,24 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         'name': _nameController.text.trim(),
         'phone_number': _phoneController.text.trim(),
       });
+      if (!mounted) return;
       context.read<AppData>().updateCurrentUserProfile(
-            name: _nameController.text.trim(),
-            password: _passwordController.text,
-            phoneNumber: _phoneController.text.trim(),
-          );
+        name: _nameController.text.trim(),
+        password: '',
+        phoneNumber: _phoneController.text.trim(),
+      );
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('프로필이 저장되었어요.'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('프로필이 저장되었어요.')));
 
     Navigator.pop(context);
   }
@@ -99,9 +94,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     final user = context.watch<AppData>().me;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('프로필 편집'),
-      ),
+      appBar: AppBar(title: const Text('프로필 편집')),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -113,13 +106,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   children: [
                     CircleAvatar(
                       radius: 52,
-                      backgroundColor:
-                          user.color.withValues(alpha: 0.18),
-                      child: Icon(
-                        Icons.person,
-                        size: 52,
-                        color: user.color,
-                      ),
+                      backgroundColor: user.color.withValues(alpha: 0.18),
+                      child: Icon(Icons.person, size: 52, color: user.color),
                     ),
                     const SizedBox(height: 12),
                     TextButton.icon(
@@ -152,39 +140,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: '비밀번호',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                    ),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '비밀번호를 입력해 주세요.';
-                  }
-
-                  if (value.length < 4) {
-                    return '비밀번호는 네 글자 이상 입력해 주세요.';
-                  }
-
-                  return null;
-                },
-              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneController,
@@ -201,8 +156,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     return '전화번호를 입력해 주세요.';
                   }
 
-                  final digits =
-                      value.replaceAll(RegExp(r'[^0-9]'), '');
+                  final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
 
                   if (digits.length < 10 || digits.length > 11) {
                     return '올바른 전화번호를 입력해 주세요.';

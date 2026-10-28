@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../../data/auth_session.dart';
+import '../../../data/app_data.dart';
+import '../../../services/api_service.dart';
 import '../../../models/emotion_model.dart';
 import '../../../services/diary_service.dart';
 import 'diary_result_screen.dart';
@@ -24,7 +26,9 @@ class DiaryEmotionSelectScreen extends StatefulWidget {
     List<EmotionModel> listB,
   ) {
     final List<EmotionModel> combined = [];
-    final int maxLen = listA.length > listB.length ? listA.length : listB.length;
+    final int maxLen = listA.length > listB.length
+        ? listA.length
+        : listB.length;
     for (int i = 0; i < maxLen; i++) {
       if (i < listA.length) combined.add(listA[i]);
       if (i < listB.length) combined.add(listB[i]);
@@ -32,8 +36,8 @@ class DiaryEmotionSelectScreen extends StatefulWidget {
 
     if (combined.length >= 10) {
       return [
-        combined.sublist(0, 3),  // 1행: A0, B0, A1 (A:2, B:1)
-        combined.sublist(3, 7),  // 2행: B1, A2, B2, A3 (A:2, B:2)
+        combined.sublist(0, 3), // 1행: A0, B0, A1 (A:2, B:1)
+        combined.sublist(3, 7), // 2행: B1, A2, B2, A3 (A:2, B:2)
         combined.sublist(7, 10), // 3행: B3, A4, B4 (A:1, B:2)
       ];
     }
@@ -47,6 +51,8 @@ class DiaryEmotionSelectScreen extends StatefulWidget {
 
 class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
   final List<EmotionModel> _selectedEmotions = [];
+  bool _isSaving = false;
+  final _service = DiaryService();
   final Map<String, int> _tagIdsByName = {};
   static const int _maxSelection = 3;
 
@@ -82,20 +88,30 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
           (item) => item.label == suggestion.emotionName,
           orElse: () => EmotionCategories.categories['0']!,
         );
-        grouped.putIfAbsent(suggestion.emotionName, () => []).add(
-              EmotionModel(name: suggestion.name, color: category.color),
-            );
+        grouped
+            .putIfAbsent(suggestion.emotionName, () => [])
+            .add(EmotionModel(name: suggestion.name, color: category.color));
       }
       final groups = grouped.values.toList();
       final listA = groups.isNotEmpty ? groups[0] : <EmotionModel>[];
       final listB = groups.length > 1 ? groups[1] : <EmotionModel>[];
-      _scatteredEmotions = DiaryEmotionSelectScreen.mixSubEmotions(listA, listB);
+      _scatteredEmotions = DiaryEmotionSelectScreen.mixSubEmotions(
+        listA,
+        listB,
+      );
     } else {
       _scatteredEmotions = _defaultEmotions;
     }
   }
 
+  @override
+  void dispose() {
+    _service.close();
+    super.dispose();
+  }
+
   Future<void> _finalizeDiary() async {
+    if (_isSaving) return;
     final tokens = context.read<AuthSession>().tokens;
     if (tokens == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -114,12 +130,20 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
       return;
     }
 
+    setState(() => _isSaving = true);
     try {
-      final finalization = await DiaryService().saveTagsAndFinalize(
+      final finalization = await _service.saveTagsAndFinalize(
         tokens: tokens,
         diaryId: widget.draft.id,
         tagIds: tagIds,
       );
+      if (!mounted) return;
+      final data = context.read<AppData>();
+      try {
+        await data.refreshDiary(widget.draft.id);
+      } on ApiException catch (error) {
+        data.loadError = error.message;
+      }
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -129,9 +153,11 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
       );
     } on DiaryException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -157,7 +183,14 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     return _tryPath(candidatePaths, 0, fallback, width, height, colorFilter);
   }
 
-  Widget _tryPath(List<String> paths, int index, Widget fallback, double? width, double? height, ColorFilter? colorFilter) {
+  Widget _tryPath(
+    List<String> paths,
+    int index,
+    Widget fallback,
+    double? width,
+    double? height,
+    ColorFilter? colorFilter,
+  ) {
     if (index >= paths.length) return fallback;
     final path = paths[index];
     final isSvg = path.toLowerCase().endsWith('.svg');
@@ -178,7 +211,8 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
         fit: BoxFit.contain,
         colorBlendMode: colorFilter != null ? BlendMode.srcIn : null,
         color: colorFilter != null ? Colors.white : null,
-        errorBuilder: (context, error, stackTrace) => _tryPath(paths, index + 1, fallback, width, height, colorFilter),
+        errorBuilder: (context, error, stackTrace) =>
+            _tryPath(paths, index + 1, fallback, width, height, colorFilter),
       );
     }
   }
@@ -255,7 +289,9 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     final candidatePaths = _getSubEmotionCandidatePaths(emotion.name);
 
     final textColor = isSelected
-        ? ((emotion.color == const Color(0xFFFFE367)) ? Colors.black87 : Colors.white)
+        ? ((emotion.color == const Color(0xFFFFE367))
+              ? Colors.black87
+              : Colors.white)
         : ((isDisabled && !isSelected) ? Colors.grey : Colors.black87);
 
     return GestureDetector(
@@ -267,7 +303,9 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
           color: isSelected ? emotion.color : Colors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: (isDisabled && !isSelected) ? Colors.grey.shade300 : emotion.color,
+            color: (isDisabled && !isSelected)
+                ? Colors.grey.shade300
+                : emotion.color,
             width: 1.5,
           ),
           boxShadow: isSelected
@@ -276,7 +314,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                     color: emotion.color.withValues(alpha: 0.3),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ]
               : null,
         ),
@@ -308,7 +346,11 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
         backgroundColor: backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black87,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -316,7 +358,10 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
         child: Center(
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 10.0,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -372,7 +417,9 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: row.map((emotion) {
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4.0,
+                              ),
                               child: _buildEmotionButton(emotion),
                             );
                           }).toList(),
@@ -390,14 +437,19 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1.2,
+                        ),
                       ),
                       child: Stack(
                         children: [
                           // 채워지는 프로그래스 바 (ffcb0f / 3개 달성 시 연두색)
                           LayoutBuilder(
                             builder: (context, constraints) {
-                              final double fillWidth = constraints.maxWidth * (_selectedEmotions.length / _maxSelection);
+                              final double fillWidth =
+                                  constraints.maxWidth *
+                                  (_selectedEmotions.length / _maxSelection);
                               return AnimatedContainer(
                                 duration: const Duration(milliseconds: 250),
                                 width: fillWidth,
@@ -434,7 +486,9 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                       width: 180,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: isComplete ? _finalizeDiary : null,
+                        onPressed: isComplete && !_isSaving
+                            ? _finalizeDiary
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isComplete
                               ? const Color(0xFFA5DD82)
@@ -467,5 +521,3 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     );
   }
 }
-
-

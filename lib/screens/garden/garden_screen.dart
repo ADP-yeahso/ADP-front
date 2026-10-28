@@ -327,7 +327,6 @@ class _GardenScreenState extends State<GardenScreen> {
     _webViewController.runJavaScript('''
       function tryInitGarden() {
         if (typeof window.initGarden === 'function') {
-          if (typeof window.disposeGarden === 'function') window.disposeGarden();
           window.initGarden('$treeUrl', '$flowerUrlsMapJson', '$diariesJson');
         } else {
           window.__gardenPendingInitTimers = (window.__gardenPendingInitTimers || 0) + 1;

@@ -59,8 +59,10 @@ function seededUnit(seed) {
 let scene, camera, renderer, controls;
 let raycaster, mouse;
 let flowerMeshes = []; // Not used for clones anymore, but we can keep for backwards compat or remove.
-let flowerData = [];
 let worldTree;
+let worldTreeUrl = null;
+let treeLoadId = 0;
+let treeLoadPromise = null;
 let isFocusing = false;
 let gardenLoadId = 0;
 let isAssetPreview = false;
@@ -86,12 +88,18 @@ class StaleGardenLoadError extends Error {
   }
 }
 
-function queueModelLoad(url, generation, acceptResult) {
+function queueModelLoad(
+  url,
+  generation,
+  acceptResult,
+  isCurrent = () => generation === gardenLoadId
+) {
   return new Promise((resolve, reject) => {
     modelLoadQueue.push({
       url,
       generation,
       acceptResult,
+      isCurrent,
       resolve,
       reject,
     });
@@ -101,10 +109,14 @@ function queueModelLoad(url, generation, acceptResult) {
 }
 
 function cancelWaitingModelLoads() {
-  const cancelledTasks = modelLoadQueue.splice(0);
+  const tasks = modelLoadQueue.splice(0);
 
-  cancelledTasks.forEach((task) => {
-    task.reject(new StaleGardenLoadError());
+  tasks.forEach((task) => {
+    if (task.isCurrent()) {
+      modelLoadQueue.push(task);
+    } else {
+      task.reject(new StaleGardenLoadError());
+    }
   });
 }
 
@@ -121,7 +133,7 @@ function drainModelLoadQueue() {
   ) {
     const task = modelLoadQueue.shift();
 
-    if (task.generation !== gardenLoadId) {
+    if (!task.isCurrent()) {
       task.reject(new StaleGardenLoadError());
       continue;
     }
@@ -149,7 +161,7 @@ function drainModelLoadQueue() {
           let acceptedResult;
 
           try {
-            if (task.generation !== gardenLoadId) {
+            if (!task.isCurrent()) {
               throw new StaleGardenLoadError();
             }
 
@@ -173,7 +185,7 @@ function drainModelLoadQueue() {
         undefined,
         (error) => {
           finish(() => {
-            if (task.generation !== gardenLoadId) {
+            if (!task.isCurrent()) {
               task.reject(new StaleGardenLoadError());
               return;
             }
@@ -361,6 +373,9 @@ function createFlowerInstances(
   const dummy = new THREE.Object3D();
   const createdMeshes = [];
 
+  // 같은 꽃 모델의 모든 mesh 파트가 공유한다.
+  const diaryMapping = [];
+
   try {
     baseFlower.position.set(0, 0, 0);
     baseFlower.rotation.set(0, 0, 0);
@@ -377,7 +392,6 @@ function createFlowerInstances(
 
       const material = cloneMaterialOrMaterials(child.material);
       const geometry = child.geometry.clone();
-
       geometry.applyMatrix4(child.matrixWorld);
 
       const instancedMesh = new THREE.InstancedMesh(
@@ -390,7 +404,7 @@ function createFlowerInstances(
       instancedMesh.receiveShadow = false;
       instancedMesh.userData = {
         isFlower: true,
-        diaryIds: [],
+        diaryMapping,
       };
 
       createdMeshes.push(instancedMesh);
@@ -421,31 +435,43 @@ function createFlowerInstances(
         ? (previewIndex < 8 ? 10 : 18)
         : 10 + radiusRandom * 20;
 
-      dummy.position.x = Math.cos(angle) * radius;
-      dummy.position.z = Math.sin(angle) * radius;
-      dummy.position.y = -(baseMinY * flowerScale);
+      dummy.position.set(
+        Math.cos(angle) * radius,
+        -(baseMinY * flowerScale),
+        Math.sin(angle) * radius
+      );
       dummy.scale.set(flowerScale, flowerScale, flowerScale);
       dummy.lookAt(origin);
       dummy.updateMatrix();
 
+      // 위치 객체도 일기별로 한 번만 생성한다.
+      diaryMapping[index] = {
+        diaryId: diary.id,
+        position: dummy.position.clone(),
+        previewLabel: diary.previewLabel,
+      };
+
       createdMeshes.forEach((instancedMesh) => {
         instancedMesh.setMatrixAt(index, dummy.matrix);
-
-        if (!instancedMesh.userData.diaryMapping) {
-          instancedMesh.userData.diaryMapping = [];
-        }
-
-        instancedMesh.userData.diaryMapping[index] = {
-          diaryId: diary.id,
-          position: dummy.position.clone(),
-          previewLabel: diary.previewLabel,
-        };
       });
     }
 
     createdMeshes.forEach((instancedMesh) => {
       instancedMesh.instanceMatrix.needsUpdate = true;
+      instancedMesh.computeBoundingBox();
+      instancedMesh.computeBoundingSphere();
     });
+
+    // 원본 geometry/material을 정리한다.
+    const sourceContext = createDisposalContext();
+    disposeObject3D(baseFlower, sourceContext);
+
+    // texture는 복제된 재질이 계속 사용하므로 해제 대상에서 제외한다.
+    // 이후 꽃 인스턴스가 정리될 때 공통 해제 함수가 회수한다.
+    sourceContext.textures.clear();
+
+    finalizeDisposalContext(sourceContext);
+    baseFlower.clear();
 
     return createdMeshes;
   } catch (error) {
@@ -454,13 +480,89 @@ function createFlowerInstances(
   }
 }
 
-// Function called from Flutter to initialize models
-window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPreview = false) {
-  const currentLoadId = ++gardenLoadId;
-  cancelWaitingModelLoads();
-  cancelPreviewCatalogLoad();
+function invalidateWorldTree() {
+  treeLoadId++;
+  treeLoadPromise = null;
+  worldTreeUrl = null;
 
+  const oldTree = worldTree;
+  worldTree = null;
+
+  if (oldTree) {
+    disposeObject3Ds([oldTree]);
+  }
+}
+
+function ensureWorldTree(treeUrl) {
+  if (worldTree && worldTreeUrl === treeUrl) {
+    emitDiagnosticReport('tree_reused');
+    return Promise.resolve(worldTree);
+  }
+
+  if (treeLoadPromise && worldTreeUrl === treeUrl) {
+    emitDiagnosticReport('tree_load_shared');
+    return treeLoadPromise;
+  }
+
+  invalidateWorldTree();
+  cancelWaitingModelLoads();
+
+  worldTreeUrl = treeUrl;
+
+  const currentTreeLoadId = treeLoadId;
+  const isCurrentTree = () => (
+    currentTreeLoadId === treeLoadId &&
+    worldTreeUrl === treeUrl
+  );
+
+  queueDiagnosticReport('tree_load_started');
+  requestRender();
+
+  const promise = queueModelLoad(
+    treeUrl,
+    gardenLoadId,
+    (gltf) => {
+      const tree = gltf.scene;
+
+      tree.position.set(0, 0, 0);
+      tree.scale.set(1.5, 1.5, 1.5);
+      tree.userData = { isTree: true };
+
+      tree.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = false;
+        }
+      });
+
+      scene.add(tree);
+      worldTree = tree;
+      requestRender();
+
+      return tree;
+    },
+    isCurrentTree
+  ).finally(() => {
+    if (treeLoadPromise === promise) {
+      treeLoadPromise = null;
+    }
+  });
+
+  treeLoadPromise = promise;
+  return promise;
+}
+
+window.initGarden = function (
+  treeUrl,
+  flowerUrlsMapJson,
+  diariesJson,
+  assetPreview = false
+) {
+  window.clearGardenContent();
+
+  const currentLoadId = gardenLoadId;
   isAssetPreview = assetPreview;
+
   const loading = document.getElementById('loading');
   loading.textContent = '정원을 가꾸는 중...';
   loading.style.pointerEvents = 'none';
@@ -471,7 +573,6 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
       return;
     }
 
-    window.disposeGarden();
     window.initGarden(
       treeUrl,
       flowerUrlsMapJson,
@@ -480,165 +581,158 @@ window.initGarden = function (treeUrl, flowerUrlsMapJson, diariesJson, assetPrev
     );
   };
 
-  let diaries = JSON.parse(diariesJson);
-  let flowerUrlsMap = JSON.parse(flowerUrlsMapJson);
-  diagnosticState.diaryCount = diaries.length;
+  const loadGarden = async () => {
+    const pendingFlowerMeshes = [];
+    let stage = 'data';
 
-  // Load Tree
-  queueDiagnosticReport('tree_load_started');
-  requestRender();
-  queueModelLoad(treeUrl, currentLoadId, (gltf) => {
-    if (currentLoadId !== gardenLoadId) {
-      disposeObject3Ds([gltf.scene]);
-      return;
-    }
-    worldTree = gltf.scene;
-    worldTree.position.set(0, 0, 0);
-    // Apply soft material override for healing vibe
-    worldTree.userData = { isTree: true };
-    worldTree.traverse((child) => {
-      if (child.isMesh) {
-        child.castShadow = false;
-        child.receiveShadow = false;
+    try {
+      const diaries = JSON.parse(diariesJson);
+      const flowerUrlsMap = JSON.parse(flowerUrlsMapJson);
+
+      if (
+        !Array.isArray(diaries) ||
+        !flowerUrlsMap ||
+        typeof flowerUrlsMap !== 'object' ||
+        Array.isArray(flowerUrlsMap)
+      ) {
+        throw new Error('Invalid garden data.');
       }
-    });
-    // scale tree if needed
-    worldTree.scale.set(1.5, 1.5, 1.5);
-    scene.add(worldTree);
-    requestRender();
 
-    const numFlowers = diaries.length;
-    if (numFlowers === 0) {
-      document.getElementById('loading').style.display = 'none';
-      queueDiagnosticReport('garden_ready_zero');
-      requestRender();
-      return;
-    }
+      diagnosticState.diaryCount = diaries.length;
 
-    // Determine required flower URLs and mapping for diaries
-    let diariesByUrl = {};
-    
-    diaries.forEach(diary => {
-      const emotion = typeof diary.emotion === 'string' && diary.emotion.trim() !== ''
-      ? diary.emotion.toLowerCase()
-      : null;
+      stage = 'tree';
+      await ensureWorldTree(treeUrl);
 
-      if (!emotion) {
+      if (currentLoadId !== gardenLoadId) {
+        throw new StaleGardenLoadError();
+      }
+
+      if (diaries.length === 0) {
+        loading.style.display = 'none';
+        queueDiagnosticReport('garden_ready_zero');
+        requestRender();
         return;
       }
 
-      const urls = flowerUrlsMap[emotion];
+      stage = 'flower';
 
-      if (!Array.isArray(urls) || urls.length === 0) {
-        console.warn(`No flower mapping for emotion: ${emotion}`);
-        return;
-      }
-      // Stable random using diary.id
-      const urlIndex = diary.id % urls.length;
-      const url = urls[urlIndex];
-      
-      if (!diariesByUrl[url]) {
-        diariesByUrl[url] = [];
-      }
-      diariesByUrl[url].push(diary);
-    });
+      const diariesByUrl = Object.create(null);
 
-    // Load Flowers
-    const uniqueUrls = Object.keys(diariesByUrl);
-    queueDiagnosticReport('flower_loads_started');
-    requestRender();
+      diaries.forEach((diary) => {
+        const emotion = typeof diary?.emotion === 'string'
+          ? diary.emotion.trim().toLowerCase()
+          : '';
 
-    const loadFlowersSequentially = async () => {
-      const pendingFlowerMeshes = [];
-
-      try {
-        for (const url of uniqueUrls) {
-          if (currentLoadId !== gardenLoadId) {
-            throw new StaleGardenLoadError();
-          }
-
-          const createdMeshes = await queueModelLoad(
-            url,
-            currentLoadId,
-            (gltf) => createFlowerInstances(
-              gltf,
-              diariesByUrl[url],
-              diaries.length,
-              assetPreview
-            )
-          );
-
-          if (currentLoadId !== gardenLoadId) {
-            disposeObject3Ds(createdMeshes);
-            throw new StaleGardenLoadError();
-          }
-
-          pendingFlowerMeshes.push(...createdMeshes);
+        if (!emotion) {
+          return;
         }
 
+        const urls = flowerUrlsMap[emotion];
+
+        if (!Array.isArray(urls) || urls.length === 0) {
+          console.warn(`No flower mapping for emotion: ${emotion}`);
+          return;
+        }
+
+        const url = urls[diary.id % urls.length];
+
+        if (!diariesByUrl[url]) {
+          diariesByUrl[url] = [];
+        }
+
+        diariesByUrl[url].push(diary);
+      });
+
+      queueDiagnosticReport('flower_loads_started');
+      requestRender();
+
+      for (const url of Object.keys(diariesByUrl)) {
         if (currentLoadId !== gardenLoadId) {
           throw new StaleGardenLoadError();
         }
 
-        pendingFlowerMeshes.forEach((mesh) => {
-          scene.add(mesh);
-        });
-
-        flowerData = [];
-        flowerMeshes = pendingFlowerMeshes;
-
-        document.getElementById('loading').style.display = 'none';
-        queueDiagnosticReport('garden_ready');
-        requestRender();
-      } catch (error) {
-        disposeObject3Ds(pendingFlowerMeshes);
-
-        if (
-          error instanceof StaleGardenLoadError ||
-          currentLoadId !== gardenLoadId
-        ) {
-          return;
-        }
-
-        console.error('Error loading flower batch', error);
-
-        if (window.FlutterChannel) {
-          window.FlutterChannel.postMessage(
-            'ERROR_FLOWER_BATCH: ' + error.message
-          );
-        }
-
-        showGardenLoadError(
-          '꽃을 불러오지 못했어요.',
+        const createdMeshes = await queueModelLoad(
+          url,
           currentLoadId,
-          retryGarden
+          (gltf) => createFlowerInstances(
+            gltf,
+            diariesByUrl[url],
+            diaries.length,
+            assetPreview
+          )
         );
 
-        queueDiagnosticReport('flower_batch_error');
-        requestRender();
-      }
-    };
-    loadFlowersSequentially();
+        if (currentLoadId !== gardenLoadId) {
+          disposeObject3Ds(createdMeshes);
+          throw new StaleGardenLoadError();
+        }
 
-  }).catch((error) => {
-    if (error instanceof StaleGardenLoadError) {
-      return;
+        pendingFlowerMeshes.push(...createdMeshes);
+      }
+
+      if (currentLoadId !== gardenLoadId) {
+        throw new StaleGardenLoadError();
+      }
+
+      pendingFlowerMeshes.forEach((mesh) => {
+        scene.add(mesh);
+      });
+
+      flowerMeshes = pendingFlowerMeshes;
+
+      loading.style.display = 'none';
+      queueDiagnosticReport('garden_ready');
+      requestRender();
+    } catch (error) {
+      disposeObject3Ds(pendingFlowerMeshes);
+
+      if (
+        error instanceof StaleGardenLoadError ||
+        currentLoadId !== gardenLoadId
+      ) {
+        return;
+      }
+
+      const errors = {
+        data: [
+          'ERROR_GARDEN_DATA',
+          '정원 데이터를 불러오지 못했어요.',
+          'garden_data_error',
+        ],
+        tree: [
+          'ERROR_TREE',
+          '나무를 불러오지 못했어요.',
+          'tree_load_error',
+        ],
+        flower: [
+          'ERROR_FLOWER_BATCH',
+          '꽃을 불러오지 못했어요.',
+          'flower_batch_error',
+        ],
+      };
+
+      const [code, message, reason] = errors[stage];
+      console.error(code, error);
+
+      if (window.FlutterChannel) {
+        window.FlutterChannel.postMessage(
+          `${code}: ${error?.message ?? String(error)}`
+        );
+      }
+
+      showGardenLoadError(
+        message,
+        currentLoadId,
+        retryGarden
+      );
+
+      queueDiagnosticReport(reason);
+      requestRender();
     }
-    if (currentLoadId !== gardenLoadId) {
-      return;
-    }
-    if (window.FlutterChannel) {
-      window.FlutterChannel.postMessage('ERROR_TREE: ' + error.message);
-    }
-    showGardenLoadError(
-      '나무를 불러오지 못했어요.',
-      currentLoadId,
-      retryGarden
-    );
-    queueDiagnosticReport('tree_load_error');
-    requestRender();
-  });
-}
+  };
+
+  loadGarden();
+};
 
 function onClick(event) {
   if (isFocusing) return;
@@ -1101,7 +1195,7 @@ function disposeObject3Ds(roots) {
   finalizeDisposalContext(context);
 }
 
-window.disposeGarden = function() {
+window.clearGardenContent = function () {
   gardenLoadId++;
   cancelWaitingModelLoads();
   cancelPreviewCatalogLoad();
@@ -1111,33 +1205,35 @@ window.disposeGarden = function() {
   loading.style.pointerEvents = 'none';
   loading.style.display = 'none';
 
+  const panel = document.getElementById('preview-selection');
+  if (panel) {
+    panel.style.display = 'none';
+  }
+
   gsap.killTweensOf(camera.position);
   gsap.killTweensOf(controls.target);
 
   isFocusing = false;
   controls.enabled = true;
 
-  const roots = [];
+  camera.position.copy(defaultCameraPos);
+  controls.target.copy(origin);
+  controls.update();
 
-  if (worldTree) {
-    roots.push(worldTree);
-    worldTree = null;
-  }
-
-  roots.push(...flowerMeshes);
-  disposeObject3Ds(roots);
-
+  const oldFlowers = flowerMeshes;
   flowerMeshes = [];
-  flowerData = [];
+  disposeObject3Ds(oldFlowers);
+
   diagnosticState.diaryCount = 0;
-
   renderer.renderLists?.dispose();
-
-  if (diagnosticsEnabled) {
-    emitDiagnosticReport('garden_disposed');
-  }
-
   requestRender();
+};
+
+window.disposeGarden = function () {
+  invalidateWorldTree();
+  window.clearGardenContent();
+
+  emitDiagnosticReport('garden_disposed');
 };
 
 window.cancelGardenLoadForDiagnostics = async function () {
@@ -1201,7 +1297,7 @@ function showPreviewSelection(label) {
 }
 
 window.previewGarden = async function () {
-  window.disposeGarden();
+  window.clearGardenContent();
 
   const requestGeneration = gardenLoadId;
   const controller = new AbortController();

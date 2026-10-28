@@ -32,6 +32,25 @@ class LocalAssetServer {
     }
 
     try {
+      const diagnosticsEnabled = bool.fromEnvironment(
+        'GARDEN_DIAGNOSTICS',
+        defaultValue: false,
+      );
+
+      const catalogDelayMs = int.fromEnvironment(
+        'GARDEN_CATALOG_DELAY_MS',
+        defaultValue: 0,
+      );
+
+      if (diagnosticsEnabled &&
+          path == 'www/flower_catalog.json' &&
+          catalogDelayMs > 0) {
+        debugPrint('GARDEN_CATALOG_DELAY: ${catalogDelayMs}ms');
+
+        await Future<void>.delayed(
+          Duration(milliseconds: catalogDelayMs),
+        );
+      }
       // e.g. path = 'www/index.html' -> assetPath = 'assets/www/index.html'
       final assetPath = '$assetBase/$path';
       final ByteData data = await rootBundle.load(assetPath);

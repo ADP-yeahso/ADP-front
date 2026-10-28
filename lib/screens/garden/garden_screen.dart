@@ -69,6 +69,10 @@ class _GardenScreenState extends State<GardenScreen> {
             }
             return;
           }
+          if (msgId.startsWith('ERROR_')) {
+            debugPrint(msgId);
+            return;
+          }
           if (kDebugMode) {
             print('JS Message: $msgId');
           }
@@ -89,10 +93,22 @@ class _GardenScreenState extends State<GardenScreen> {
 
     final diagnosticsQuery = _gardenDiagnosticsEnabled ? '&diagnostics=1' : '';
 
+    const catalogProcessDelayMs = int.fromEnvironment(
+      'GARDEN_CATALOG_PROCESS_DELAY_MS',
+      defaultValue: 0,
+    );
+
+    final catalogProcessQuery =
+        _gardenDiagnosticsEnabled &&
+                widget.assetPreview &&
+                catalogProcessDelayMs > 0
+            ? '&catalogProcessDelayMs=$catalogProcessDelayMs'
+            : '';
+
     await _webViewController.loadRequest(
       Uri.parse(
         'http://localhost:8080/www/index.html'
-        '?v=flower-mapping-v1$diagnosticsQuery',
+        '?v=flower-mapping-v1$diagnosticsQuery$catalogProcessQuery',
       ),
     );
 
@@ -145,7 +161,27 @@ class _GardenScreenState extends State<GardenScreen> {
           60,
           (index) => {'id': index * 4 + 2, 'emotion': 'affection'},
         );
+      case 'fail-tree':
+        return _buildMixedDiagnosticDiaries(30);
 
+      case 'fail-flower':
+      case 'corrupt-flower':
+        // 첫 번째 꽃은 성공시키고 두 번째 꽃에서 실패시켜
+        // 부분 성공 자원 해제를 확인한다.
+        return const [
+          {'id': 0, 'emotion': 'anger'},
+          {'id': 1, 'emotion': 'diagnostic-failure'},
+        ];
+
+      case 'invalid-emotion':
+        return const [
+          {'id': 1, 'emotion': ''},
+          {'id': 2, 'emotion': 'not-mapped'},
+        ];
+      case 'month-switch':
+        return _buildMixedDiagnosticDiaries(
+          _pageIndex.isEven ? 30 : 60,
+        );
       default:
         throw StateError('Unknown garden diagnostic scenario: $scenario');
     }
@@ -222,9 +258,21 @@ class _GardenScreenState extends State<GardenScreen> {
 
     final diariesJson = jsonEncode(diaryPayload);
 
+    if (_gardenDiagnosticsEnabled &&
+        _gardenScenario == 'month-switch') {
+      debugPrint(
+        'GARDEN_EXPECTED: page=$_pageIndex, '
+        'diaryCount=${diaryPayload.length}',
+      );
+    }
+
     const assetVersion = 'flower-mapping-v1';
     final treeUrl =
-        'http://localhost:8080/images/worldtree.glb?v=$assetVersion';
+        _gardenDiagnosticsEnabled && _gardenScenario == 'fail-tree'
+            ? 'http://localhost:8080/images/__missing_tree__.glb'
+                '?v=$assetVersion'
+            : 'http://localhost:8080/images/worldtree.glb'
+                '?v=$assetVersion';
 
     final flowerBaseUrl = 'http://localhost:8080/images/flower';
     final placeholderFlowerUrl =
@@ -263,6 +311,17 @@ class _GardenScreenState extends State<GardenScreen> {
       'gratitude': [placeholderFlowerUrl], // 임시임 감사 꽃 에셋 나오면 교체해야함
       'neutral': [placeholderFlowerUrl], // 임시임 중립 꽃 에셋 나오면 교체해야함
     };
+    if (_gardenDiagnosticsEnabled &&
+        (_gardenScenario == 'fail-flower' ||
+            _gardenScenario == 'corrupt-flower')) {
+      emotionToFlowers['diagnostic-failure'] = [
+        _gardenScenario == 'fail-flower'
+            ? '$flowerBaseUrl/__missing_flower__.glb'
+                '?v=$assetVersion'
+            : 'http://localhost:8080/www/index.html'
+                '?v=$assetVersion',
+      ];
+    }
     final flowerUrlsMapJson = jsonEncode(emotionToFlowers);
 
     _webViewController.runJavaScript('''
@@ -314,6 +373,27 @@ class _GardenScreenState extends State<GardenScreen> {
           SafeArea(
             child: Stack(
               children: [
+                if (_gardenDiagnosticsEnabled &&
+                    (_gardenScenario == 'month-switch' || widget.assetPreview))
+                  Positioned(
+                    top: 100,
+                    right: 16,
+                    child: TextButton(
+                      onPressed: () async {
+                        try {
+                          await _webViewController.runJavaScript('''
+                            window.cancelGardenLoadForDiagnostics()
+                              .catch((error) => {
+                                console.error('Diagnostic cancel failed', error);
+                              });
+                          ''');
+                        } catch (error) {
+                          debugPrint('GARDEN_DIAGNOSTIC_CANCEL_ERROR: $error');
+                        }
+                      },
+                      child: const Text('로딩 취소 · 진단'),
+                    ),
+                  ),
                 if (widget.assetPreview)
                   const Positioned(
                     top: 16,

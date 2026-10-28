@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+
+import '../../data/app_data.dart';
+import '../../models/groups.dart';
 import '../root_shell.dart';
 
 class GroupCreatedScreen extends StatelessWidget {
-  const GroupCreatedScreen({super.key});
+  const GroupCreatedScreen({super.key, this.group});
+
+  final Group? group;
 
   @override
   Widget build(BuildContext context) {
+    final groupName =
+        group?.groupName ?? context.watch<AppData>().group.groupName;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0),
       body: SafeArea(
@@ -25,9 +34,17 @@ class GroupCreatedScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               Center(
-                child: SvgPicture.asset(
-                  'assets/auth/group_created/text_group_name.svg',
-                  height: 36,
+                child: Text(
+                  groupName,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Pretendard',
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF2A5948),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),

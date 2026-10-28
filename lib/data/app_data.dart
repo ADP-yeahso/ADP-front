@@ -60,6 +60,16 @@ class AppData extends ChangeNotifier {
     createdAt: DateTime(2024, 1, 1),
   );
 
+  late List<Group> _joinedGroups = List.unmodifiable([group]);
+
+  List<Group> get joinedGroups => _joinedGroups;
+
+  /// 그룹 목록 API에서 받은 모델을 반영합니다. 빈 목록도 그대로 표시합니다.
+  void updateJoinedGroups(List<Group> groups) {
+    _joinedGroups = List.unmodifiable(groups);
+    notifyListeners();
+  }
+
   final List<UserGroup> userGroups = [
     UserGroup(
       id: 1,

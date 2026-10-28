@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+
+import '../../data/app_data.dart';
+import '../../models/groups.dart';
 import 'create_family_screen.dart';
 import 'group_created_screen.dart';
 
@@ -36,6 +40,8 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final groups = context.watch<AppData>().joinedGroups;
+
     // 0번 로그인 화면과 동일하게 시안 해상도(351 x 727) 기준 스케일 계산
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -43,7 +49,8 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
     final double hScale = screenHeight / 727;
 
     // 포커스가 없으면서 텍스트가 비어있을 때만 Placeholder SVG를 표시
-    final bool showPlaceholder = !_codeFocusNode.hasFocus && _codeController.text.isEmpty;
+    final bool showPlaceholder =
+        !_codeFocusNode.hasFocus && _codeController.text.isEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0), // 배경색 (디자이너 지정 컬러)
@@ -55,112 +62,87 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
             children: [
               // 1. 최상단 마진
               SizedBox(height: 20 * hScale, width: double.infinity),
-              
+
               // 2. 가족 그룹 아이콘
-              SvgPicture.asset('assets/auth/family_group/family_group_icon.svg', width: 104 * wScale, height: 104 * wScale),
+              SvgPicture.asset(
+                'assets/auth/family_group/family_group_icon.svg',
+                width: 104 * wScale,
+                height: 104 * wScale,
+              ),
               SizedBox(height: 2 * hScale),
-              
+
               // 3. 타이틀 및 부제
-              SvgPicture.asset('assets/auth/family_group/title_text.svg', width: 81 * wScale, height: 28 * wScale),
+              SvgPicture.asset(
+                'assets/auth/family_group/title_text.svg',
+                width: 81 * wScale,
+                height: 28 * wScale,
+              ),
               SizedBox(height: 6 * hScale),
-              SvgPicture.asset('assets/auth/family_group/subtitle_text.svg', width: 181 * wScale, height: 14 * wScale),
+              SvgPicture.asset(
+                'assets/auth/family_group/subtitle_text.svg',
+                width: 181 * wScale,
+                height: 14 * wScale,
+              ),
               SizedBox(height: 50 * hScale),
-              
+
               // 4. 현재 참여 중인 그룹 헤더
               Container(
                 width: 296 * wScale,
                 padding: EdgeInsets.only(left: 4 * wScale),
                 alignment: Alignment.centerLeft,
-                child: SvgPicture.asset('assets/auth/family_group/joined_group_header.svg', width: 100 * wScale, height: 16 * wScale),
+                child: SvgPicture.asset(
+                  'assets/auth/family_group/joined_group_header.svg',
+                  width: 100 * wScale,
+                  height: 16 * wScale,
+                ),
               ),
               SizedBox(height: 4 * hScale),
-              
-              // 5. 그룹박스 1 (현재 참여 중인 그룹 첫 번째)
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
-                },
-                child: SizedBox(
-                  width: 296 * wScale,
-                  height: 101 * wScale,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned.fill(
-                        child: SvgPicture.asset('assets/auth/family_group/group_box_1.svg', fit: BoxFit.fill),
-                      ),
-                      Positioned(
-                        right: 20 * wScale,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
-                          },
-                          child: Image.asset(
-                            'assets/auth/family_group/enter_text.png', 
-                            width: 85 * wScale, 
-                            height: 85 * (112 / 292) * wScale, // 실제 PNG 비율(292x112)에 맞춰 높이 자동 계산 (약 32.2)
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: 10 * hScale), // 그룹 박스 사이 간격
 
-              // 5-2. 그룹박스 2 (현재 참여 중인 그룹 두 번째 - 시안 동일 구성)
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
-                },
-                child: SizedBox(
-                  width: 296 * wScale,
-                  height: 101 * wScale,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned.fill(
-                        child: SvgPicture.asset('assets/auth/family_group/group_box_1.svg', fit: BoxFit.fill),
+              // API 응답이 AppData에 반영되면 카드 목록과 텍스트도 갱신됩니다.
+              for (final group in groups) ...[
+                _FamilyGroupCard(
+                  key: ValueKey(group.id),
+                  group: group,
+                  scale: wScale,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GroupCreatedScreen(group: group),
                       ),
-                      Positioned(
-                        right: 20 * wScale,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
-                          },
-                          child: Image.asset(
-                            'assets/auth/family_group/enter_text.png', 
-                            width: 85 * wScale, 
-                            height: 85 * (112 / 292) * wScale, // 실제 PNG 비율(292x112)에 맞춰 높이 자동 계산 (약 32.2)
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              ),
-              SizedBox(height: 10 * hScale),
-              
+                SizedBox(height: 10 * hScale),
+              ],
+
               // 6. 또는 구분선
-              SvgPicture.asset('assets/auth/family_group/or_divider.svg', width: 237 * wScale, height: 24 * wScale),
+              SvgPicture.asset(
+                'assets/auth/family_group/or_divider.svg',
+                width: 237 * wScale,
+                height: 24 * wScale,
+              ),
               SizedBox(height: 20 * hScale),
-              
+
               // 7. 새 그룹 생성 박스
               GestureDetector(
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateFamilyScreen()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CreateFamilyScreen(),
+                    ),
+                  );
                 },
                 child: Image.asset(
-                  'assets/auth/family_group/create_new_group_box.png', 
-                  width: 250 * wScale, 
-                  height: 41 * wScale,//
+                  'assets/auth/family_group/create_new_group_box.png',
+                  width: 250 * wScale,
+                  height: 41 * wScale, //
                   fit: BoxFit.fill, // 크기 변경 시 꽉 차게 늘어나도록 설정
                 ),
               ),
               SizedBox(height: 10 * hScale),
-              
+
               // 8. 그룹 참여 박스 (입력창 포함)
               SizedBox(
                 width: 250 * wScale,
@@ -169,16 +151,19 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                   children: [
                     // 박스 배경 (250x94)
                     Positioned.fill(
-                      child: Image.asset('assets/auth/family_group/join_group_box.png', fit: BoxFit.fill),
+                      child: Image.asset(
+                        'assets/auth/family_group/join_group_box.png',
+                        fit: BoxFit.fill,
+                      ),
                     ),
-                    
+
                     // 우측 하단 노란색 입장하기 버튼
                     Positioned(
                       right: 10 * wScale,
                       bottom: 14 * wScale,
                       child: Image.asset(
-                        'assets/auth/family_group/enter_button.png', 
-                        width: 66 * wScale, 
+                        'assets/auth/family_group/enter_button.png',
+                        width: 66 * wScale,
                         height: 35 * wScale,
                         fit: BoxFit.fill, // 크기 변경 시 꽉 차게 늘어나도록 추가!
                       ),
@@ -187,11 +172,15 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                     // 입력창 Placeholder 텍스트 (SVG)
                     if (showPlaceholder)
                       Positioned(
-                        left: 30 * wScale,//
-                        bottom: 25 * wScale,//
-                        child: SvgPicture.asset('assets/auth/family_group/enter_group_code_placeholder.svg', width: 110 * wScale, height: 14 * wScale),
+                        left: 30 * wScale, //
+                        bottom: 25 * wScale, //
+                        child: SvgPicture.asset(
+                          'assets/auth/family_group/enter_group_code_placeholder.svg',
+                          width: 110 * wScale,
+                          height: 14 * wScale,
+                        ),
                       ),
-                    
+
                     // 실제 텍스트 입력창 (투명)
                     Positioned(
                       left: 10,
@@ -210,11 +199,14 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                         decoration: InputDecoration(
                           filled: false,
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.only(left: 16 * wScale, bottom: 8 * wScale),
+                          contentPadding: EdgeInsets.only(
+                            left: 16 * wScale,
+                            bottom: 8 * wScale,
+                          ),
                         ),
                       ),
                     ),
-                    
+
                     // 확인 버튼 터치 영역 (디자이너가 우측 하단에 버튼을 구웠다고 가정)
                     Positioned(
                       right: 0,
@@ -225,7 +217,12 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
                           if (_codeController.text.isNotEmpty) {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupCreatedScreen()));
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const GroupCreatedScreen(),
+                              ),
+                            );
                           }
                         },
                       ),
@@ -233,8 +230,100 @@ class _FamilyGroupListScreenState extends State<FamilyGroupListScreen> {
                   ],
                 ),
               ),
-              
+
               SizedBox(height: 20 * hScale),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FamilyGroupCard extends StatelessWidget {
+  const _FamilyGroupCard({
+    super.key,
+    required this.group,
+    required this.scale,
+    required this.onTap,
+  });
+
+  final Group group;
+  final double scale;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '${group.groupName}, 구성원 ${group.members}명, 입장하기',
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          width: 296 * scale,
+          height: 101 * scale,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: SvgPicture.asset(
+                  'assets/auth/family_group/group_card_background.svg',
+                  fit: BoxFit.fill,
+                ),
+              ),
+              Positioned(
+                left: 94 * scale,
+                right: 113 * scale,
+                top: 15 * scale,
+                bottom: 15 * scale,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        group.groupName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Pretendard',
+                          fontSize: 16 * scale,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFFFFDF6),
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8 * scale),
+                    Text(
+                      '구성원 ${group.members}명',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 12 * scale,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFFFFFDF6),
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                right: 20 * scale,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Image.asset(
+                    'assets/auth/family_group/enter_text.png',
+                    width: 85 * scale,
+                    height: 85 * (112 / 292) * scale,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

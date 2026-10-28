@@ -4,16 +4,13 @@ import '../../../models/emotions.dart';
 import '../../../utils/emotion_utils.dart';
 import '../../../services/diary_service.dart';
 import 'diary_care_content_screen.dart';
+import 'pending_flower_card.dart';
 
 class DiaryResultScreen extends StatelessWidget {
   final Emotion? emotion;
   final DiaryFinalization? finalization;
 
-  const DiaryResultScreen({
-    super.key,
-    this.emotion,
-    this.finalization,
-  });
+  const DiaryResultScreen({super.key, this.emotion, this.finalization});
 
   Widget _buildAssetWidget({
     required List<String> candidatePaths,
@@ -36,7 +33,8 @@ class DiaryResultScreen extends StatelessWidget {
       return Image.asset(
         path,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => _tryPath(paths, index + 1, fallback),
+        errorBuilder: (context, error, stackTrace) =>
+            _tryPath(paths, index + 1, fallback),
       );
     }
   }
@@ -105,26 +103,22 @@ class DiaryResultScreen extends StatelessWidget {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 10.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 10),
-                // 1. 헤드라인 ("감정 기록 완료")
-                _buildAssetWidget(
-                  candidatePaths: const [
-                    'assets/record/choice/svg/3-0,3-2-1~3-2-5대제목 수정.svg/svg/3-2-5 메인 헤드라인.svg',
-                    'assets/record/choice/svg/3-2-5.svg/svg/3-2-5 메인 헤드라인.svg',
-                    'assets/record/choice/png/3-2-5.png/png/3-2-5 메인 헤드라인.png',
-                  ],
-                  fallback: const Text(
-                    '감정 기록 완료',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF222222),
-                    ),
-                    textAlign: TextAlign.center,
+                const Text(
+                  '감정 기록 완료',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Meetme',
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF222222),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -145,18 +139,27 @@ class DiaryResultScreen extends StatelessWidget {
                             width: 240,
                             height: 340,
                             child: _buildAssetWidget(
-                              candidatePaths: _getGradientCardCandidatePaths(activeEmotion),
+                              candidatePaths: _getGradientCardCandidatePaths(
+                                activeEmotion,
+                              ),
                               fallback: Container(
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
-                                    colors: [activeEmotion.color, activeEmotion.color.withValues(alpha: 0.7)],
+                                    colors: [
+                                      activeEmotion.color,
+                                      activeEmotion.color.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                    ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   borderRadius: BorderRadius.circular(24),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.08),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.08,
+                                      ),
                                       blurRadius: 12,
                                       offset: const Offset(0, 4),
                                     ),
@@ -168,89 +171,7 @@ class DiaryResultScreen extends StatelessWidget {
                         ),
                       ),
 
-                      // 앞쪽 꽃카드 (메인 이미지 asset 또는 시안 다크 카드 렌더링)
-                      _buildAssetWidget(
-                        candidatePaths: const [
-                          'assets/record/choice/svg/3-2-5.svg/svg/꽃카드.svg',
-                          'assets/record/choice/png/3-2-5.png/png/꽃카드.png',
-                        ],
-                        fallback: Container(
-                          width: 240,
-                          height: 340,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF191919), // 시안 다크 톤
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 16,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          child: Stack(
-                            children: [
-                              // 위치 20*30 폰트크기 40 (은방울꽃)
-                              Positioned(
-                                top: 24,
-                                left: 20,
-                                child: Text(
-                                  finalization?.flowerName ?? '은방울꽃',
-                                  style: const TextStyle(
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                              ),
-                              // 위치 20*80 폰트크기 16 (꽃말)
-                              Positioned(
-                                top: 68,
-                                left: 20,
-                                child: Text(
-                                  finalization?.flowerSentence ?? '행복이 반드시 찾아옵니다',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                              ),
-                              // 중앙 꽃 라인아트 드로잉
-                              Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 40),
-                                  child: Icon(
-                                    Icons.local_florist_outlined,
-                                    size: 130,
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                  ),
-                                ),
-                              ),
-                              // 우측 하단 배지 (크기 37*17, 위치 right 16, bottom 16)
-                              Positioned(
-                                right: 16,
-                                bottom: 16,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF2C4A28),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      Icon(Icons.park, size: 12, color: Color(0xFFA5DD82)),
-                                      SizedBox(width: 2),
-                                      Icon(Icons.local_florist, size: 12, color: Color(0xFFFFCB0F)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      const PendingFlowerCard(),
                     ],
                   ),
                 ),
@@ -266,7 +187,8 @@ class DiaryResultScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const DiaryCareContentScreen(),
+                            builder: (context) =>
+                                const DiaryCareContentScreen(),
                           ),
                         );
                       },

@@ -6,6 +6,7 @@ import '../data/app_data.dart';
 import 'calendar/calendar_screen.dart';
 import 'garden/garden_screen.dart';
 import 'profile/profile_screen.dart';
+import 'profile/patient_info_screen.dart';
 import 'record/record_choice_sheet.dart';
 import 'gallery/gallery_screen.dart';
 
@@ -76,9 +77,27 @@ class _RootShellState extends State<RootShell> {
               bottom: false,
               child: MaterialBanner(
                 content: Text(
-                  data.loadError ?? '환자 정보를 불러오지 못했습니다. 그룹 정보에서 확인해주세요.',
+                  data.loadError ??
+                      (data.isLoading
+                          ? '환자 정보를 불러오고 있어요.'
+                          : data.patientLookupAvailable
+                          ? '환자 정보가 아직 등록되지 않았어요.'
+                          : '환자 정보를 불러오지 못했어요. 다시 불러와주세요.'),
                 ),
                 actions: [
+                  if (!data.hasPatient &&
+                      data.patientLookupAvailable &&
+                      data.loadError == null)
+                    TextButton(
+                      onPressed: data.isLoading
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const PatientInfoScreen(),
+                              ),
+                            ),
+                      child: const Text('환자 정보 등록'),
+                    ),
                   TextButton(
                     onPressed: data.isLoading ? null : data.refreshGroup,
                     child: const Text('다시 불러오기'),

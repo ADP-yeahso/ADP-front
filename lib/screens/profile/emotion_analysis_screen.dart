@@ -262,7 +262,7 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
       final isBeforeEnd =
           diaryDate.isAtSameMomentAs(end) || diaryDate.isBefore(end);
 
-      return isMyDiary && isAfterStart && isBeforeEnd;
+      return diary.isFinalized && isMyDiary && isAfterStart && isBeforeEnd;
     }).toList();
 
     diaries.sort((a, b) => a.recordDate.compareTo(b.recordDate));

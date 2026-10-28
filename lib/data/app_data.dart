@@ -187,7 +187,9 @@ class AppData extends ChangeNotifier {
         );
       }
       patientLookupAvailable = detail.containsKey('patient');
-      final rawPatient = detail['patient'] ?? _createdPatients[groupId];
+      final rawPatient = patientLookupAvailable
+          ? detail['patient']
+          : _createdPatients[groupId];
       _setPatient(rawPatient is Map<String, dynamic> ? rawPatient : {});
       notifyListeners();
       await refreshRecords();
@@ -264,12 +266,17 @@ class AppData extends ChangeNotifier {
       );
       final details = <Map<String, dynamic>>[];
       for (final row in diaryRows) {
-        if (row['status'] != 'completed' ||
-            row['final_emotion_id'] == null ||
+        if (row['final_emotion_id'] == null ||
+            (row['status'] != 'completed' &&
+                row['correct_emotion_id'] is! int) ||
             row['deleted_at'] != null) {
           continue;
         }
-        details.add(await _diaryDetail(row['id'] as int, tokens));
+        final detail = {
+          ...row,
+          ...await _diaryDetail(row['id'] as int, tokens),
+        };
+        if (Diary.hasSavedEmotion(detail)) details.add(detail);
       }
       if (generation != _generation || request != _recordsRequest) return;
       final loadedMemories = memoryRows.map(_memory).toList();
@@ -297,9 +304,8 @@ class AppData extends ChangeNotifier {
     try {
       final value = await _diaryDetail(id, tokens);
       if (generation != _generation) return;
-      final diary = _diary(value);
       diaries.removeWhere((item) => item.id == id);
-      diaries.add(diary);
+      if (Diary.hasSavedEmotion(value)) diaries.add(_diary(value));
     } on ApiException catch (error) {
       if (generation != _generation) return;
       loadError = error.message;
@@ -387,9 +393,14 @@ class AppData extends ChangeNotifier {
         sentence: (flower['sentence'] ?? '').toString(),
       ),
       mediaList: _media(value['media']),
-      recordDate: _time(value['finalized_at'] ?? value['record_date']),
+      recordDate: _time(
+        value['finalized_at'] ??
+            (value['status'] == 'draft' ? value['updated_at'] : null) ??
+            value['record_date'],
+      ),
       createdAt: _time(value['created_at']),
       updatedAt: _time(value['updated_at']),
+      isFinalized: value['status'] == 'completed',
     );
   }
 
@@ -710,6 +721,11 @@ class AppData extends ChangeNotifier {
     if (index == -1) return false;
     final old = diaries[index];
     _recordsRequest++;
+    if (value['status'] != 'completed' && value['correct_emotion_id'] == null) {
+      diaries.removeAt(index);
+      notifyListeners();
+      return true;
+    }
     diaries[index] = Diary(
       id: old.id,
       userId: old.userId,
@@ -721,6 +737,7 @@ class AppData extends ChangeNotifier {
       createdAt: old.createdAt,
       updatedAt: _time(value['updated_at']),
       deletedAt: old.deletedAt,
+      isFinalized: old.isFinalized,
     );
     notifyListeners();
     return true;

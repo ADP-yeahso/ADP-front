@@ -28,6 +28,9 @@ void main() {
       }
       if (request.url.path == '/api/v1/diaries') {
         expect(jsonDecode(request.body), containsPair('group_id', 7));
+        final timestamp = jsonDecode(request.body)['record_date'] as String;
+        expect(timestamp, endsWith('Z'));
+        expect(DateTime.parse(timestamp).toLocal(), DateTime(2026, 9, 17));
         return http.Response(jsonEncode({'id': 42}), 201);
       }
       if (request.url.path == '/api/v1/diaries/42/ai-question') {

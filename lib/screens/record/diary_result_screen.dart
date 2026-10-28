@@ -191,14 +191,21 @@ class _DiaryResultScreenState extends State<DiaryResultScreen> {
     child: Column(
       children: [
         const SizedBox(height: 60),
-        const Icon(Icons.local_florist, size: 80, color: Color(0xFFE1613B)),
+        Icon(
+          result.hasFlower ? Icons.local_florist : Icons.check_circle,
+          size: 80,
+          color: const Color(0xFFE1613B),
+        ),
         const SizedBox(height: 20),
         Text(
           result.emotionName,
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Text(result.flowerName, style: const TextStyle(fontSize: 20)),
+        Text(
+          result.hasFlower ? result.flowerName : '감정 라벨 저장 완료 · 꽃 카드 준비 중',
+          style: const TextStyle(fontSize: 20),
+        ),
         if (result.flowerSentence.isNotEmpty) ...[
           const SizedBox(height: 14),
           Text(result.flowerSentence, textAlign: TextAlign.center),

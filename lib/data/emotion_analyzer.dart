@@ -219,5 +219,8 @@ EmotionAnalysisResult analyzeEmotion(String text) {
 }
 
 Recommendation recommendationFor(Emotion emotion) {
-  return _recommendations[emotion]!;
+  for (final entry in _recommendations.entries) {
+    if (entry.key.id == emotion.id) return entry.value;
+  }
+  return _recommendations[EmotionValues.neutral]!;
 }

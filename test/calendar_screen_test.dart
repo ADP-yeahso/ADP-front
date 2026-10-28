@@ -43,7 +43,84 @@ String _dayTitle(DateTime date) {
   return '${date.year}. $month. $day';
 }
 
+Future<void> _openStandaloneCalendar(
+  WidgetTester tester,
+  AppData data,
+  CalendarScreen screen,
+) async {
+  await tester.pumpWidget(
+    ChangeNotifierProvider<AppData>.value(
+      value: data,
+      child: MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => screen)),
+              child: const Text('캘린더 열기'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('캘린더 열기'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  testWidgets('따로 연 월간 달력의 뒤로가기는 이전 화면으로 돌아간다', (tester) async {
+    final data = AppData();
+    addTearDown(data.dispose);
+    await _openStandaloneCalendar(
+      tester,
+      data,
+      CalendarScreen(initialMonth: DateTime.now()),
+    );
+    expect(find.byKey(const ValueKey('calendar-close')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('calendar-back')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CalendarScreen), findsNothing);
+    expect(find.text('캘린더 열기'), findsOneWidget);
+  });
+
+  testWidgets('닫기는 월간·날짜 상세 어느 단계에서도 달력 전체를 닫는다', (tester) async {
+    final data = AppData();
+    addTearDown(data.dispose);
+    final today = DateTime.now();
+    for (final screen in [
+      CalendarScreen(initialMonth: today),
+      CalendarScreen(initialDay: today),
+    ]) {
+      await _openStandaloneCalendar(tester, data, screen);
+      await tester.tap(find.byKey(const ValueKey('calendar-close')));
+      await tester.pumpAndSettle();
+      expect(find.byType(CalendarScreen), findsNothing);
+      expect(find.text('캘린더 열기'), findsOneWidget);
+    }
+  });
+
+  testWidgets('시스템 뒤로가기는 날짜·월·연간을 거쳐 이전 화면으로 돌아간다', (tester) async {
+    final data = AppData();
+    addTearDown(data.dispose);
+    final today = DateTime.now();
+    await _openStandaloneCalendar(tester, data, const CalendarScreen());
+    await _openDay(tester, today);
+    expect(find.text(_dayTitle(today)), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('${today.year}년 ${today.month}월'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('${today.year}'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(CalendarScreen), findsNothing);
+    expect(find.text('캘린더 열기'), findsOneWidget);
+  });
+
   testWidgets('연간 달력에서 월간 달력과 날짜 상세로 이동하고 뒤로간다', (WidgetTester tester) async {
     final appData = AppData();
     final today = DateTime.now();
@@ -54,6 +131,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('${today.year}'), findsOneWidget);
+    expect(find.byKey(const ValueKey('calendar-close')), findsNothing);
 
     await _openMonth(tester, today);
 

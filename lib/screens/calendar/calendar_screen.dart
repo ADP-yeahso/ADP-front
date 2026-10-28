@@ -24,11 +24,13 @@ const _weekdayAssetPaths = [
 
 class CalendarScreen extends StatefulWidget {
   final DateTime? initialDay;
+  final DateTime? initialMonth;
   final Memory? initialMemory;
   final Diary? initialDiary;
   const CalendarScreen({
     super.key,
     this.initialDay,
+    this.initialMonth,
     this.initialMemory,
     this.initialDiary,
   });
@@ -50,6 +52,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _anchor = gardenAnchorMonth();
     _year = _anchor.year;
     _selectedDay = widget.initialDay;
+    if (widget.initialMonth != null) {
+      _drilldownMonth = DateTime(
+        widget.initialMonth!.year,
+        widget.initialMonth!.month,
+      );
+      _year = _drilldownMonth!.year;
+    }
   }
 
   Future<void> _refreshRecords() async {
@@ -96,10 +105,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     if (_drilldownMonth != null) {
+      if (widget.initialMonth != null && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+        return;
+      }
       setState(() {
         _drilldownMonth = null;
       });
+      return;
     }
+
+    if (Navigator.of(context).canPop()) Navigator.of(context).pop();
   }
 
   void _changeMonth(int delta) {
@@ -173,19 +189,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
       month: _drilldownMonth!,
       onSelectDay: _selectDay,
       onMonthChange: _changeMonth,
-      onBackToYear: () {
-        setState(() {
-          _drilldownMonth = null;
-        });
-      },
+      onBackToYear: _goBack,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final showBack = _selectedDay != null || _drilldownMonth != null;
+    final canExit = Navigator.of(context).canPop();
+    final showBack = _selectedDay != null || _drilldownMonth != null || canExit;
+    final handlesBackInsideCalendar =
+        (_selectedDay != null && widget.initialDay == null) ||
+        (_selectedDay == null &&
+            _drilldownMonth != null &&
+            widget.initialMonth == null);
 
-    return Scaffold(
+    final content = Scaffold(
       body: Container(
         decoration: const BoxDecoration(color: Color(0xFFFFFBF0)),
 
@@ -211,7 +229,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
     );
+
+    if (!canExit) return content;
+    return PopScope(
+      canPop: !handlesBackInsideCalendar,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _goBack();
+      },
+      child: content,
+    );
   }
+}
+
+class _CalendarCloseButton extends StatelessWidget {
+  const _CalendarCloseButton();
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    key: const ValueKey('calendar-close'),
+    tooltip: '캘린더 닫기',
+    onPressed: () => Navigator.of(context).pop(),
+    icon: const Icon(Icons.close, color: Color(0xFF315646)),
+  );
 }
 
 class _TopBar extends StatelessWidget {
@@ -266,6 +305,8 @@ class _TopBar extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
+            if (Navigator.of(context).canPop())
+              const Positioned(right: 8, child: _CalendarCloseButton()),
           ],
         ),
       );
@@ -278,7 +319,12 @@ class _TopBar extends StatelessWidget {
             width: 48,
             child: showBack
                 ? IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                    key: const ValueKey('calendar-back'),
+                    tooltip: '뒤로가기',
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Color(0xFF315646),
+                    ),
                     onPressed: onBack,
                   )
                 : null,
@@ -306,14 +352,16 @@ class _TopBar extends StatelessWidget {
           ),
           SizedBox(
             width: 48,
-            child: IconButton(
-              icon: const Icon(
-                Icons.ios_share,
-                color: Colors.white70,
-                size: 20,
-              ),
-              onPressed: onShare,
-            ),
+            child: Navigator.of(context).canPop()
+                ? const _CalendarCloseButton()
+                : IconButton(
+                    icon: const Icon(
+                      Icons.ios_share,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+                    onPressed: onShare,
+                  ),
           ),
         ],
       ),
@@ -534,8 +582,25 @@ class _MiniDayNumber extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
+            if (flowerEmotion != null)
+              Container(
+                width: 17,
+                height: 17,
+                decoration: BoxDecoration(
+                  color: flowerEmotion!.color.withValues(alpha: 0.25),
+                  shape: BoxShape.circle,
+                ),
+              ),
             if (moodAsset != null)
-              SvgPicture.asset(moodAsset, width: 17, height: 17),
+              SvgPicture.asset(
+                moodAsset,
+                width: 17,
+                height: 17,
+                colorFilter: ColorFilter.mode(
+                  flowerEmotion!.color,
+                  BlendMode.srcIn,
+                ),
+              ),
             if (moodAsset == null && isToday)
               Container(
                 width: 17,
@@ -637,7 +702,7 @@ class _DayGrid extends StatelessWidget {
                         child: Center(
                           child: SvgPicture.asset(
                             'assets/page2/record_detail/back_button.svg',
-                            semanticsLabel: '연간 달력으로 돌아가기',
+                            semanticsLabel: '뒤로가기',
                             width: 24,
                             height: 24,
                             fit: BoxFit.contain,
@@ -646,6 +711,13 @@ class _DayGrid extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (Navigator.of(context).canPop())
+                    const Positioned(
+                      right: 8,
+                      top: 0,
+                      bottom: 0,
+                      child: _CalendarCloseButton(),
+                    ),
                 ],
               ),
             ),
@@ -817,6 +889,9 @@ class _DayCell extends StatelessWidget {
     final flower = flowerEmotion == null
         ? null
         : ColorFiltered(
+            key: ValueKey(
+              'calendar-emotion-${date.year}-${date.month}-${date.day}',
+            ),
             colorFilter: ColorFilter.mode(
               flowerEmotion!.color,
               BlendMode.srcIn,
@@ -867,9 +942,26 @@ class _DayCell extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
+                if (flowerEmotion != null)
+                  Container(
+                    key: ValueKey(
+                      'calendar-label-color-${date.year}-${date.month}-${date.day}',
+                    ),
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: flowerEmotion!.color.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 if (moodAssetPath != null)
                   SvgPicture.asset(
                     moodAssetPath,
+                    semanticsLabel: '${flowerEmotion!.displayName} 감정',
+                    colorFilter: ColorFilter.mode(
+                      flowerEmotion!.color,
+                      BlendMode.srcIn,
+                    ),
                     width: 78,
                     height: 65,
                     fit: BoxFit.contain,

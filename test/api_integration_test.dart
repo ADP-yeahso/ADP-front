@@ -45,6 +45,62 @@ Map<String, dynamic> groupDetail(int id) => {
 
 void main() {
   test(
+    'missing patient field does not masquerade as an unregistered patient',
+    () async {
+      final detail = groupDetail(7)..remove('patient');
+      final data = AppData(
+        api: ApiService(
+          client: MockClient((request) async {
+            if (request.url.path.endsWith('/users/me')) {
+              return jsonResponse({'id': userId});
+            }
+            if (request.url.path.endsWith('/groups/7')) {
+              return jsonResponse(detail);
+            }
+            if (request.url.path.endsWith('/diaries')) return jsonResponse([]);
+            fail('Unexpected request: ${request.url}');
+          }),
+        ),
+      );
+      addTearDown(data.dispose);
+      await data.openGroup(tokens, 7);
+      expect(data.group.id, 7);
+      expect(data.patientLookupAvailable, isFalse);
+      expect(data.hasPatient, isFalse);
+      expect(data.loadError, isNull);
+    },
+  );
+
+  test(
+    'an explicit null patient overrides stale locally created patient data',
+    () async {
+      final detail = groupDetail(7)..['patient'] = null;
+      final data = AppData(
+        api: ApiService(
+          client: MockClient((request) async {
+            if (request.url.path.endsWith('/users/me')) {
+              return jsonResponse({'id': userId});
+            }
+            if (request.url.path.endsWith('/groups/7')) {
+              return jsonResponse(detail);
+            }
+            if (request.url.path.endsWith('/diaries')) return jsonResponse([]);
+            fail('Unexpected request: ${request.url}');
+          }),
+        ),
+      );
+      addTearDown(data.dispose);
+      data.rememberPatient(7, {'id': 43, 'patient_name': '이전 환자'});
+      await data.openGroup(tokens, 7);
+      expect(data.group.id, 7);
+      expect(data.patientLookupAvailable, isTrue);
+      expect(data.hasPatient, isFalse);
+      expect(data.patientDetails, isEmpty);
+      expect(data.loadError, isNull);
+    },
+  );
+
+  test(
     'selected group hydrates UUID users, server record IDs and signed media',
     () async {
       final requests = <http.Request>[];

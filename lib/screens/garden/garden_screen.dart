@@ -15,7 +15,6 @@ import '../care_notebook/care_notebook_list_screen.dart';
 import 'entry_detail_sheet.dart';
 import '../calendar/calendar_screen.dart';
 
-
 /// 기억의 정원 – Three.js + WebView 하이브리드 아키텍처
 class GardenScreen extends StatefulWidget {
   const GardenScreen({super.key});
@@ -138,7 +137,9 @@ class _GardenScreenState extends State<GardenScreen> {
   /// 달이 변경될 때마다 3D Scene의 데이터를 다시 주입
   void _reload3DScene() {
     final appData = context.read<AppData>();
-    final diaries = appData.diariesForMonth(_currentMonth);
+    final diaries = appData
+        .diariesForMonth(_currentMonth)
+        .where((diary) => diary.isFinalized && diary.hasFlower);
 
     final diariesJson = jsonEncode(
       diaries
@@ -321,9 +322,7 @@ class _GardenScreenState extends State<GardenScreen> {
         return SizedBox(
           height: MediaQuery.of(context).size.height * 0.94,
           child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(24),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             child: CalendarScreen(
               initialDay: diary.recordDate,
               initialDiary: diary,
@@ -331,7 +330,6 @@ class _GardenScreenState extends State<GardenScreen> {
           ),
         );
       },
-
     );
 
     if (mounted) {

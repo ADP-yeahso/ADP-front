@@ -10,6 +10,7 @@ import '../../services/api_service.dart';
 import '../../models/diary.dart';
 import '../../models/memory.dart';
 import '../../models/media.dart';
+import '../../utils/emotion_utils.dart';
 import '../garden/entry_detail_sheet.dart';
 import 'record_text_edit_screen.dart';
 
@@ -882,6 +883,28 @@ class _FlowerInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final flower = diary.flowerType;
+
+    if (!diary.hasFlower) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: flower.emotionId.color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              flower.emotionId.displayName,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            const Text('감정 라벨은 저장됐어요. 꽃 카드는 아직 준비 중이에요.'),
+          ],
+        ),
+      );
+    }
 
     return Container(
       width: double.infinity,

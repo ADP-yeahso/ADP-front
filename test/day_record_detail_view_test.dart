@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:care_garden/data/app_data.dart';
+import 'package:care_garden/models/emotions.dart';
 import 'package:care_garden/screens/calendar/day_record_detail_view.dart';
 
 final DateTime _selectedDay = DateTime(2026, 8, 10);
@@ -116,7 +117,11 @@ void main() {
 
     addTearDown(appData.dispose);
 
-    appData.addDiary(date: _selectedDay, content: '꽃 기록 상세 열기 테스트');
+    appData.addDiary(
+      date: _selectedDay,
+      content: '꽃 기록 상세 열기 테스트',
+      emotion: Emotion(id: 6, name: 'tenderness', displayName: '애틋함/수용'),
+    );
 
     await tester.pumpWidget(_buildTestApp(appData));
     await tester.pumpAndSettle();

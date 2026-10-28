@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/media.dart';
+import '../models/diary.dart';
 import 'api_service.dart';
 
 import 'package:http/http.dart' as http;
@@ -10,9 +11,10 @@ import '../config/api_config.dart';
 import 'auth_service.dart';
 
 class DiaryException implements Exception {
-  const DiaryException(this.message);
+  const DiaryException(this.message, {this.statusCode});
 
   final String message;
+  final int? statusCode;
 }
 
 class DiaryDraft {
@@ -42,12 +44,20 @@ class DiaryFinalization {
     required this.emotionName,
     required this.flowerName,
     required this.flowerSentence,
+    this.hasFlower = true,
+    this.isFinalized = true,
+    this.recordDate,
+    this.selectedEmotionName,
   });
 
   final int? emotionId;
   final String emotionName;
   final String flowerName;
   final String flowerSentence;
+  final bool hasFlower;
+  final bool isFinalized;
+  final DateTime? recordDate;
+  final String? selectedEmotionName;
 }
 
 /// Calendar-only projection of a finalized diary.
@@ -178,7 +188,7 @@ class DiaryService {
         'group_id': groupId,
         'situation_text': situationText,
         if (title != null && title.isNotEmpty) 'title': title,
-        'record_date': recordDate.toIso8601String(),
+        'record_date': recordDate.toUtc().toIso8601String(),
       });
       final id = created['id'] ?? created['diary_id'];
       if (id is! int) throw const DiaryException('일기 저장 응답 형식이 올바르지 않습니다.');
@@ -304,9 +314,27 @@ class DiaryService {
     if (tagIds.length != 3 || tagIds.toSet().length != 3) {
       throw const DiaryException('감정 태그를 정확히 3개 선택해주세요.');
     }
-    final result = await _post('/diaries/$diaryId/finalize', tokens, {
-      'emotion_tag_ids': tagIds,
-    });
+    Map<String, dynamic> result;
+    try {
+      result = await _post('/diaries/$diaryId/finalize', tokens, {
+        'emotion_tag_ids': tagIds,
+      });
+    } on DiaryException catch (error) {
+      if (error.statusCode != 404 || error.message != 'Flower not found') {
+        rethrow;
+      }
+      final saved = await _get('/diaries/$diaryId', tokens);
+      if (saved is! Map<String, dynamic> || !Diary.hasSavedEmotion(saved)) {
+        throw const DiaryException('감정 라벨 저장을 확인하지 못했어요. 다시 시도해주세요.');
+      }
+      final savedTags = (saved['selected_emotion_tags'] as List)
+          .map((tag) => (tag as Map)['id'])
+          .toSet();
+      if (savedTags.length != tagIds.length || !savedTags.containsAll(tagIds)) {
+        throw const DiaryException('선택한 감정 태그가 저장되지 않았어요. 다시 시도해주세요.');
+      }
+      result = saved;
+    }
     final emotion = result['emotion'];
     final flower = result['flower'];
     final emotionMap = emotion is Map<String, dynamic>
@@ -320,8 +348,18 @@ class DiaryService {
       emotionName:
           (emotionMap['display_name'] ?? emotionMap['emotion'] ?? '오늘의 감정')
               .toString(),
-      flowerName: (flowerMap['flower_name'] ?? '마음의 꽃').toString(),
+      flowerName: (flowerMap['flower_name'] ?? '').toString(),
       flowerSentence: (flowerMap['sentence'] ?? '').toString(),
+      hasFlower: flowerMap.isNotEmpty,
+      isFinalized: result['status'] == 'completed',
+      recordDate: DateTime.tryParse(
+        '${result['finalized_at'] ?? (result['status'] == 'draft' ? result['updated_at'] : null) ?? result['record_date']}',
+      )?.toLocal(),
+      selectedEmotionName: result['correct_emotion'] is Map
+          ? ((result['correct_emotion'] as Map)['display_name'] ??
+                    (result['correct_emotion'] as Map)['emotion'])
+                ?.toString()
+          : null,
     );
   }
 
@@ -398,7 +436,7 @@ class DiaryService {
     }
     final detail = body is Map<String, dynamic> ? body['detail'] : null;
     if (detail is String && detail.isNotEmpty) {
-      throw DiaryException(detail);
+      throw DiaryException(detail, statusCode: response.statusCode);
     }
     if (response.statusCode == 422) {
       throw const DiaryException('입력한 내용을 다시 확인해주세요.');

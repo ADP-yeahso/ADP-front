@@ -20,18 +20,18 @@ flutter:
     - assets/images/care_note/
 ```
 
-4. If `flutter_svg` is already configured, prefer `SvgPicture.asset('assets/images/care_note/...')`. Otherwise inspect existing dependencies and add/adjust only if needed.
+4. If `flutter_svg` is already configured, use `SvgPicture.asset('assets/images/care_note/...')` for scalable assets. Use PNG variants for shadow-sensitive frames and controls when the SVG version does not preserve the shadow.
 5. Reuse existing app typography, navigation, data models, and theme. Keep text fields/date fields interactive; do not replace the entire screen with one image.
 
 ## Selected / unselected states
-- `option_<name>_unselected.svg` = unselected control (`클릭전`).
-- `option_<name>_selected.svg` = selected control (`클릭후`).
-- Each also has an equivalent `.png` for fallback.
+- `option_<name>_unselected.png` = unselected control (`클릭전`).
+- `option_<name>_selected.png` = selected control (`클릭후`).
+- The PNG variants preserve the supplied shadows and include their labels.
 - Available options: good, normal, bad, low, bowel_normal, bowel_changed, medication_taken, medication_missed, unusual_yes, unusual_no, unusual_wandering, unusual_aggression, unusual_other, unusual_refusing_meals, unusual_repeated_questions, unusual_sleep_change, unusual_anxiety.
 
 ## Important
 - The provided SVGs and PNGs are *UI fragments*, not full screen exports. Layout must be composed with Flutter widgets.
-- Most PNG files are small native-sized UI elements. Prefer SVGs for scaling, but check fidelity and package compatibility.
+- Most PNG files are small native-sized UI elements. Prefer SVGs for scaling except where PNG fidelity is needed for shadows or embedded labels.
 - Labels like `good`/`normal`/`bad` can be reused in different sections as the design requires; inspect the existing app/UI specification for accurate mapping.
 - `medical_change` = doctor's visit or medication change; `unusual` = behavior different from usual.
 - Design assets do not establish the existence of an AI API or database. Inspect the existing backend contracts before wiring real persistence or AI features.

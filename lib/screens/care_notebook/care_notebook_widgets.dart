@@ -89,8 +89,6 @@ class CarePatientCard extends StatelessWidget {
   }
 }
 
-/// Uses the original asset keys for styling while rendering text at device resolution.
-/// PNGs contain 1x text and SVG filters apply to both text and backgrounds.
 class CareAssetButton extends StatelessWidget {
   final String asset;
   final String label;
@@ -111,6 +109,8 @@ class CareAssetButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final option = asset.startsWith('option_');
+    final pngButton =
+        option || asset == 'save_green_button' || asset == 'save_yellow_button';
     final write = asset == 'write_note_button';
     final greenAction = write || asset == 'save_green_button';
     final background = option
@@ -134,61 +134,88 @@ class CareAssetButton extends StatelessWidget {
               maxWidth: option ? double.infinity : 290,
             ),
             child: Material(
-              color: background,
-              elevation: option ? 0.5 : 1,
+              color: pngButton ? Colors.transparent : background,
+              elevation: pngButton ? 0 : (option ? 0.5 : 1),
               shadowColor: const Color(0x26000000),
               shape: RoundedRectangleBorder(
                 borderRadius: radius,
-                side: BorderSide(color: border),
+                side: pngButton ? BorderSide.none : BorderSide(color: border),
               ),
-              child: InkWell(
-                onTap: onTap,
-                borderRadius: radius,
-                child: Container(
-                  constraints: BoxConstraints(minHeight: height),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: option ? 4 : 20,
-                    vertical: option ? 5 : 10,
-                  ),
-                  child: ExcludeSemantics(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.max,
-                      children: [
-                        if (write) ...[
-                          const Icon(
-                            Icons.edit_square,
-                            size: 20,
-                            color: Color(0xFF16260E),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                        Flexible(
-                          child: Text(
-                            text ?? label,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: option
-                                  ? (asset.startsWith('option_unusual_') &&
-                                            text == null
-                                        ? 10
-                                        : 12)
-                                  : 18,
-                              height: 1.2,
-                              fontWeight: option
-                                  ? FontWeight.w500
-                                  : FontWeight.w700,
-                              color: option && !selected
-                                  ? const Color(0xFF645555)
-                                  : const Color(0xFF16260E),
-                            ),
+              child: pngButton
+                  ? GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onTap,
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: height,
+                        child: option
+                            ? Image.asset(
+                                'assets/images/care_note/$asset.png',
+                                width: double.infinity,
+                                height: height,
+                                fit: BoxFit.fill,
+                                excludeFromSemantics: true,
+                              )
+                            : Center(
+                                child: Image.asset(
+                                  'assets/images/care_note/$asset.png',
+                                  height: height,
+                                  fit: BoxFit.contain,
+                                  excludeFromSemantics: true,
+                                ),
+                              ),
+                      ),
+                    )
+                  : InkWell(
+                      onTap: onTap,
+                      borderRadius: radius,
+                      child: Container(
+                        constraints: BoxConstraints(minHeight: height),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: option ? 4 : 20,
+                          vertical: option ? 5 : 10,
+                        ),
+                        child: ExcludeSemantics(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              if (write) ...[
+                                const Icon(
+                                  Icons.edit_square,
+                                  size: 20,
+                                  color: Color(0xFF16260E),
+                                ),
+                                const SizedBox(width: 12),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  text ?? label,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: option
+                                        ? (asset.startsWith(
+                                                    'option_unusual_',
+                                                  ) &&
+                                                  text == null
+                                              ? 10
+                                              : 12)
+                                        : 18,
+                                    height: 1.2,
+                                    fontWeight: option
+                                        ? FontWeight.w500
+                                        : FontWeight.w700,
+                                    color: option && !selected
+                                        ? const Color(0xFF645555)
+                                        : const Color(0xFF16260E),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
             ),
           ),
         ),

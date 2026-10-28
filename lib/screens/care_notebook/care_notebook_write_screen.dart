@@ -185,8 +185,12 @@ class _CareNotebookWriteScreenState extends State<CareNotebookWriteScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
+                  image: const DecorationImage(
+                    image: AssetImage(
+                      'assets/images/care_note/record_form_frame.png',
+                    ),
+                    fit: BoxFit.fill,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -198,31 +202,45 @@ class _CareNotebookWriteScreenState extends State<CareNotebookWriteScreen> {
                         TextButton(
                           onPressed: _pickRecordDate,
                           style: TextButton.styleFrom(
-                            backgroundColor: careBackground,
                             foregroundColor: Colors.black,
                             minimumSize: const Size(0, 32),
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 0,
-                            ),
+                            padding: EdgeInsets.zero,
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                DateFormat('yyyy년 M월 d일').format(_selectedDate),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
+                          child: Container(
+                            width: 170,
+                            height: 33,
+                            decoration: const BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage(
+                                  'assets/images/care_note/date_picker_frame.png',
                                 ),
+                                fit: BoxFit.fill,
                               ),
-                              const Icon(
-                                Icons.expand_more,
-                                color: careGreen,
-                                size: 20,
+                            ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    DateFormat(
+                                      'yyyy년 M월 d일',
+                                    ).format(_selectedDate),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.expand_more,
+                                    color: careGreen,
+                                    size: 20,
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                         const Text(

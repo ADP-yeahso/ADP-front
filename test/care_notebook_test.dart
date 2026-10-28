@@ -14,6 +14,12 @@ void main() {
   Finder button(String label) => find.byWidgetPredicate(
     (widget) => widget is CareAssetButton && widget.label == label,
   );
+  bool hasPngBackground(Container container, String assetName) {
+    final decoration = container.decoration;
+    return decoration is BoxDecoration &&
+        decoration.image?.image is AssetImage &&
+        (decoration.image!.image as AssetImage).assetName == assetName;
+  }
 
   testWidgets(
     'empty state, single and multiple selections, memo and save round trip',
@@ -59,8 +65,13 @@ void main() {
         160,
         scrollable: find.byType(Scrollable).first,
       );
+      expect(
+        tester.widget<CareAssetButton>(button('저장하기')).asset,
+        'save_green_button',
+      );
       await tester.tap(button('저장하기'));
       await tester.pumpAndSettle();
+      expect(find.byType(CareNotebookWriteScreen), findsNothing);
       expect(data.careRecords.single.mealStatus, '적음');
       expect(data.careRecords.single.unusualChanges, ['같은 질문 반복', '배회']);
       expect(data.careRecords.single.note, '오늘 산책했어요');
@@ -79,6 +90,25 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(app(AppData(), const CareNotebookWriteScreen()));
+    final containers = tester.widgetList<Container>(find.byType(Container));
+    expect(
+      containers.where(
+        (container) => hasPngBackground(
+          container,
+          'assets/images/care_note/record_form_frame.png',
+        ),
+      ),
+      hasLength(1),
+    );
+    expect(
+      containers.where(
+        (container) => hasPngBackground(
+          container,
+          'assets/images/care_note/date_picker_frame.png',
+        ),
+      ),
+      hasLength(1),
+    );
     await tester.tap(find.byType(TextButton).first);
     await tester.pumpAndSettle();
     expect(find.byType(DatePickerDialog), findsOneWidget);
@@ -120,16 +150,28 @@ void main() {
         ),
       );
       final before = tester.getSize(button('식사 좋음'));
+      final beforeImage = tester.getSize(
+        find.descendant(of: button('식사 좋음'), matching: find.byType(Image)),
+      );
       await tester.tap(button('식사 좋음'));
       await tester.pumpAndSettle();
       expect(tester.getSize(button('식사 좋음')), before);
       expect(
+        tester.getSize(
+          find.descendant(of: button('식사 좋음'), matching: find.byType(Image)),
+        ),
+        beforeImage,
+      );
+      final selectedOption = tester.widget<Image>(
         find.descendant(of: button('식사 좋음'), matching: find.byType(Image)),
-        findsNothing,
       );
       expect(
-        find.descendant(of: button('식사 좋음'), matching: find.text('좋음')),
-        findsOneWidget,
+        selectedOption.image,
+        isA<AssetImage>().having(
+          (image) => image.assetName,
+          'assetName',
+          'assets/images/care_note/option_good_selected.png',
+        ),
       );
       await tester.tap(button('평소와 다른 점 있음'));
       await tester.pumpAndSettle();
@@ -181,13 +223,18 @@ void main() {
         tester.widget<CareAssetButton>(save).asset,
         ready ? 'save_green_button' : 'save_yellow_button',
       );
-      final material = find.descendant(
-        of: save,
-        matching: find.byType(Material),
+      final image = tester.widget<Image>(
+        find.descendant(of: save, matching: find.byType(Image)),
       );
       expect(
-        tester.widget<Material>(material).color,
-        ready ? const Color(0xFFA2D97C) : const Color(0xFFFFEFB5),
+        image.image,
+        isA<AssetImage>().having(
+          (image) => image.assetName,
+          'assetName',
+          ready
+              ? 'assets/images/care_note/save_green_button.png'
+              : 'assets/images/care_note/save_yellow_button.png',
+        ),
       );
     }
 

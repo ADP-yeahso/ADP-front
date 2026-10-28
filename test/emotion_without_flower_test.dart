@@ -449,6 +449,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(CalendarScreen), findsNothing);
       expect(find.byType(DiaryCareContentScreen), findsOneWidget);
+      final care = tester.widget<DiaryCareContentScreen>(
+        find.byType(DiaryCareContentScreen),
+      );
+      expect(care.emotion?.id, 6);
+      expect(find.text('함께한 사진 한 장 보기'), findsOneWidget);
     },
   );
 }

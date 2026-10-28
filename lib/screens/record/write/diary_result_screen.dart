@@ -84,7 +84,8 @@ class DiaryResultScreen extends StatelessWidget {
             (item) => item.id == finalization!.emotionId,
             orElse: () => EmotionValues.neutral,
           );
-    final activeEmotion = emotion ?? finalizedEmotion ?? EmotionValues.neutral;
+    final recommendationEmotion = emotion ?? finalizedEmotion;
+    final activeEmotion = recommendationEmotion ?? EmotionValues.neutral;
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0),
       appBar: AppBar(
@@ -187,8 +188,9 @@ class DiaryResultScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                const DiaryCareContentScreen(),
+                            builder: (context) => DiaryCareContentScreen(
+                              emotion: recommendationEmotion,
+                            ),
                           ),
                         );
                       },

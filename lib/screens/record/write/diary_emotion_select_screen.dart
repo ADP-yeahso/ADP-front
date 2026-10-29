@@ -330,6 +330,25 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     );
   }
 
+  Widget _buildEmotionRow(List<EmotionModel> emotions) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14.0),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: emotions.map((emotion) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: _buildEmotionButton(emotion),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isComplete = _selectedEmotions.length == _maxSelection;
@@ -405,22 +424,8 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
 
                   // 감정 태그 선택 영역 (3-4-3 대칭 다이아몬드 균형 배치)
                   Column(
-                    children: _scatteredEmotions.map((row) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 14.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: row.map((emotion) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4.0,
-                              ),
-                              child: _buildEmotionButton(emotion),
-                            );
-                          }).toList(),
-                        ),
-                      );
-                    }).toList(),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: _scatteredEmotions.map(_buildEmotionRow).toList(),
                   ),
                   const SizedBox(height: 10),
 

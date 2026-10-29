@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/auth_session.dart';
 import '../../data/app_data.dart';
 import '../../services/auth_service.dart';
-import '../debug/care_activity_preview_screen.dart';
 import 'signup_screen.dart';
 import 'family_group_list_screen.dart';
 
@@ -164,19 +162,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               // 버튼과 하단 메뉴 사이 간격 (시안 비례 계산: 약 24px)
-              if (kDebugMode) ...[
-                const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const CareActivityPreviewScreen(),
-                    ),
-                  ),
-                  icon: const Icon(Icons.developer_mode),
-                  label: const Text('추천 활동 미리보기 (디버그)'),
-                ),
-              ],
               SizedBox(height: 24 * hScale),
 
               // 7. 하단 메뉴

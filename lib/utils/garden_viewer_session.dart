@@ -151,7 +151,8 @@ class GardenViewerSession {
       }
 
       if (_paused &&
-          (event['type'] == 'flower' || event['type'] == 'tree')) {
+          const ['flower', 'tree', 'openDiary', 'flowerBrowse']
+              .contains(event['type'])) {
         return;
       }
 

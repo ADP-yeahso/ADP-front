@@ -47,6 +47,14 @@ class Vector {
   }
   copy(v) { return this.set(v.x, v.y, v.z); }
   clone() { return new Vector(this.x, this.y, this.z); }
+  add(v) { return this.set(this.x + v.x, this.y + v.y, this.z + v.z); }
+  setFromSphericalCoords(radius, phi, theta) {
+    return this.set(
+      radius * Math.sin(phi) * Math.sin(theta),
+      radius * Math.cos(phi),
+      radius * Math.sin(phi) * Math.cos(theta),
+    );
+  }
 }
 
 function geometry() {
@@ -107,6 +115,7 @@ function runtime() {
   const instances = [];
   const events = [];
   const objects = [];
+  const tweens = [];
 
   class Mesh {
     constructor(g, m, count) {
@@ -128,6 +137,9 @@ function runtime() {
     setMatrixAt() {}
     computeBoundingBox() {}
     computeBoundingSphere() {}
+    updateWorldMatrix() {}
+    getMatrixAt() {}
+    applyMatrix4() {}
   }
 
   class Loader {
@@ -139,6 +151,18 @@ function runtime() {
 
   const three = {
     Vector3: Vector,
+    Mesh,
+    Group: class {
+      constructor() { this.children = []; }
+      add(mesh) { this.children.push(mesh); }
+      clear() { this.children = []; }
+    },
+    Matrix4: class { premultiply() { return this; } },
+    Sphere: class { constructor() { this.radius = 1; } },
+    MathUtils: {
+      degToRad: degrees => degrees * Math.PI / 180,
+      clamp: (value, min, max) => Math.max(min, Math.min(max, value)),
+    },
     InstancedMesh: Mesh,
     Object3D: class {
       constructor() {
@@ -152,6 +176,8 @@ function runtime() {
     Box3: class {
       constructor() { this.min = { y: 0 }; }
       setFromObject() { return this; }
+      getBoundingSphere(sphere) { return sphere; }
+      getCenter(vector) { return vector.set(1, 0, 1); }
     },
   };
 
@@ -173,7 +199,7 @@ function runtime() {
   const api = new Function(
     'THREE', 'GLTFLoader', 'window', 'document', 'gsap',
     'ImageBitmap', 'URLSearchParams', 'console', 'objects',
-    testSource + `
+    '"use strict";\n' + testSource + `
       requestRender = () => {};
       showGardenLoadError = () => {};
 
@@ -194,7 +220,7 @@ function runtime() {
         clear() { objects.length = 0; },
       };
 
-      camera = { position: new THREE.Vector3() };
+      camera = { position: new THREE.Vector3(), fov: 45, aspect: 1, lookAt() {} };
       controls = {
         target: new THREE.Vector3(),
         update() {},
@@ -218,6 +244,18 @@ function runtime() {
         },
         init: window.initGarden,
         destroy: window.destroyGardenViewer,
+        pause: window.pauseGarden,
+        focus: index => focusOnFlower(flowerData[index]),
+        browse: window.browseFlower,
+        clear: window.clearGardenContent,
+        reset: window.resetCamera,
+        selection: () => ({
+          ids: flowerData.map(data => data.diaryId),
+          selected: selectedFlowerIndex,
+          focusing: isFocusing,
+          enabled: controls?.enabled,
+          proxy: flowerBrowseGroup,
+        }),
         state: () => ({
           active: activeModelLoads,
           waiting: modelLoadQueue.length,
@@ -227,7 +265,10 @@ function runtime() {
       };
     `
   )(
-    three, Loader, window, document, { killTweensOf() {} },
+    three, Loader, window, document, {
+      killTweensOf() {},
+      to(target, options) { tweens.push({ target, ...options }); },
+    },
     Bitmap, class { get() { return null; } },
     { log() {}, warn() {}, error() {} }, objects
   );
@@ -240,6 +281,7 @@ function runtime() {
     events,
     objects,
     Mesh,
+    tweens,
   };
 }
 
@@ -517,6 +559,71 @@ async function main() {
     equal(r.started.length, 1);
   });
 
+  await test('모델별 배치 후 일기 순서·꽃 탐색 이벤트와 월 이동 정리 유지', async () => {
+    const r = runtime();
+    const tree = asset();
+    const flowers = [asset(), asset()];
+    r.init(
+      'tree',
+      '{"anger":["a","b"]}',
+      '[{"id":1,"emotion":"anger"},{"id":0,"emotion":"anger"},{"id":3,"emotion":"anger"}]'
+    );
+    r.pending.shift().ok(tree);
+    await until(() => r.pending[0]?.url === 'b');
+    r.pending.shift().ok(flowers[0]);
+    await until(() => r.pending[0]?.url === 'a');
+    r.pending.shift().ok(flowers[1]);
+    await until(() => r.state().flowers === 2);
+
+    equal(r.selection().ids.join(','), '1,0,3');
+    r.focus(0);
+    let event = r.events.at(-1);
+    equal(event.type, 'flowerBrowse');
+    equal(event.diaryId, '1');
+    equal(event.count, 3);
+    expect(typeof event.sessionId === 'string', 'Selection lost the viewer session ID');
+    r.tweens.at(-1).onComplete();
+    equal(r.selection().focusing, false);
+
+    r.browse(1);
+    equal(r.events.at(-1).diaryId, '0');
+    r.reset();
+    equal(r.events.at(-1).type, 'gardenOverview');
+    equal(r.selection().proxy, null);
+    // Framing proxies share resources; returning to overview must not dispose them.
+    flowers.forEach(flower => equal(flower.texture.calls, 0));
+
+    r.focus(2);
+    r.clear();
+    equal(r.selection().ids.length, 0);
+    equal(r.selection().selected, -1);
+    equal(r.selection().proxy, null);
+    flowers.forEach(flower => equal(flower.texture.calls, 1));
+    equal(tree.geometry.calls, 0);
+  });
+
+  await test('화면 중단·종료 뒤 늦은 꽃 애니메이션 완료와 탐색 차단', async () => {
+    const r = runtime();
+    r.init('tree', '{"anger":["a"]}', '[{"id":0,"emotion":"anger"}]');
+    r.pending.shift().ok(asset());
+    await until(() => r.pending[0]?.url === 'a');
+    r.pending.shift().ok(asset());
+    await until(() => r.state().flowers === 1);
+
+    r.focus(0);
+    const completion = r.tweens.at(-1).onComplete;
+    r.pause();
+    completion();
+    equal(r.selection().enabled, false);
+    const eventCount = r.events.length;
+    r.browse(1);
+    equal(r.events.length, eventCount);
+    r.destroy();
+    completion();
+    equal(r.selection().proxy, null);
+    equal(r.selection().ids.length, 0);
+  });
+
   output('All ' + passed + ' garden memory tests passed.');
 }
 
@@ -531,7 +638,7 @@ main().catch(error => {
 if (typeof drainMicrotasks === 'function') {
   drainMicrotasks();
   if (failure) throw failure;
-  if (passed !== 10) {
+  if (passed !== 12) {
     throw new Error('The test run did not finish.');
   }
 }

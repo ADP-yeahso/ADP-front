@@ -600,7 +600,7 @@ function createFlowerInstances(
   const numInstances = assignedDiaries.length;
   const modelFile = modelUrl.split('?')[0].split('/').pop();
   const flowerScale =
-    modelFile === 'Affection_Marigold.glb' ? 0.106 : 0.2;
+    modelFile === 'Gratitude_Marigold.glb' ? 0.106 : 0.2;
   const dummy = new THREE.Object3D();
   const createdMeshes = [];
 
@@ -2030,7 +2030,7 @@ window.previewGarden = async function () {
       throw new Error('Flower catalog must be an array.');
     }
 
-    const assetVersion = 'flower-mapping-v2';
+    const assetVersion = 'flower-mapping-v3';
     const flowerMap = {};
 
     const diaries = catalog.map((flower, index) => {

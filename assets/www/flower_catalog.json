@@ -7,17 +7,17 @@
     "mapped": true
   },
   {
+    "file": "Affection_Calendula.glb",
+    "triangles": 60144,
+    "bytes": 1946344,
+    "parts": 3,
+    "mapped": true
+  },
+  {
     "file": "Affection_Lisianthus.glb",
     "triangles": 19118,
     "bytes": 340300,
     "parts": 2,
-    "mapped": true
-  },
-  {
-    "file": "Affection_Marigold.glb",
-    "triangles": 19778,
-    "bytes": 364560,
-    "parts": 3,
     "mapped": true
   },
   {
@@ -105,6 +105,41 @@
     "mapped": true
   },
   {
+    "file": "Guilt_Iris.glb",
+    "triangles": 13824,
+    "bytes": 309052,
+    "parts": 2,
+    "mapped": true
+  },
+  {
+    "file": "Neutral_four_cl.glb",
+    "triangles": 3040,
+    "bytes": 120928,
+    "parts": 2,
+    "mapped": true
+  },
+  {
+    "file": "Neutral_foxtail.glb",
+    "triangles": 1664,
+    "bytes": 2553192,
+    "parts": 2,
+    "mapped": true
+  },
+  {
+    "file": "Neutral_three_cl.glb",
+    "triangles": 2368,
+    "bytes": 108424,
+    "parts": 2,
+    "mapped": true
+  },
+  {
+    "file": "Sadness_Aquilegia.glb",
+    "triangles": 14192,
+    "bytes": 414988,
+    "parts": 4,
+    "mapped": true
+  },
+  {
     "file": "Sadness_ebw.glb",
     "triangles": 18812,
     "bytes": 683208,
@@ -126,17 +161,31 @@
     "mapped": true
   },
   {
-    "file": "flower.glb",
-    "triangles": 11772,
-    "bytes": 1185136,
-    "parts": 4,
+    "file": "Gratitude_Campanula.glb",
+    "triangles": 12448,
+    "bytes": 379300,
+    "parts": 3,
     "mapped": true
   },
   {
-    "file": "flower2.glb",
-    "triangles": 11772,
-    "bytes": 1185136,
+    "file": "Gratitude_Freesia.glb",
+    "triangles": 14704,
+    "bytes": 310356,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Gratitude_Marigold.glb",
+    "triangles": 29520,
+    "bytes": 548612,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Gratitude_ychwa.glb",
+    "triangles": 14432,
+    "bytes": 300220,
     "parts": 4,
-    "mapped": false
+    "mapped": true
   }
 ]

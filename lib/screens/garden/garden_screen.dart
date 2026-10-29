@@ -492,7 +492,7 @@ class _GardenScreenState extends State<GardenScreen>
 
       case 'heavy-60':
         // affection 배열의 2번 인덱스:
-        // Affection_Marigold.glb를 반복 선택하도록 ID를 구성
+        // Affection_Calendula.glb를 반복 선택하도록 ID를 구성
         return List.generate(
           60,
           (index) => {'id': index * 4 + 2, 'emotion': 'affection'},
@@ -535,11 +535,11 @@ class _GardenScreenState extends State<GardenScreen>
     const variantCounts = {
       'anger': 4,
       'anxiety': 4,
-      'guilt': 3,
-      'sadness': 3,
+      'guilt': 4,
+      'sadness': 4,
       'affection': 4,
-      'gratitude': 1,
-      'neutral': 1,
+      'gratitude': 4,
+      'neutral': 3,
     };
 
     final occurrences = <String, int>{};
@@ -598,7 +598,7 @@ class _GardenScreenState extends State<GardenScreen>
       );
     }
 
-    const assetVersion = 'flower-mapping-v2';
+    const assetVersion = 'flower-mapping-v3';
     final treeUrl =
         _gardenDiagnosticsEnabled && _gardenScenario == 'fail-tree'
             ? '$origin/images/__missing_tree__.glb'
@@ -607,8 +607,6 @@ class _GardenScreenState extends State<GardenScreen>
                 '?v=$assetVersion';
 
     final flowerBaseUrl = '$origin/images/flower';
-    final placeholderFlowerUrl =
-        '$flowerBaseUrl/flower.glb?v=$assetVersion'; // 감사,중립 꽃 에셋 나오면 교체하고 삭제해도 됨
 
     final Map<String, List<String>> emotionToFlowers = {
       'anger': [
@@ -627,22 +625,33 @@ class _GardenScreenState extends State<GardenScreen>
         '$flowerBaseUrl/Guilt_Canna.glb?v=$assetVersion',
         '$flowerBaseUrl/Guilt_Clematis.glb?v=$assetVersion',
         '$flowerBaseUrl/Guilt_Delphinium.glb?v=$assetVersion',
+        '$flowerBaseUrl/Guilt_Iris.glb?v=$assetVersion',
       ],
       'sadness': [
         '$flowerBaseUrl/Sadness_ebw.glb?v=$assetVersion',
         '$flowerBaseUrl/Sadness_mmc.glb?v=$assetVersion',
         '$flowerBaseUrl/Sadness_ydc.glb?v=$assetVersion',
+        '$flowerBaseUrl/Sadness_Aquilegia.glb?v=$assetVersion',
       ],
       'affection': [
         '$flowerBaseUrl/Affection_Bindweed.glb?v=$assetVersion',
         '$flowerBaseUrl/Affection_Lisianthus.glb?v=$assetVersion',
-        '$flowerBaseUrl/Affection_Marigold.glb?v=$assetVersion',
+        '$flowerBaseUrl/Affection_Calendula.glb?v=$assetVersion',
         '$flowerBaseUrl/Affection_Nasturtium.glb?v=$assetVersion',
       ],
-
-      'gratitude': [placeholderFlowerUrl], // 임시임 감사 꽃 에셋 나오면 교체해야함
-      'neutral': [placeholderFlowerUrl], // 임시임 중립 꽃 에셋 나오면 교체해야함
+      'gratitude': [
+        '$flowerBaseUrl/Gratitude_Campanula.glb?v=$assetVersion',
+        '$flowerBaseUrl/Gratitude_Freesia.glb?v=$assetVersion',
+        '$flowerBaseUrl/Gratitude_Marigold.glb?v=$assetVersion',
+        '$flowerBaseUrl/Gratitude_ychwa.glb?v=$assetVersion',
+      ],
+      'neutral': [
+        '$flowerBaseUrl/Neutral_three_cl.glb?v=$assetVersion',
+        '$flowerBaseUrl/Neutral_four_cl.glb?v=$assetVersion',
+        '$flowerBaseUrl/Neutral_foxtail.glb?v=$assetVersion',
+      ],
     };
+
     if (_gardenDiagnosticsEnabled &&
         (_gardenScenario == 'fail-flower' ||
             _gardenScenario == 'corrupt-flower')) {
@@ -797,7 +806,7 @@ class _GardenScreenState extends State<GardenScreen>
                     left: 16,
                     right: 16,
                     child: Text(
-                      '꽃 에셋 22종 · 각 한 송이\n꽃을 탭하면 파일 정보와 확대 보기',
+                      '꽃 에셋 27종 · 각 한 송이\n꽃을 탭하면 파일 정보와 확대 보기',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Color(0xFF4A6B8A)),
                     ),

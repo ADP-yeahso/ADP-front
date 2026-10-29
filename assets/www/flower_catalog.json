@@ -8,15 +8,15 @@
   },
   {
     "file": "Affection_Lisianthus.glb",
-    "triangles": 27312,
-    "bytes": 552160,
+    "triangles": 19118,
+    "bytes": 340300,
     "parts": 2,
     "mapped": true
   },
   {
     "file": "Affection_Marigold.glb",
-    "triangles": 60144,
-    "bytes": 1946344,
+    "triangles": 19778,
+    "bytes": 364560,
     "parts": 3,
     "mapped": true
   },
@@ -28,20 +28,6 @@
     "mapped": true
   },
   {
-    "file": "Affection_lisian_low.glb",
-    "triangles": 8510,
-    "bytes": 445508,
-    "parts": 10,
-    "mapped": false
-  },
-  {
-    "file": "Affection_lisian_mid.glb",
-    "triangles": 82974,
-    "bytes": 5328528,
-    "parts": 10,
-    "mapped": false
-  },
-  {
     "file": "Anger_Gerbera.glb",
     "triangles": 17008,
     "bytes": 337516,
@@ -50,8 +36,8 @@
   },
   {
     "file": "Anger_Linaria.glb",
-    "triangles": 58856,
-    "bytes": 1107212,
+    "triangles": 19890,
+    "bytes": 375992,
     "parts": 3,
     "mapped": true
   },
@@ -78,8 +64,8 @@
   },
   {
     "file": "Anxiety_Geranium.glb",
-    "triangles": 30016,
-    "bytes": 2104476,
+    "triangles": 19495,
+    "bytes": 343652,
     "parts": 3,
     "mapped": true
   },
@@ -106,15 +92,15 @@
   },
   {
     "file": "Guilt_Clematis.glb",
-    "triangles": 27056,
-    "bytes": 1950984,
+    "triangles": 18938,
+    "bytes": 327512,
     "parts": 3,
     "mapped": true
   },
   {
     "file": "Guilt_Delphinium.glb",
-    "triangles": 25216,
-    "bytes": 507892,
+    "triangles": 17650,
+    "bytes": 322156,
     "parts": 3,
     "mapped": true
   },

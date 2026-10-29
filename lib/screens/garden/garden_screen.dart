@@ -553,7 +553,7 @@ class _GardenScreenState extends State<GardenScreen>
       );
     }
 
-    const assetVersion = 'flower-mapping-v1';
+    const assetVersion = 'flower-mapping-v2';
     final treeUrl =
         _gardenDiagnosticsEnabled && _gardenScenario == 'fail-tree'
             ? '$origin/images/__missing_tree__.glb'

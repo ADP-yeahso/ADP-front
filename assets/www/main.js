@@ -697,7 +697,12 @@ function ensureWorldTree(treeUrl) {
       const tree = gltf.scene;
 
       tree.position.set(0, 0, 0);
-      tree.scale.set(1.5, 1.5, 1.5);
+      tree.scale.set(1.1, 1.1, 1.1);
+      tree.updateMatrixWorld(true);
+
+      const treeBounds = new THREE.Box3().setFromObject(tree);
+      tree.position.y -= treeBounds.min.y;
+
       tree.userData = { isTree: true };
 
       tree.traverse((child) => {
@@ -1812,11 +1817,12 @@ window.previewGarden = async function () {
       throw new Error('Flower catalog must be an array.');
     }
 
+    const assetVersion = 'flower-mapping-v2';
     const flowerMap = {};
 
     const diaries = catalog.map((flower, index) => {
       const emotion = `preview_${index}`;
-      flowerMap[emotion] = [`../images/flower/${flower.file}`];
+      flowerMap[emotion] = [`../images/flower/${flower.file}?v=${assetVersion}`,];
 
       return {
         id: index,
@@ -1838,7 +1844,7 @@ window.previewGarden = async function () {
     previewCatalogController = null;
 
     window.initGarden(
-      '../images/worldtree.glb',
+      `../images/worldtree.glb?v=${assetVersion}`,
       JSON.stringify(flowerMap),
       JSON.stringify(diaries),
       true

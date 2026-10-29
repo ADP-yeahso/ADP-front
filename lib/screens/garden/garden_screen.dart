@@ -12,9 +12,11 @@ import '../../data/garden_range.dart';
 import 'dart:async';
 import '../../utils/garden_viewer_session.dart';
 import '../care_notebook/care_notebook_list_screen.dart';
+import '../family/family_share_screen.dart';
 import 'entry_detail_sheet.dart';
 import '../calendar/calendar_screen.dart';
 
+import 'garden_home_header.dart';
 
 class GardenScreen extends StatefulWidget {
   const GardenScreen({
@@ -60,6 +62,11 @@ class _GardenScreenState extends State<GardenScreen>
   PageRoute<dynamic>? _observedRoute;
 
   bool _isFocusing = false;
+  bool _isFlowerBrowsing = false;
+  int _flowerIndex = 0;
+  int _flowerCount = 0;
+  // Read state lasts for this home session until a persistent inbox is added.
+  final Set<String> _openedSharedRecordIds = {};
   bool _disposed = false;
   bool _appForeground = true;
   bool _innerRouteVisible = true;
@@ -127,6 +134,35 @@ class _GardenScreenState extends State<GardenScreen>
     if (oldWidget.isActive != widget.isActive ||
         oldWidget.isRouteVisible != widget.isRouteVisible) {
       _syncAvailability();
+    }
+  }
+
+  void _resetFlowerBrowse() {
+    _isFlowerBrowsing = false;
+    _flowerIndex = 0;
+    _flowerCount = 0;
+  }
+
+  void _runViewerScript(String script) {
+    final session = _session;
+    if (_shouldRun && session != null && session.isReady && !session.isPaused) {
+      unawaited(session.runScript(script));
+    }
+  }
+
+  void _previousGardenItem() {
+    if (_isFlowerBrowsing) {
+      _runViewerScript('window.browseFlower?.(-1)');
+    } else {
+      _prevMonth();
+    }
+  }
+
+  void _nextGardenItem() {
+    if (_isFlowerBrowsing) {
+      _runViewerScript('window.browseFlower?.(1)');
+    } else {
+      _nextMonth();
     }
   }
 
@@ -210,24 +246,25 @@ class _GardenScreenState extends State<GardenScreen>
   void _queueReconcile() {
     if (_disposed) return;
 
-    _transition = _transition.then((_) => _reconcileViewer()).catchError(
-      (Object error, StackTrace stackTrace) {
-        debugPrint('Garden lifecycle failed: $error');
+    _transition = _transition.then((_) => _reconcileViewer()).catchError((
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      debugPrint('Garden lifecycle failed: $error');
 
-        if (_disposed || !mounted) return;
+      if (_disposed || !mounted) return;
 
-        _retryRequired = true;
-        _releaseRequested = true;
-        _viewerError = '정원을 다시 불러와 주세요.';
+      _retryRequired = true;
+      _releaseRequested = true;
+      _viewerError = '정원을 다시 불러와 주세요.';
 
-        final current = _session;
-        if (current != null) {
-          unawaited(current.close());
-        }
+      final current = _session;
+      if (current != null) {
+        unawaited(current.close());
+      }
 
-        setState(() {});
-      },
-    );
+      setState(() {});
+    });
   }
 
   Future<void> _reconcileViewer() async {
@@ -315,6 +352,7 @@ class _GardenScreenState extends State<GardenScreen>
       if (identical(session, _session)) {
         _session = null;
         _isFocusing = false;
+        _resetFlowerBrowse();
 
         if (!_disposed && mounted) {
           setState(() {});
@@ -346,6 +384,19 @@ class _GardenScreenState extends State<GardenScreen>
           _reload3DScene();
         }
 
+      case 'flowerBrowse':
+        if (_shouldRun && !session.isPaused) {
+          setState(() {
+            _isFlowerBrowsing = true;
+            _flowerIndex = event['index'] as int;
+            _flowerCount = event['count'] as int;
+          });
+        }
+
+      case 'gardenOverview':
+        setState(_resetFlowerBrowse);
+
+      case 'openDiary':
       case 'flower':
         final diaryId = event['diaryId'];
         if (_shouldRun && !_isFocusing && diaryId is String) {
@@ -464,9 +515,7 @@ class _GardenScreenState extends State<GardenScreen>
           {'id': 2, 'emotion': 'not-mapped'},
         ];
       case 'month-switch':
-        return _buildMixedDiagnosticDiaries(
-          _pageIndex.isEven ? 30 : 60,
-        );
+        return _buildMixedDiagnosticDiaries(_pageIndex.isEven ? 30 : 60);
       default:
         throw StateError('Unknown garden diagnostic scenario: $scenario');
     }
@@ -515,10 +564,7 @@ class _GardenScreenState extends State<GardenScreen>
     final session = _session;
     final origin = session?.origin;
 
-    if (!_shouldRun ||
-        session == null ||
-        !session.isReady ||
-        origin == null) {
+    if (!_shouldRun || session == null || !session.isReady || origin == null) {
       return;
     }
 
@@ -545,8 +591,7 @@ class _GardenScreenState extends State<GardenScreen>
 
     final diariesJson = jsonEncode(diaryPayload);
 
-    if (_gardenDiagnosticsEnabled &&
-        _gardenScenario == 'month-switch') {
+    if (_gardenDiagnosticsEnabled && _gardenScenario == 'month-switch') {
       debugPrint(
         'GARDEN_EXPECTED: page=$_pageIndex, '
         'diaryCount=${diaryPayload.length}',
@@ -604,19 +649,21 @@ class _GardenScreenState extends State<GardenScreen>
       emotionToFlowers['diagnostic-failure'] = [
         _gardenScenario == 'fail-flower'
             ? '$flowerBaseUrl/__missing_flower__.glb'
-                '?v=$assetVersion'
+                  '?v=$assetVersion'
             : '$origin/www/index.html'
-                '?v=$assetVersion',
+                  '?v=$assetVersion',
       ];
     }
     final flowerUrlsMapJson = jsonEncode(emotionToFlowers);
-    unawaited(session.runScript(
-      'window.initGarden('
-      '${jsonEncode(treeUrl)},'
-      '${jsonEncode(flowerUrlsMapJson)},'
-      '${jsonEncode(diariesJson)}'
-      ');',
-    ));
+    unawaited(
+      session.runScript(
+        'window.initGarden('
+        '${jsonEncode(treeUrl)},'
+        '${jsonEncode(flowerUrlsMapJson)},'
+        '${jsonEncode(diariesJson)}'
+        ');',
+      ),
+    );
   }
 
   Future<void> _runGardenDiagnosticAction(String action) async {
@@ -673,8 +720,6 @@ class _GardenScreenState extends State<GardenScreen>
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
     final month = _currentMonth;
-    final memories = appData.memoriesForMonth(month);
-    final diariesCount = appData.diariesForMonth(month).length;
     final controller = _session?.controller;
 
     return Scaffold(
@@ -729,30 +774,12 @@ class _GardenScreenState extends State<GardenScreen>
                     child: PopupMenuButton<String>(
                       onSelected: _runGardenDiagnosticAction,
                       itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: 'status',
-                          child: Text('상태 확인'),
-                        ),
-                        PopupMenuItem(
-                          value: 'pause',
-                          child: Text('일시 중단'),
-                        ),
-                        PopupMenuItem(
-                          value: 'resume',
-                          child: Text('재개'),
-                        ),
-                        PopupMenuItem(
-                          value: 'cancel',
-                          child: Text('로딩 취소'),
-                        ),
-                        PopupMenuItem(
-                          value: 'destroy',
-                          child: Text('전체 종료'),
-                        ),
-                        PopupMenuItem(
-                          value: 'reload',
-                          child: Text('뷰어 재생성'),
-                        ),
+                        PopupMenuItem(value: 'status', child: Text('상태 확인')),
+                        PopupMenuItem(value: 'pause', child: Text('일시 중단')),
+                        PopupMenuItem(value: 'resume', child: Text('재개')),
+                        PopupMenuItem(value: 'cancel', child: Text('로딩 취소')),
+                        PopupMenuItem(value: 'destroy', child: Text('전체 종료')),
+                        PopupMenuItem(value: 'reload', child: Text('뷰어 재생성')),
                         PopupMenuItem(
                           value: 'context-loss',
                           child: Text('그래픽 손실 주입'),
@@ -781,10 +808,47 @@ class _GardenScreenState extends State<GardenScreen>
                     top: 0,
                     left: 0,
                     right: 0,
-                    child: _buildHeader(month),
+                    child: GardenHomeHeader(
+                      month: month,
+                      showTitleAndActions: !_isFlowerBrowsing,
+                      groupName: appData.group.groupName,
+                      hasUnreadRecords: _sharedRecordIds(
+                        appData,
+                      ).difference(_openedSharedRecordIds).isNotEmpty,
+                      onOpenMailbox: _openMailbox,
+                      onOpenNotebook: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CareNotebookListScreen(),
+                        ),
+                      ),
+                    ),
                   ),
 
-                // ── 양옆 달 변경 화살표 ──
+                if (_session?.isReady == true && !_isFocusing)
+                  Positioned(
+                    right: 16,
+                    bottom: 72,
+                    child: Tooltip(
+                      message: _isFlowerBrowsing
+                          ? '전체 정원으로 돌아가기'
+                          : '기본 구도로 돌아가기',
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF4A6B8A),
+                          backgroundColor: Colors.white.withValues(alpha: 0.9),
+                          minimumSize: const Size(48, 48),
+                        ),
+                        onPressed: () => _runViewerScript(
+                          'if(typeof window.resetCamera === "function") window.resetCamera()',
+                        ),
+                        icon: const Icon(Icons.center_focus_strong, size: 18),
+                        label: Text(_isFlowerBrowsing ? '정원으로' : '기본 구도'),
+                      ),
+                    ),
+                  ),
+
+                // 꽃 감상 중에는 같은 달의 꽃을, 전체 정원에서는 달을 이동.
                 if (!_isFocusing && !widget.assetPreview) ...[
                   Positioned(
                     left: 12,
@@ -792,8 +856,14 @@ class _GardenScreenState extends State<GardenScreen>
                     bottom: 0,
                     child: Center(
                       child: _SideMonthButton(
-                        icon: Icons.chevron_left,
-                        onTap: _prevMonth,
+                        assetPath: 'assets/garden/home/month_previous.svg',
+                        tooltip: _isFlowerBrowsing ? '이전 꽃' : '이전 달',
+                        onTap:
+                            (_isFlowerBrowsing
+                                ? _flowerCount > 1
+                                : _pageIndex > 0)
+                            ? _previousGardenItem
+                            : null,
                       ),
                     ),
                   ),
@@ -803,48 +873,35 @@ class _GardenScreenState extends State<GardenScreen>
                     bottom: 0,
                     child: Center(
                       child: _SideMonthButton(
-                        icon: Icons.chevron_right,
-                        onTap: _nextMonth,
-                      ),
-                    ),
-                  ),
-
-                  // ── 하단 기억/꽃 개수 안내 버튼 ──
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 16,
-                    child: Center(
-                      child: GestureDetector(
-                        onTap: () => showMemoryListSheet(context, memories),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 8,
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            '🌳 잎 ${memories.length}개 / 🌸 꽃 $diariesCount송이',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF333333),
-                            ),
-                          ),
-                        ),
+                        assetPath: 'assets/garden/home/month_next.svg',
+                        tooltip: _isFlowerBrowsing ? '다음 꽃' : '다음 달',
+                        onTap:
+                            (_isFlowerBrowsing
+                                ? _flowerCount > 1
+                                : _pageIndex < gardenTotalPages - 1)
+                            ? _nextGardenItem
+                            : null,
                       ),
                     ),
                   ),
                 ],
+                if (_isFlowerBrowsing && !_isFocusing && !widget.assetPreview)
+                  Positioned(
+                    left: 24,
+                    right: 24,
+                    bottom: 20,
+                    child: IgnorePointer(
+                      child: Text(
+                        '${_flowerIndex + 1} / $_flowerCount · 꽃을 다시 누르면 일기를 볼 수 있어요',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF386622),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -870,7 +927,13 @@ Future<void> _handleFlowerTap(String diaryId) async {
       : appData.diaryById(int.tryParse(diaryId) ?? -1);
 
   if (diary == null) {
-    unawaited(session.runScript('window.resetCamera();'));
+    unawaited(
+      session.runScript(
+        _isFlowerBrowsing
+            ? 'window.resumeFlowerBrowse?.()'
+            : 'window.resetCamera?.()',
+      ),
+    );
     return;
   }
 
@@ -902,7 +965,13 @@ Future<void> _handleFlowerTap(String diaryId) async {
         _shouldRun &&
         session.jsSessionId == documentId) {
       setState(() => _isFocusing = false);
-      unawaited(session.runScript('window.resetCamera();'));
+      unawaited(
+      session.runScript(
+        _isFlowerBrowsing
+            ? 'window.resumeFlowerBrowse?.()'
+            : 'window.resetCamera?.()',
+      ),
+    );
     }
   }
 }
@@ -932,112 +1001,49 @@ Future<void> _handleFlowerTap(String diaryId) async {
     }
   }
 
-  Widget _buildHeader(DateTime month) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-      child: Stack(
-        alignment: Alignment.topCenter,
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 날짜 (예: 07 . 26)
-              Text(
-                '${month.month.toString().padLeft(2, '0')} . ${month.year.toString().substring(2)}',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF4A6B8A), // 스케치의 파란 펜 느낌 색상
-                  letterSpacing: 2,
-                ),
-              ),
-              const SizedBox(height: 4),
-              // 그룹 선택 (더미)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '우리가족',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF4A6B8A),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFF4A6B8A),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 12,
-                      color: Color(0xFF4A6B8A),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Positioned(
-            right: 0,
-            top: 0,
-            child: IconButton(
-              icon: SvgPicture.asset(
-                'assets/icons/spiral_notebook.svg',
-                width: 28,
-                height: 28,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFF4A6B8A),
-                  BlendMode.srcIn,
-                ),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const CareNotebookListScreen(),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+  Set<String> _sharedRecordIds(AppData appData) => {
+    for (final memory in appData.sharedMemories)
+      if (!appData.isCurrentUser(memory.userId))
+        'memory:${memory.id}:${memory.updatedAt.microsecondsSinceEpoch}',
+    for (final diary in appData.sharedDiaries)
+      if (!appData.isCurrentUser(diary.userId))
+        'diary:${diary.id}:${diary.updatedAt.microsecondsSinceEpoch}',
+  };
+
+  void _openMailbox() {
+    final records = _sharedRecordIds(context.read<AppData>());
+    setState(() => _openedSharedRecordIds.addAll(records));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const FamilyShareScreen()),
     );
   }
 }
 
 class _SideMonthButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _SideMonthButton({required this.icon, required this.onTap});
+  final String assetPath;
+  final String tooltip;
+  final VoidCallback? onTap;
+  const _SideMonthButton({
+    required this.assetPath,
+    required this.tooltip,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.9),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onTap,
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      icon: Opacity(
+        opacity: onTap == null ? 0.35 : 1,
+        child: SvgPicture.asset(
+          assetPath,
+          width: 14,
+          height: 25,
+          excludeFromSemantics: true,
         ),
-        alignment: Alignment.center,
-        child: Icon(icon, size: 28, color: const Color(0xFF333333)),
       ),
     );
   }

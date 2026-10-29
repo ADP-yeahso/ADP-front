@@ -35,7 +35,7 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
         : feedItems.where((f) => f.authorId == _filterMemberId).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('가족 공유'), automaticallyImplyLeading: false),
+      appBar: AppBar(title: const Text('가족 공유')),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 12),
         children: [

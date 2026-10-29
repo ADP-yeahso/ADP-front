@@ -109,11 +109,12 @@ function asset(bitmap = new Bitmap()) {
   };
 }
 
-function runtime() {
+function runtime({ diagnostics = false } = {}) {
   const pending = [];
   const started = [];
   const instances = [];
   const events = [];
+  const reports = [];
   const objects = [];
   const tweens = [];
 
@@ -184,15 +185,20 @@ function runtime() {
   const window = {
     location: { search: '' },
     FlutterChannel: {
-      postMessage: value => events.push(
-        JSON.parse(value.slice('GARDEN_EVENT:'.length))
-      ),
+      postMessage(value) {
+        if (value.startsWith('GARDEN_DIAGNOSTICS:')) {
+          reports.push(JSON.parse(value.slice('GARDEN_DIAGNOSTICS:'.length)));
+        } else {
+          events.push(JSON.parse(value.slice('GARDEN_EVENT:'.length)));
+        }
+      },
     },
   };
 
   const loading = { style: {}, replaceChildren() {} };
   const document = {
     getElementById: id => id === 'loading' ? loading : null,
+    querySelectorAll: () => [],
   };
 
   // 실제 main.js를 실행하되 렌더러·통신·오류 UI만 대체한다.
@@ -227,6 +233,12 @@ function runtime() {
         dispose() {},
       };
       renderer = {
+        info: {
+          memory: { geometries: 0, textures: 0 },
+          render: { calls: 0, triangles: 0 },
+          programs: [],
+        },
+        shadowMap: { enabled: false },
         renderLists: { dispose() {} },
         dispose() {},
         getContext: () => ({ getExtension: () => null }),
@@ -235,6 +247,8 @@ function runtime() {
 
       return {
         dispose: disposeObject3Ds,
+        resources: collectDiagnosticResources,
+        report: window.reportGardenDiagnostics,
         build: createFlowerInstances,
         queue: (url, accept = () => true) =>
           queueModelLoad(url, gardenLoadId, accept),
@@ -267,9 +281,12 @@ function runtime() {
   )(
     three, Loader, window, document, {
       killTweensOf() {},
+      getTweensOf() { return []; },
       to(target, options) { tweens.push({ target, ...options }); },
     },
-    Bitmap, class { get() { return null; } },
+    Bitmap, class {
+      get(key) { return key === 'diagnostics' && diagnostics ? '1' : null; }
+    },
     { log() {}, warn() {}, error() {} }, objects
   );
 
@@ -279,6 +296,7 @@ function runtime() {
     started,
     instances,
     events,
+    reports,
     objects,
     Mesh,
     tweens,
@@ -624,6 +642,89 @@ async function main() {
     equal(r.selection().ids.length, 0);
   });
 
+  await test('진단: 여러 파트와 중복 루트의 꽃·공유 자원을 한 번 집계', () => {
+    const r = runtime();
+    const a = asset();
+    const mapping = [{ diaryId: 1 }, { diaryId: 2 }];
+    const first = new r.Mesh(a.geometry, a.material, 2);
+    const second = new r.Mesh(a.geometry, a.material, 2);
+    [first, second].forEach(mesh => {
+      mesh.userData = { isFlower: true, diaryMapping: mapping };
+    });
+    const resources = r.resources([first, first, second]);
+    equal(resources.meshes, 2);
+    equal(resources.geometries, 1);
+    equal(resources.textures, 1);
+    equal(resources.bitmaps, 1);
+    equal(resources.instanceSlots, 4);
+    equal(resources.logicalFlowers, 2);
+  });
+
+  await test('진단: scene 밖에서 대기하는 꽃을 집계하고 인수 후 중복 제거', async () => {
+    const r = runtime({ diagnostics: true });
+    r.init('tree', '{"anger":["a","b"]}',
+      '[{"id":0,"emotion":"anger"},{"id":1,"emotion":"anger"}]');
+    r.pending.shift().ok(asset());
+    await until(() => r.pending[0]?.url === 'a');
+    r.pending.shift().ok(asset());
+    await until(() => r.pending[0]?.url === 'b');
+    const pending = r.reports.at(-1);
+    equal(pending.reason, 'flower_model_accepted');
+    equal(pending.sceneFlowerCount, 0);
+    equal(pending.pendingFlowerCount, 1);
+    equal(pending.resources.logicalFlowers, 1);
+    equal(pending.resources.meshes, 2);
+    equal(pending.mappedDiaryCount, 2);
+    r.pending.shift().ok(asset());
+    await until(() => r.state().flowers === 2 && r.state().pending === 0);
+    const status = r.report();
+    equal(status.sceneFlowerCount, 2);
+    equal(status.pendingFlowerCount, 0);
+    equal(status.resources.logicalFlowers, 2);
+    equal(r.reports.at(-1).schemaVersion, 2);
+    expect(status.gardenLoadMs >= 0, 'Ready garden has no load duration');
+  });
+
+  await test('진단: 입력 수와 매핑 누락·scene 꽃 수를 구분', async () => {
+    const r = runtime({ diagnostics: true });
+    r.init('tree', '{"anger":["a"]}',
+      '[{"id":0,"emotion":"anger"},{"id":1,"emotion":"unknown"},{"id":2,"emotion":""}]');
+    r.pending.shift().ok(asset());
+    await until(() => r.pending[0]?.url === 'a');
+    r.pending.shift().ok(asset());
+    await until(() => r.state().flowers === 1 && r.state().pending === 0);
+    const status = r.report();
+    equal(status.diaryCount, 3);
+    equal(status.mappedDiaryCount, 1);
+    equal(status.skippedDiaryCount, 2);
+    equal(status.sceneFlowerCount, 1);
+    r.clear();
+    const cleared = r.report();
+    equal(cleared.diaryCount, 0);
+    equal(cleared.mappedDiaryCount, 0);
+    equal(cleared.skippedDiaryCount, 0);
+    equal(cleared.sceneFlowerCount, 0);
+    equal(cleared.gardenLoadMs, null);
+  });
+
+  await test('진단: 종료 스냅샷과 종료 후 상태는 소유 자원 0', async () => {
+    const r = runtime({ diagnostics: true });
+    r.init('tree', '{}', '[]');
+    r.pending.shift().ok(asset());
+    await until(() => r.state().pending === 0);
+    equal(r.destroy(), true);
+    const report = r.reports.at(-1);
+    equal(report.reason, 'viewer_destroyed');
+    equal(report.resources.meshes, 0);
+    equal(report.sceneFlowerCount, 0);
+    equal(report.pendingFlowerCount, 0);
+    equal(report.loading.waiting, 0);
+    const status = r.report();
+    equal(status.destroyed, true);
+    equal(status.canvasCount, 0);
+    equal(status.resources.geometries, 0);
+  });
+
   output('All ' + passed + ' garden memory tests passed.');
 }
 
@@ -638,7 +739,7 @@ main().catch(error => {
 if (typeof drainMicrotasks === 'function') {
   drainMicrotasks();
   if (failure) throw failure;
-  if (passed !== 12) {
+  if (passed !== 16) {
     throw new Error('The test run did not finish.');
   }
 }

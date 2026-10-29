@@ -693,7 +693,7 @@ class _GardenScreenState extends State<GardenScreen>
 
     try {
       const expressions = <String, String>{
-        'status': 'true',
+        'status': 'window.reportGardenDiagnostics() === null ? false : true',
         'pause': '(window.pauseGarden(), true)',
         'resume': 'window.resumeGarden()',
         'destroy': 'window.destroyGardenViewer()',
@@ -775,8 +775,7 @@ class _GardenScreenState extends State<GardenScreen>
           SafeArea(
             child: Stack(
               children: [
-                if (_gardenDiagnosticsEnabled &&
-                    (_gardenScenario == 'month-switch' || widget.assetPreview))
+                if (_gardenDiagnosticsEnabled)
                   Positioned(
                     top: 100,
                     right: 16,

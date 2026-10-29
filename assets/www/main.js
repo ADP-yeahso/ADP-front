@@ -23,6 +23,10 @@ const diagnosticState = {
   activeLoads: 0,
   peakActiveLoads: 0,
   diaryCount: 0,
+  mappedDiaryCount: 0,
+  skippedDiaryCount: 0,
+  gardenStartedAtMs: null,
+  gardenReadyAtMs: null,
   ownedEventListeners: 0,
 };
 
@@ -98,6 +102,24 @@ function queueDiagnosticReport(reason) {
   if (diagnosticsEnabled) {
     pendingDiagnosticReason = reason;
   }
+}
+
+function resetDiagnosticGardenCounts() {
+  diagnosticState.diaryCount = 0;
+  diagnosticState.mappedDiaryCount = 0;
+  diagnosticState.skippedDiaryCount = 0;
+  diagnosticState.gardenStartedAtMs = null;
+  diagnosticState.gardenReadyAtMs = null;
+}
+
+function diagnosticGardenLoadMs() {
+  if (
+    diagnosticState.gardenStartedAtMs === null ||
+    diagnosticState.gardenReadyAtMs === null
+  ) {
+    return null;
+  }
+  return diagnosticState.gardenReadyAtMs - diagnosticState.gardenStartedAtMs;
 }
 
 function seededUnit(seed) {
@@ -860,6 +882,7 @@ window.initGarden = function (
       }
 
       diagnosticState.diaryCount = diaries.length;
+      diagnosticState.gardenStartedAtMs = Date.now();
 
       stage = 'tree';
       await ensureWorldTree(treeUrl);
@@ -870,6 +893,7 @@ window.initGarden = function (
 
       if (diaries.length === 0) {
         loading.style.display = 'none';
+        diagnosticState.gardenReadyAtMs = Date.now();
         queueDiagnosticReport('garden_ready_zero');
         requestRender();
         return;
@@ -904,6 +928,11 @@ window.initGarden = function (
         diariesByUrl[url].push(diary);
       });
 
+      diagnosticState.mappedDiaryCount = Object.values(diariesByUrl)
+        .reduce((count, entries) => count + entries.length, 0);
+      diagnosticState.skippedDiaryCount =
+        diaries.length - diagnosticState.mappedDiaryCount;
+
       queueDiagnosticReport('flower_loads_started');
       requestRender();
 
@@ -930,6 +959,7 @@ window.initGarden = function (
         }
 
         pendingFlowerMeshes.push(...createdMeshes);
+        emitDiagnosticReport('flower_model_accepted');
       }
 
       if (currentLoadId !== gardenLoadId) {
@@ -949,6 +979,7 @@ window.initGarden = function (
       flowerData.sort((a, b) => diaryOrder.get(String(a.diaryId)) - diaryOrder.get(String(b.diaryId)));
 
       loading.style.display = 'none';
+      diagnosticState.gardenReadyAtMs = Date.now();
       queueDiagnosticReport('garden_ready');
       requestRender();
     } catch (error) {
@@ -1456,24 +1487,24 @@ function collectTextureBitmaps(texture, bitmaps) {
   collectImageBitmapValue(texture?.source?.data, bitmaps);
 }
 
-function collectDiagnosticResources() {
+function collectDiagnosticResources(roots = [scene]) {
+  const seenObjects = new Set();
   const geometries = new Set();
   const materials = new Set();
   const textures = new Set();
   const bitmaps = new Set();
+  const logicalFlowers = new Set();
 
   let meshes = 0;
   let instancedMeshes = 0;
   let instanceSlots = 0;
 
-  scene?.traverse((object) => {
-    if (!object.isMesh) return;
-
+  const collect = (object) => {
+    if (!object.isMesh || seenObjects.has(object)) return;
+    seenObjects.add(object);
     meshes += 1;
 
-    if (object.geometry) {
-      geometries.add(object.geometry);
-    }
+    if (object.geometry) geometries.add(object.geometry);
 
     forEachMaterial(object.material, (material) => {
       materials.add(material);
@@ -1483,12 +1514,18 @@ function collectDiagnosticResources() {
     if (object.isInstancedMesh) {
       instancedMeshes += 1;
       instanceSlots += object.count;
-    }
-  });
 
-  textures.forEach((texture) => {
-    collectTextureBitmaps(texture, bitmaps);
-  });
+      if (object.userData?.isFlower) {
+        for (let index = 0; index < object.count; index++) {
+          const mapping = object.userData.diaryMapping?.[index];
+          if (mapping) logicalFlowers.add(mapping);
+        }
+      }
+    }
+  };
+
+  roots.forEach((root) => root?.traverse(collect));
+  textures.forEach((texture) => collectTextureBitmaps(texture, bitmaps));
 
   return {
     meshes,
@@ -1498,13 +1535,23 @@ function collectDiagnosticResources() {
     bitmaps: bitmaps.size,
     instancedMeshes,
     instanceSlots,
+    logicalFlowers: logicalFlowers.size,
+  };
+}
+
+function collectDiagnosticSnapshot() {
+  const pendingRoots = [...pendingFlowerBatches].flat();
+  return {
+    resources: collectDiagnosticResources([scene, ...pendingRoots]),
+    sceneResources: collectDiagnosticResources(),
+    pendingResources: collectDiagnosticResources(pendingRoots),
   };
 }
 
 function emitDiagnosticReport(reason) {
   if (!diagnosticsEnabled || !renderer || !scene) return;
 
-  const resources = collectDiagnosticResources();
+  const snapshot = collectDiagnosticSnapshot();
   const rendererMemory = renderer.info.memory;
   const rendererRender = renderer.info.render;
   let shadowCasters = 0;
@@ -1523,16 +1570,23 @@ function emitDiagnosticReport(reason) {
 
   const report = {
     type: 'garden_diagnostics',
+    schemaVersion: 2,
+    timestampMs: Date.now(),
     reason,
     sessionId: diagnosticSessionId,
     generation: gardenLoadId,
     diaryCount: diagnosticState.diaryCount,
+    mappedDiaryCount: diagnosticState.mappedDiaryCount,
+    skippedDiaryCount: diagnosticState.skippedDiaryCount,
+    sceneFlowerCount: snapshot.sceneResources.logicalFlowers,
+    pendingFlowerCount: snapshot.pendingResources.logicalFlowers,
+    gardenLoadMs: diagnosticGardenLoadMs(),
     loading: {
       active: diagnosticState.activeLoads,
       waiting: modelLoadQueue.length,
       peakActive: diagnosticState.peakActiveLoads,
     },
-    resources,
+    ...snapshot,
     renderer: {
       geometries: rendererMemory.geometries,
       textures: rendererMemory.textures,
@@ -1722,7 +1776,7 @@ window.clearGardenContent = function () {
   flowerMeshes = [];
   disposeObject3Ds(oldFlowers);
 
-  diagnosticState.diaryCount = 0;
+  resetDiagnosticGardenCounts();
   renderer.renderLists?.dispose();
   requestRender();
 };
@@ -1846,7 +1900,7 @@ window.destroyGardenViewer = function () {
   worldTree = null;
   worldTreeUrl = null;
   isFocusing = false;
-  diagnosticState.diaryCount = 0;
+  resetDiagnosticGardenCounts();
 
   const loading = document.getElementById('loading');
   if (loading) {
@@ -2111,6 +2165,7 @@ window.loseGardenContextForDiagnostics = function () {
 };
 
 window.getGardenViewerStatus = function () {
+  const snapshot = collectDiagnosticSnapshot();
   return {
     sessionId: diagnosticSessionId,
     active: isGardenViewerActive(),
@@ -2122,7 +2177,13 @@ window.getGardenViewerStatus = function () {
       waiting: modelLoadQueue.length,
     },
 
-    resources: collectDiagnosticResources(),
+    diaryCount: diagnosticState.diaryCount,
+    mappedDiaryCount: diagnosticState.mappedDiaryCount,
+    skippedDiaryCount: diagnosticState.skippedDiaryCount,
+    sceneFlowerCount: snapshot.sceneResources.logicalFlowers,
+    pendingFlowerCount: snapshot.pendingResources.logicalFlowers,
+    gardenLoadMs: diagnosticGardenLoadMs(),
+    ...snapshot,
 
     activity: {
       eventListeners: ownedEventRemovers.size,
@@ -2144,6 +2205,13 @@ window.getGardenViewerStatus = function () {
     ).length,
   };
 };
+
+window.reportGardenDiagnostics = function (reason = 'manual_status') {
+  if (!diagnosticsEnabled) return null;
+  emitDiagnosticReport(reason);
+  return window.getGardenViewerStatus();
+};
+
 sendGardenEvent('ready');
 // Opening the viewer directly in a browser uses the same complete asset preview.
 if (!window.FlutterChannel) window.previewGarden();

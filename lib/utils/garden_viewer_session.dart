@@ -123,14 +123,16 @@ class GardenViewerSession {
   }
 
   void _handleMessage(String message) {
-    if (_closing) return;
-
+    // Closing viewers may still send their final numeric resource snapshot.
+    // Continue blocking all lifecycle and interaction events while closing.
     if (message.startsWith('GARDEN_DIAGNOSTICS:')) {
       if (diagnostics) {
         debugPrint(message);
       }
       return;
     }
+
+    if (_closing) return;
 
     const prefix = 'GARDEN_EVENT:';
     if (!message.startsWith(prefix)) return;

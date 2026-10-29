@@ -537,11 +537,14 @@ function createFlowerInstances(
   gltf,
   assignedDiaries,
   totalFlowerCount,
-  assetPreview
+  assetPreview,
+  modelUrl = ''
 ) {
   const baseFlower = gltf.scene;
   const numInstances = assignedDiaries.length;
-  const flowerScale = 0.2;
+  const modelFile = modelUrl.split('?')[0].split('/').pop();
+  const flowerScale =
+    modelFile === 'Affection_Marigold.glb' ? 0.106 : 0.2;
   const dummy = new THREE.Object3D();
   const createdMeshes = [];
 
@@ -851,7 +854,8 @@ window.initGarden = function (
             gltf,
             diariesByUrl[url],
             diaries.length,
-            assetPreview
+            assetPreview,
+            url
           )
         );
 

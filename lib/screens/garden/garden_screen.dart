@@ -13,6 +13,8 @@ import 'dart:async';
 import '../../utils/garden_viewer_session.dart';
 import '../care_notebook/care_notebook_list_screen.dart';
 import 'entry_detail_sheet.dart';
+import '../calendar/calendar_screen.dart';
+
 
 class GardenScreen extends StatefulWidget {
   const GardenScreen({
@@ -851,37 +853,59 @@ class _GardenScreenState extends State<GardenScreen>
     );
   }
 
-  Future<void> _handleFlowerTap(String diaryId) async {
-    final session = _session;
-    final documentId = session?.jsSessionId;
+Future<void> _handleFlowerTap(String diaryId) async {
+  final session = _session;
+  final documentId = session?.jsSessionId;
 
-    if (!_shouldRun || session == null || !session.isReady || _isFocusing) {
-      return;
-    }
+  if (!_shouldRun ||
+      session == null ||
+      !session.isReady ||
+      _isFocusing) {
+    return;
+  }
 
-    final appData = context.read<AppData>();
-    final diary = diaryId.startsWith('dummy')
-        ? null
-        : appData.diaryById(int.tryParse(diaryId) ?? -1);
+  final appData = context.read<AppData>();
+  final diary = diaryId.startsWith('dummy')
+      ? null
+      : appData.diaryById(int.tryParse(diaryId) ?? -1);
 
-    if (diary == null) {
+  if (diary == null) {
+    unawaited(session.runScript('window.resetCamera();'));
+    return;
+  }
+
+  setState(() => _isFocusing = true);
+
+  try {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return SizedBox(
+          height: MediaQuery.of(context).size.height * 0.94,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(24),
+            ),
+            child: CalendarScreen(
+              initialDay: diary.recordDate,
+              initialDiary: diary,
+            ),
+          ),
+        );
+      },
+    );
+  } finally {
+    if (_ownsSession(session) &&
+        _shouldRun &&
+        session.jsSessionId == documentId) {
+      setState(() => _isFocusing = false);
       unawaited(session.runScript('window.resetCamera();'));
-      return;
-    }
-
-    setState(() => _isFocusing = true);
-
-    try {
-      await showDiaryDetailSheet(context, diary);
-    } finally {
-      if (_ownsSession(session) &&
-          _shouldRun &&
-          session.jsSessionId == documentId) {
-        setState(() => _isFocusing = false);
-        unawaited(session.runScript('window.resetCamera();'));
-      }
     }
   }
+}
 
   Future<void> _handleTreeTap() async {
     final session = _session;

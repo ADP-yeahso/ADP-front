@@ -14,6 +14,7 @@ void main() {
 
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(2));
+    expect(find.bySemanticsLabel('로그인'), findsOneWidget);
 
     expect(
       find.image(

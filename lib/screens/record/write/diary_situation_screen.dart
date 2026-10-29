@@ -700,6 +700,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
   @override
   Widget build(BuildContext context) {
     const backgroundColor = Color(0xFFFFFBF0);
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -717,30 +718,36 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: keyboardVisible ? 4 : 10,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 다람쥐 캐릭터 (150x150)
-              Center(
-                child: SizedBox(
-                  width: 150,
-                  height: 150,
-                  child: _buildAssetWidget(
-                    candidatePaths: const [
-                      'assets/record/choice/svg/3-2-1.svg/svg/3-2-1 다람쥐2.svg',
-                      'assets/record/choice/png/3-2-1.png/png/3-2-1 다람쥐2.png',
-                    ],
-                    fallback: Container(
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFDCDCDC),
-                        shape: BoxShape.circle,
+              if (!keyboardVisible) ...[
+                Center(
+                  child: SizedBox(
+                    width: 150,
+                    height: 150,
+                    child: _buildAssetWidget(
+                      candidatePaths: const [
+                        'assets/record/choice/svg/3-2-1.svg/svg/3-2-1 다람쥐2.svg',
+                        'assets/record/choice/png/3-2-1.png/png/3-2-1 다람쥐2.png',
+                      ],
+                      fallback: Container(
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFDCDCDC),
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ] else
+                const SizedBox(height: 4),
 
               // 헤드라인 ("오늘은 무슨 일이 있으셨나요?")
               Center(
@@ -761,7 +768,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: keyboardVisible ? 10 : 20),
 
               // 제목 입력창 (선택)
               TextField(
@@ -775,7 +782,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   fillColor: Colors.white,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 14,
+                    vertical: 12,
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -793,7 +800,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: keyboardVisible ? 8 : 12),
 
               // 본문 텍스트 입력창 + 최근 미디어 타일 퀵 선택 바
               Expanded(
@@ -837,7 +844,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: keyboardVisible ? 8 : 14),
 
               // 미디어 첨부 버튼 바 (사진 첨부 | 영상 첨부 | 음성 첨부)
               Container(
@@ -847,7 +854,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   border: Border.all(color: Colors.grey.shade300, width: 1),
                 ),
                 padding: const EdgeInsets.symmetric(
-                  vertical: 12,
+                  vertical: 10,
                   horizontal: 12,
                 ),
                 child: Row(
@@ -925,7 +932,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: keyboardVisible ? 10 : 20),
 
               // 하단 다음 버튼 (제목 및 텍스트 모두 입력 시 연두색으로 변경 및 클릭 가능)
               Builder(
@@ -936,7 +943,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   return Center(
                     child: SizedBox(
                       width: 180,
-                      height: 52,
+                      height: keyboardVisible ? 46 : 52,
                       child: ElevatedButton(
                         onPressed: isFormValid && !_isSubmitting
                             ? _submitSituation
@@ -965,7 +972,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: keyboardVisible ? 4 : 10),
             ],
           ),
         ),

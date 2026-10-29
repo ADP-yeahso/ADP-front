@@ -926,31 +926,32 @@ class _DayCell extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 78,
-            height: 60,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (moodAssetPath != null)
-                  SvgPicture.asset(
-                    moodAssetPath,
-                    semanticsLabel: '${flowerEmotion!.displayName} 감정',
-                    key: ValueKey(
-                      'calendar-mood-${date.year}-${date.month}-${date.day}',
+          Expanded(
+            child: SizedBox(
+              width: 78,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (moodAssetPath != null)
+                    SvgPicture.asset(
+                      moodAssetPath,
+                      semanticsLabel: '${flowerEmotion!.displayName} 감정',
+                      key: ValueKey(
+                        'calendar-mood-${date.year}-${date.month}-${date.day}',
+                      ),
+                      width: 78,
+                      height: 65,
+                      fit: BoxFit.contain,
                     ),
-                    width: 78,
-                    height: 65,
+                  SvgPicture.asset(
+                    _numberAssetPath(),
+                    semanticsLabel: '${date.year}년 ${date.month}월 ${date.day}일',
+                    width: 24,
+                    height: 24,
                     fit: BoxFit.contain,
                   ),
-                SvgPicture.asset(
-                  _numberAssetPath(),
-                  semanticsLabel: '${date.year}년 ${date.month}월 ${date.day}일',
-                  width: 24,
-                  height: 24,
-                  fit: BoxFit.contain,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           _buildRecordMarker(),

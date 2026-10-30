@@ -17,6 +17,15 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   int _index = 0;
+  final _tabIndex = ValueNotifier<int>(0);
+  bool _hideSettingsNav = false;
+  late final _routeObserver = _SettingsRouteObserver((hide) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _hideSettingsNav != hide) {
+        setState(() => _hideSettingsNav = hide);
+      }
+    });
+  });
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   static const _screens = [
@@ -41,12 +50,16 @@ class _RootShellState extends State<RootShell> {
   @override
   void dispose() {
     _navController?.removeListener(_handleNavRequest);
+    _tabIndex.dispose();
     super.dispose();
   }
 
   void _handleNavRequest() {
     if (_navController?.pendingDate != null && _index != 0) {
-      setState(() => _index = 0);
+      setState(() {
+        _index = 0;
+        _tabIndex.value = 0;
+      });
     }
   }
 
@@ -64,64 +77,143 @@ class _RootShellState extends State<RootShell> {
     return Scaffold(
       body: Navigator(
         key: _navigatorKey,
+        observers: [_routeObserver],
         onGenerateRoute: (settings) => MaterialPageRoute(
-          builder: (context) => IndexedStack(index: _index, children: _screens),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openRecordChoice,
-        elevation: 2,
-        backgroundColor: Theme.of(context).primaryColor,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, size: 32, color: Colors.white),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              // 1. 홈
-              _buildNavItem(
-                index: 0,
-                icon: Icons.home_outlined,
-                selectedIcon: Icons.home,
-                label: '홈',
-              ),
-              // 2. 기억 보기
-              _buildNavItem(
-                index: 1,
-                icon: Icons.park_outlined,
-                selectedIcon: Icons.park,
-                label: '기억 보기',
-              ),
-              // 가운데 + 버튼을 위한 여백
-              const SizedBox(width: 48),
-              // 3. 갤러리
-              _buildNavItem(
-                index: 2,
-                icon: Icons.photo_library_outlined,
-                selectedIcon: Icons.photo_library,
-                label: '갤러리',
-              ),
-              // 4. Setting
-              _buildNavItem(
-                index: 3,
-                icon: Icons.settings_outlined,
-                selectedIcon: Icons.settings,
-                label: 'Setting',
-              ),
-            ],
+          builder: (context) => ValueListenableBuilder<int>(
+            valueListenable: _tabIndex,
+            builder: (_, index, _) =>
+                IndexedStack(index: index, children: _screens),
           ),
         ),
       ),
+      extendBody: _index == 3,
+      floatingActionButton: _index == 3
+          ? null
+          : FloatingActionButton(
+              onPressed: _openRecordChoice,
+              elevation: 2,
+              backgroundColor: Theme.of(context).primaryColor,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add, size: 32, color: Colors.white),
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: _hideSettingsNav
+          ? null
+          : _index == 3
+          ? _settingsNavigation()
+          : BottomAppBar(
+              shape: const CircularNotchedRectangle(),
+              notchMargin: 8.0,
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                height: 60,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    // 1. 홈
+                    _buildNavItem(
+                      index: 0,
+                      icon: Icons.home_outlined,
+                      selectedIcon: Icons.home,
+                      label: '홈',
+                    ),
+                    // 2. 기억 보기
+                    _buildNavItem(
+                      index: 1,
+                      icon: Icons.park_outlined,
+                      selectedIcon: Icons.park,
+                      label: '기억 보기',
+                    ),
+                    // 가운데 + 버튼을 위한 여백
+                    const SizedBox(width: 48),
+                    // 3. 갤러리
+                    _buildNavItem(
+                      index: 2,
+                      icon: Icons.photo_library_outlined,
+                      selectedIcon: Icons.photo_library,
+                      label: '갤러리',
+                    ),
+                    // 4. Setting
+                    _buildNavItem(
+                      index: 3,
+                      icon: Icons.settings_outlined,
+                      selectedIcon: Icons.settings,
+                      label: 'Setting',
+                    ),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
+  Widget _settingsNavigation() => SafeArea(
+    top: false,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      child: SizedBox(
+        height: 88,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Container(
+              height: 62,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(36),
+                border: Border.all(color: const Color(0xFFE8E5DA)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x26000000),
+                    blurRadius: 2,
+                    offset: Offset(1, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _settingsNavIcon(0, Icons.home_outlined, '홈'),
+                  _settingsNavIcon(1, Icons.park, '기억 보기'),
+                  const SizedBox(width: 54),
+                  _settingsNavIcon(2, Icons.photo_library_outlined, '갤러리'),
+                  _settingsNavIcon(3, Icons.settings_outlined, '설정'),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 0,
+              child: SizedBox(
+                width: 60,
+                height: 60,
+                child: FloatingActionButton(
+                  heroTag: 'settings_record',
+                  onPressed: _openRecordChoice,
+                  backgroundColor: const Color(0xFF386723),
+                  shape: const CircleBorder(),
+                  elevation: 2,
+                  tooltip: '기록 추가',
+                  child: const Icon(Icons.add, size: 42, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _settingsNavIcon(int index, IconData icon, String label) => IconButton(
+    tooltip: label,
+    icon: Icon(icon, size: 32, color: const Color(0xFF1E3815)),
+    onPressed: () {
+      _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+      setState(() {
+        _index = index;
+        _tabIndex.value = index;
+      });
+    },
+  );
   Widget _buildNavItem({
     required int index,
     required IconData icon,
@@ -129,13 +221,18 @@ class _RootShellState extends State<RootShell> {
     required String label,
   }) {
     final isSelected = _index == index;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey[600];
+    final color = isSelected
+        ? Theme.of(context).primaryColor
+        : Colors.grey[600];
 
     return InkWell(
       onTap: () {
         _navigatorKey.currentState?.popUntil((route) => route.isFirst);
         if (_index != index) {
-          setState(() => _index = index);
+          setState(() {
+            _index = index;
+            _tabIndex.value = index;
+          });
         }
       },
       borderRadius: BorderRadius.circular(12),
@@ -145,11 +242,7 @@ class _RootShellState extends State<RootShell> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isSelected ? selectedIcon : icon,
-              color: color,
-              size: 24,
-            ),
+            Icon(isSelected ? selectedIcon : icon, color: color, size: 24),
             const SizedBox(height: 2),
             Text(
               label,
@@ -166,3 +259,16 @@ class _RootShellState extends State<RootShell> {
   }
 }
 
+class _SettingsRouteObserver extends NavigatorObserver {
+  _SettingsRouteObserver(this.onChange);
+  final ValueChanged<bool> onChange;
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    onChange(route.settings.name == 'edit_patient');
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    onChange(previousRoute?.settings.name == 'edit_patient');
+  }
+}

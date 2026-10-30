@@ -2,6 +2,10 @@ import 'emergency_contact.dart';
 import 'medication.dart';
 
 class Patient {
+  final String dementiaType;
+  final String diseaseStage;
+  final String behaviorPatterns;
+  final String livingArrangement;
   final int id;
   final int groupId;
   final String patientName;
@@ -16,6 +20,10 @@ class Patient {
   final List<EmergencyContact> emergencyContacts;
 
   Patient({
+    this.dementiaType = '',
+    this.diseaseStage = '',
+    this.behaviorPatterns = '',
+    this.livingArrangement = '',
     required this.id,
     required this.groupId,
     required this.patientName,

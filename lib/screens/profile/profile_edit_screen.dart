@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
+import 'settings_components.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -17,8 +18,15 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   late final TextEditingController _passwordController;
   late final TextEditingController _phoneController;
 
-  bool _obscurePassword = true;
   bool _initialized = false;
+  late final String _initialName, _initialPassword, _initialPhone;
+
+  bool get _hasChanges =>
+      _nameController.text != _initialName ||
+      _passwordController.text != _initialPassword ||
+      _phoneController.text != _initialPhone;
+
+  void _onEdited() => setState(() {});
 
   @override
   void didChangeDependencies() {
@@ -33,6 +41,16 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _nameController = TextEditingController(text: user.name);
     _passwordController = TextEditingController(text: user.password);
     _phoneController = TextEditingController(text: user.phoneNumber);
+    _initialName = user.name;
+    _initialPassword = user.password;
+    _initialPhone = user.phoneNumber;
+    for (final controller in [
+      _nameController,
+      _passwordController,
+      _phoneController,
+    ]) {
+      controller.addListener(_onEdited);
+    }
 
     _initialized = true;
   }
@@ -46,11 +64,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   }
 
   void _showPhotoMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('사진 변경 기능은 추후 추가할 예정이에요.'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('사진 변경 기능은 추후 추가할 예정이에요.')));
   }
 
   void _saveProfile() {
@@ -59,147 +75,126 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     }
 
     context.read<AppData>().updateCurrentUserProfile(
-          name: _nameController.text.trim(),
-          password: _passwordController.text,
-          phoneNumber: _phoneController.text.trim(),
-        );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('프로필이 저장되었어요.'),
-      ),
+      name: _nameController.text.trim(),
+      password: _passwordController.text,
+      phoneNumber: _phoneController.text.trim(),
     );
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('프로필이 저장되었어요.')));
 
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AppData>().me;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('프로필 편집'),
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Center(
-                child: Column(
+    final data = context.watch<AppData>();
+    return SettingsPage(
+      headerAsset: 'assets/settings/edit_profile/top_bar.png',
+      title: const SizedBox.shrink(),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            SettingsEditIdentity(
+              group: 'edit_profile',
+              controller: _nameController,
+              onPhoto: _showPhotoMessage,
+            ),
+            SettingsPanel(
+              group: 'edit_profile',
+              asset: 'box_edit_profile',
+              height: 96,
+              children: [
+                Row(
                   children: [
-                    CircleAvatar(
-                      radius: 52,
-                      backgroundColor:
-                          user.color.withValues(alpha: 0.18),
-                      child: Icon(
-                        Icons.person,
-                        size: 52,
-                        color: user.color,
-                      ),
+                    const SizedBox(width: 14),
+                    settingsSvg(
+                      'edit_profile',
+                      'text_patient_relationship',
+                      height: 13,
                     ),
-                    const SizedBox(height: 12),
-                    TextButton.icon(
-                      onPressed: _showPhotoMessage,
-                      icon: const Icon(Icons.camera_alt_outlined),
-                      label: const Text('사진 변경'),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: Text(
+                        data.patientRelationshipLabel,
+                        style: const TextStyle(fontSize: 14),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 28),
-              TextFormField(
-                controller: _nameController,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: '이름 또는 닉네임',
-                  prefixIcon: Icon(Icons.edit_outlined),
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return '이름을 입력해 주세요.';
-                  }
-
-                  if (value.trim().length < 2) {
-                    return '이름은 두 글자 이상 입력해 주세요.';
-                  }
-
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: '비밀번호',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
+                Row(
+                  children: [
+                    const SizedBox(width: 14),
+                    settingsSvg('edit_profile', 'text_phone', height: 13),
+                    const SizedBox(width: 50),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        style: const TextStyle(fontSize: 14),
+                        decoration: const InputDecoration(
+                          filled: false,
+                          contentPadding: EdgeInsets.zero,
+                          border: InputBorder.none,
+                          hintText: '전화번호 입력',
+                          isDense: true,
+                        ),
+                        validator: (v) {
+                          final n = (v ?? '')
+                              .replaceAll(RegExp(r'[^0-9]'), '')
+                              .length;
+                          return n < 10 || n > 11 ? '전화번호를 확인해 주세요' : null;
+                        },
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '비밀번호를 입력해 주세요.';
-                  }
-
-                  if (value.length < 4) {
-                    return '비밀번호는 네 글자 이상 입력해 주세요.';
-                  }
-
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: '전화번호',
-                  hintText: '010-1234-5678',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                  border: OutlineInputBorder(),
+              ],
+            ),
+            const SizedBox(height: 6),
+            SettingsPanel(
+              group: 'edit_profile',
+              asset: 'box_edit_profile',
+              height: 96,
+              children: [
+                SettingsAction(
+                  group: 'edit_profile',
+                  icon: 'icon_edit',
+                  text: 'text_change_password',
+                  label: '비밀번호 수정',
+                  onTap: () async {
+                    final value = await settingsEditText(
+                      context,
+                      '비밀번호 수정',
+                      '',
+                      obscure: true,
+                    );
+                    if (!context.mounted || value == null) return;
+                    if (value.length < 4) {
+                      settingsUnavailable(context, '비밀번호는 네 글자 이상 입력해 주세요.');
+                      return;
+                    }
+                    _passwordController.text = value;
+                  },
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return '전화번호를 입력해 주세요.';
-                  }
-
-                  final digits =
-                      value.replaceAll(RegExp(r'[^0-9]'), '');
-
-                  if (digits.length < 10 || digits.length > 11) {
-                    return '올바른 전화번호를 입력해 주세요.';
-                  }
-
-                  return null;
-                },
-              ),
-              const SizedBox(height: 28),
-              FilledButton(
-                onPressed: _saveProfile,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
+                SettingsAction(
+                  group: 'edit_profile',
+                  icon: 'icon_delete',
+                  text: 'text_delete_account',
+                  label: '계정 삭제',
+                  onTap: () =>
+                      settingsUnavailable(context, '계정 삭제는 현재 지원되지 않아요.'),
                 ),
-                child: const Text('저장'),
-              ),
-            ],
-          ),
+              ],
+            ),
+            SettingsSave(
+              group: 'edit_profile',
+              onTap: _saveProfile,
+              isChanged: _hasChanges,
+            ),
+          ],
         ),
       ),
     );

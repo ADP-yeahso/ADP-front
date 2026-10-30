@@ -57,7 +57,7 @@ class AppData extends ChangeNotifier {
 
   Patient get patient => _patient;
 
-  final Group group = Group(
+  Group group = Group(
     id: 1,
     inviteCode: 'ABCD12',
     groupName: '고강민 가족',
@@ -91,6 +91,19 @@ class AppData extends ChangeNotifier {
       joinedAt: DateTime(2024, 1, 1),
     ),
   ];
+
+  void updateGroupName(String name) {
+    if (name.trim().isEmpty) return;
+    group = Group(
+      id: group.id,
+      inviteCode: group.inviteCode,
+      groupName: name.trim(),
+      groupProfileImageUrl: group.groupProfileImageUrl,
+      members: group.members,
+      createdAt: group.createdAt,
+    );
+    notifyListeners();
+  }
 
   /// 현재 유저가 환자를 부르는 호칭 (UserGroup.patientsNickname 기반)
   String get patientRelationLabel {
@@ -204,6 +217,10 @@ class AppData extends ChangeNotifier {
   }
 
   void updatePatientInfo({
+    String? dementiaType,
+    String? diseaseStage,
+    String? behaviorPatterns,
+    String? livingArrangement,
     required String patientName,
     required int patientBirthDate,
     required String patientsNickname,
@@ -217,6 +234,10 @@ class AppData extends ChangeNotifier {
     String? profileImageUrl,
   }) {
     _patient = Patient(
+      dementiaType: dementiaType ?? _patient.dementiaType,
+      diseaseStage: diseaseStage ?? _patient.diseaseStage,
+      behaviorPatterns: behaviorPatterns ?? _patient.behaviorPatterns,
+      livingArrangement: livingArrangement ?? _patient.livingArrangement,
       id: _patient.id,
       groupId: _patient.groupId,
       patientName: patientName,
@@ -675,7 +696,16 @@ class AppData extends ChangeNotifier {
       title: '옛 동네 방문',
       content: '예전에 살던 동네를 차로 둘러보았다. 기억이 조금씩 나시는 듯했다.',
       mediaList: [
-        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+        Media(
+          id: 0,
+          memoryId: null,
+          diaryId: null,
+          fileUrl: 'dummy.jpg',
+          fileType: 'image',
+          duration: 0,
+          sortOrder: 1,
+          createdAt: DateTime.now(),
+        ),
       ],
     );
     addMemory(
@@ -688,7 +718,16 @@ class AppData extends ChangeNotifier {
       title: '손주와의 영상통화',
       content: '손주와 영상통화를 하며 활짝 웃으시는 모습을 보니 내 마음도 따뜻해졌다.',
       mediaList: [
-        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+        Media(
+          id: 0,
+          memoryId: null,
+          diaryId: null,
+          fileUrl: 'dummy.jpg',
+          fileType: 'image',
+          duration: 0,
+          sortOrder: 1,
+          createdAt: DateTime.now(),
+        ),
       ],
     );
 

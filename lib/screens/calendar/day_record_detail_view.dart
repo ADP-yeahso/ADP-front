@@ -338,7 +338,7 @@ class _RecordTypeSelector extends StatelessWidget {
                           ),
                         ),
                       ),
-                    
+
                     ],
                   ),
                 ],
@@ -414,7 +414,7 @@ class _TreeRecordCard extends StatelessWidget {
       .toList();
 
     final hasAudio = audioMedia.isNotEmpty;
-  
+
     return Card(
       color: const Color(0xFFFFFBF0),
       elevation: 0,
@@ -529,7 +529,7 @@ class _FlowerRecordCard extends StatelessWidget {
                   (item) => item.fileType == 'image' || item.fileType == 'video',
                 ),
               ),
-              
+
               const SizedBox(height: 22),
               _DetailContentLines(
                 text: diary.context,

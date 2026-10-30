@@ -73,7 +73,7 @@ void _selectDay(DateTime day) {
 
   void _goBack() {
     if (_selectedDay != null) {
-      if (widget.initialDay != null) {  
+      if (widget.initialDay != null) {
         Navigator.of(context).pop();
         return;
       }
@@ -185,7 +185,6 @@ void _selectDay(DateTime day) {
         decoration: const BoxDecoration(
           color: Color(0xFFFFFBF0),
         ),
-        
         child: SafeArea(
           child: Column(
             children: [
@@ -650,7 +649,7 @@ class _DayGrid extends StatelessWidget {
                 ),
               ),
             ),
-          
+
 
           SizedBox(
             height: 48,
@@ -784,7 +783,6 @@ class _DayCell extends StatelessWidget {
   String? _moodAssetPath() {
     final emotion = flowerEmotion;
     if (emotion == null) return null;
-    
     switch (emotion.id) {
       case 1:
        return 'assets/page2/moods/b_d.svg'; // 분노·답답함

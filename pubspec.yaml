@@ -81,6 +81,7 @@ flutter:
 
   assets:
     - assets/icons/
+    - assets/garden/home/
     - assets/images/
     - assets/images/flower/
     - assets/www/

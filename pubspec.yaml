@@ -88,6 +88,7 @@ flutter:
     - assets/images/
     - assets/images/flower/
     - assets/www/
+    - assets/www/background/
     - assets/gallery/screen4/
     - assets/gallery/screen4_png/
     - assets/auth/login/
@@ -95,6 +96,11 @@ flutter:
     - assets/auth/create_family/
     - assets/auth/signup/
     - assets/auth/group_created/
+    - assets/settings/my_page/
+    - assets/settings/edit_profile/
+    - assets/settings/patient_info/
+    - assets/settings/edit_patient/
+    - assets/settings/group_info/
     - assets/page2/
     - assets/page2/numbers/black/
     - assets/page2/numbers/red/
@@ -173,6 +179,10 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
   fonts:
+    - family: OwnglyphMeetme
+      fonts:
+        - asset: assets/fonts/OwnglyphMeetme-Regular.ttf
+          weight: 400
     - family: Pretendard
       fonts:
         - asset: assets/fonts/Pretendard-Regular.ttf

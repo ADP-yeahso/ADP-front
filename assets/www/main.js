@@ -309,11 +309,8 @@ function init() {
 
   // Scene setup
   scene = new THREE.Scene();
-  // 몽글몽글한 하늘색 배경 및 안개 (그라데이션 효과)
-  const skyColor = 0xe8f4f8; // 부드러운 파스텔 스카이블루
-  scene.background = new THREE.Color(skyColor);
-  // FogExp2는 거리에 따라 기하급수적으로 뿌얘지므로 선형 안개(Fog)로 교체하여 나무가 선명하게 보이도록 함
-  scene.fog = new THREE.Fog(skyColor, 50, 150);
+  // HTML 배경 이미지 위에 나무와 꽃만 투명하게 합성한다.
+  scene.background = null;
 
   // Camera setup
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -344,18 +341,7 @@ function init() {
   dirLight.castShadow = false;
   scene.add(dirLight);
 
-  // 3D 바닥(Ground) 생성
-  const groundGeo = new THREE.PlaneGeometry(150, 150);
-  const groundMat = new THREE.MeshStandardMaterial({
-    color: 0xdde6d5, // 부드러운 파스텔톤 초원 느낌
-    roughness: 0.9,
-    metalness: 0.1
-  });
-  const ground = new THREE.Mesh(groundGeo, groundMat);
-  ground.rotation.x = -Math.PI / 2;
-  ground.castShadow = false;
-  ground.receiveShadow = false;
-  scene.add(ground);
+  createGardenGround();
 
   // OrbitControls
   controls = new OrbitControls(camera, renderer.domElement);
@@ -443,6 +429,63 @@ function init() {
 
   // Hide loading by default until data comes
   document.getElementById('loading').style.display = 'none';
+}
+
+// The near lawn lives on the same y=0 plane as the tree and flowers.
+// Feather its distant edge into the PNG landscape instead of drawing a hard horizon.
+function createGardenGround() {
+  const makeRadialTexture = (stops, size) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const context = canvas.getContext('2d');
+    const radius = size / 2;
+    const gradient = context.createRadialGradient(
+      radius, radius, 0, radius, radius, radius,
+    );
+    stops.forEach(([offset, color]) => gradient.addColorStop(offset, color));
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, size, size);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  };
+
+  // Exact RGB of background/floor.png; an unlit material preserves the match.
+  const lawnTexture = makeRadialTexture([
+    [0, 'rgba(147, 204, 107, 1)'],
+    [0.67, 'rgba(147, 204, 107, 1)'],
+    [0.84, 'rgba(147, 204, 107, 0.65)'],
+    [1, 'rgba(147, 204, 107, 0)'],
+  ], 512);
+  const lawn = new THREE.Mesh(
+    new THREE.PlaneGeometry(96, 96),
+    new THREE.MeshBasicMaterial({
+      map: lawnTexture, transparent: true, depthWrite: false,
+    }),
+  );
+  lawn.rotation.x = -Math.PI / 2;
+  lawn.position.y = -0.02;
+  lawn.renderOrder = -2;
+  scene.add(lawn);
+
+  // A soft contact shadow anchors the trunk without a shadow-map render pass.
+  const shadowTexture = makeRadialTexture([
+    [0, 'rgba(49, 77, 30, 0.32)'],
+    [0.3, 'rgba(49, 77, 30, 0.22)'],
+    [0.65, 'rgba(49, 77, 30, 0.08)'],
+    [1, 'rgba(49, 77, 30, 0)'],
+  ], 128);
+  const shadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(18, 14),
+    new THREE.MeshBasicMaterial({
+      map: shadowTexture, transparent: true, depthWrite: false,
+    }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = -0.01;
+  shadow.renderOrder = -1;
+  shadow.raycast = () => {};
+  scene.add(shadow);
 }
 
 function constrainOrbitCenter() {

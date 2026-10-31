@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import '../models/flower.dart';
 import '../models/groups.dart';
 import '../models/media.dart';
 import '../models/memory.dart';
+import '../models/medication.dart';
 import '../models/patients.dart';
 import '../models/users.dart';
 import '../models/users_groups.dart';
@@ -97,6 +99,7 @@ class AppData extends ChangeNotifier {
   String get patientRelationLabel => userRelationOf(currentUserId).isEmpty
       ? '환자'
       : userRelationOf(currentUserId);
+  String get patientRelationshipLabel => patientRelationLabel;
 
   bool isCurrentUser(String userId) => userId == currentUserId;
 
@@ -231,6 +234,16 @@ class AppData extends ChangeNotifier {
   void _setPatient(Map<String, dynamic> value) {
     patientDetails = value;
     final birth = DateTime.tryParse('${value['patient_birth_date']}');
+    var extra = <String, dynamic>{};
+    final memo = value['memo'];
+    if (memo is String && memo.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(memo);
+        if (decoded is Map<String, dynamic>) extra = decoded;
+      } on FormatException {
+        extra = {'behavior_patterns': memo};
+      }
+    }
     _patient = Patient(
       id: _intValue(value['id'] ?? value['patient_id']),
       groupId: group.id,
@@ -239,6 +252,25 @@ class AppData extends ChangeNotifier {
           ? 0
           : birth.year * 10000 + birth.month * 100 + birth.day,
       createdAt: _time(value['created_at']),
+      profileImageUrl: value['profile_image_url'] as String?,
+      dementiaType: (extra['dementia_type'] ?? '').toString(),
+      diseaseStage: (extra['disease_stage'] ?? '').toString(),
+      behaviorPatterns: (extra['behavior_patterns'] ?? '').toString(),
+      livingArrangement: (extra['living_arrangement'] ?? '').toString(),
+      primaryHospital: (value['primary_hospital'] ?? '').toString(),
+      medicalDepartment: (extra['medical_department'] ?? '').toString(),
+      majorDiseases: (extra['major_diseases'] as List? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+      medications: (extra['medications'] as List? ?? const [])
+          .whereType<Map>()
+          .map(
+            (item) => Medication(
+              name: (item['name'] ?? '').toString(),
+              dosage: (item['dosage'] ?? '').toString(),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -600,11 +632,14 @@ class AppData extends ChangeNotifier {
     ),
   );
 
-  void updateCurrentUserProfile({
+  Future<void> updateCurrentUserProfile({
     required String name,
-    required String password,
     required String phoneNumber,
-  }) {
+  }) async {
+    final tokens = _requireTokens();
+    final saved = await UserApi(
+      _api,
+    ).updateProfile(tokens, {'name': name, 'phone_number': phoneNumber});
     final index = users.indexWhere((user) => user.id == currentUserId);
 
     if (index == -1) {
@@ -616,28 +651,105 @@ class AppData extends ChangeNotifier {
     users[index] = User(
       id: currentUser.id,
       email: currentUser.email,
-      password: password,
-      name: name,
-      phoneNumber: phoneNumber,
-      profileImageUrl: currentUser.profileImageUrl,
+      password: currentUser.password,
+      name: (saved['name'] ?? name).toString(),
+      phoneNumber: (saved['phone_number'] ?? phoneNumber).toString(),
+      profileImageUrl:
+          saved['profile_image_url'] as String? ?? currentUser.profileImageUrl,
       createdAt: currentUser.createdAt,
     );
 
     notifyListeners();
   }
 
-  void updatePatientInfo({
+  Future<void> updateCurrentUserPassword(String password) async {
+    await UserApi(_api).updatePassword(_requireTokens(), password);
+  }
+
+  Future<void> deleteCurrentUserAccount() async {
+    await UserApi(_api).deleteAccount(_requireTokens());
+    clear();
+  }
+
+  Future<void> updateGroupName(String name) async {
+    final value = await GroupApi(
+      _api,
+    ).update(_requireTokens(), group.id, {'group_name': name});
+    group = Group(
+      id: group.id,
+      inviteCode: (value['invite_code'] ?? group.inviteCode).toString(),
+      groupName: (value['group_name'] ?? name).toString(),
+      groupProfileImageUrl:
+          value['group_profile_image_url'] as String? ??
+          group.groupProfileImageUrl,
+      members: value['member_count'] as int? ?? group.members,
+      createdAt: _time(value['created_at'] ?? group.createdAt),
+    );
+    notifyListeners();
+  }
+
+  Future<void> leaveCurrentGroup() async {
+    await GroupApi(_api).leave(_requireTokens(), group.id);
+    clear();
+  }
+
+  Future<void> updatePatientInfo({
     required String patientName,
     required int patientBirthDate,
     required String patientsNickname,
-  }) {
-    _patient = Patient(
-      id: _patient.id,
-      groupId: _patient.groupId,
-      patientName: patientName,
-      patientBirthDate: patientBirthDate,
-      createdAt: _patient.createdAt,
-    );
+    String dementiaType = '',
+    String primaryHospital = '',
+    String medicalDepartment = '',
+    String diseaseStage = '',
+    List<Medication> medications = const [],
+    List<String> majorDiseases = const [],
+    String behaviorPatterns = '',
+    String livingArrangement = '',
+  }) async {
+    final tokens = _tokens;
+    if (tokens == null) {
+      _patient = Patient(
+        id: _patient.id,
+        groupId: _patient.groupId,
+        patientName: patientName,
+        patientBirthDate: patientBirthDate,
+        createdAt: _patient.createdAt,
+        profileImageUrl: _patient.profileImageUrl,
+        dementiaType: dementiaType,
+        primaryHospital: primaryHospital,
+        medicalDepartment: medicalDepartment,
+        diseaseStage: diseaseStage,
+        medications: medications,
+        majorDiseases: majorDiseases,
+        behaviorPatterns: behaviorPatterns,
+        livingArrangement: livingArrangement,
+      );
+    } else {
+      final date = patientBirthDate.toString().padLeft(8, '0');
+      final saved = await PatientApi(_api).update(tokens, _patient.id, {
+        'patient_name': patientName,
+        'patient_birth_date':
+            '${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6)}',
+        'primary_hospital': primaryHospital,
+        'memo': jsonEncode({
+          'dementia_type': dementiaType,
+          'medical_department': medicalDepartment,
+          'disease_stage': diseaseStage,
+          'medications': [
+            for (final medication in medications)
+              {'name': medication.name, 'dosage': medication.dosage},
+          ],
+          'major_diseases': majorDiseases,
+          'behavior_patterns': behaviorPatterns,
+          'living_arrangement': livingArrangement,
+        }),
+      });
+      _setPatient(saved);
+
+      await GroupApi(
+        _api,
+      ).updateMembership(tokens, group.id, patientsNickname: patientsNickname);
+    }
 
     final relationIndex = userGroups.indexWhere(
       (userGroup) =>

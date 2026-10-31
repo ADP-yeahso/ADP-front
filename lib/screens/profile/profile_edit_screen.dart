@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../data/app_data.dart';
 import '../../data/auth_session.dart';
 import '../../services/api_service.dart';
+import '../auth/login_screen.dart';
+import 'settings_components.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -16,9 +18,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _nameController;
+  late final TextEditingController _passwordController;
   late final TextEditingController _phoneController;
 
   bool _initialized = false;
+  late final String _initialName, _initialPassword, _initialPhone;
+
+  bool get _hasChanges =>
+      _nameController.text != _initialName ||
+      _passwordController.text != _initialPassword ||
+      _phoneController.text != _initialPhone;
+
+  void _onEdited() => setState(() {});
 
   @override
   void didChangeDependencies() {
@@ -31,7 +42,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     final user = context.read<AppData>().me;
 
     _nameController = TextEditingController(text: user.name);
+    _passwordController = TextEditingController(text: user.password);
     _phoneController = TextEditingController(text: user.phoneNumber);
+    _initialName = user.name;
+    _initialPassword = user.password;
+    _initialPhone = user.phoneNumber;
+    for (final controller in [
+      _nameController,
+      _passwordController,
+      _phoneController,
+    ]) {
+      controller.addListener(_onEdited);
+    }
 
     _initialized = true;
   }
@@ -39,6 +61,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _passwordController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
@@ -54,127 +77,189 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       return;
     }
 
-    final tokens = context.read<AuthSession>().tokens;
-    if (tokens == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('로그인 후 프로필을 수정할 수 있어요.')));
-      return;
-    }
-
     try {
-      await UserApi(ApiService()).updateProfile(tokens, {
-        'name': _nameController.text.trim(),
-        'phone_number': _phoneController.text.trim(),
-      });
-      if (!mounted) return;
-      context.read<AppData>().updateCurrentUserProfile(
+      final data = context.read<AppData>();
+      await data.updateCurrentUserProfile(
         name: _nameController.text.trim(),
-        password: '',
         phoneNumber: _phoneController.text.trim(),
       );
-    } on ApiException catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+      if (_passwordController.text.isNotEmpty &&
+          _passwordController.text != _initialPassword) {
+        await data.updateCurrentUserPassword(_passwordController.text);
       }
-      return;
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('프로필이 저장되었어요.')));
+      Navigator.pop(context);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('프로필이 저장되었어요.')));
-
-    Navigator.pop(context);
+  Future<void> _deleteAccount() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('계정 삭제'),
+        content: const Text('계정과 작성한 데이터가 삭제되며 복구할 수 없습니다. 정말 삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    try {
+      await context.read<AppData>().deleteCurrentUserAccount();
+      if (!mounted) return;
+      context.read<AuthSession>().signOut();
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AppData>().me;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('프로필 편집')),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Center(
-                child: Column(
+    final data = context.watch<AppData>();
+    return SettingsPage(
+      title: settingsTitle('edit_profile', '프로필 수정'),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            SettingsEditIdentity(
+              group: 'edit_profile',
+              controller: _nameController,
+              onPhoto: _showPhotoMessage,
+            ),
+            SettingsPanel(
+              group: 'edit_profile',
+              asset: 'box_edit_profile',
+              height: 96,
+              children: [
+                Row(
                   children: [
-                    CircleAvatar(
-                      radius: 52,
-                      backgroundColor: user.color.withValues(alpha: 0.18),
-                      child: Icon(Icons.person, size: 52, color: user.color),
+                    const SizedBox(width: 14),
+                    settingsSvg(
+                      'edit_profile',
+                      'text_patient_relationship',
+                      height: 13,
                     ),
-                    const SizedBox(height: 12),
-                    TextButton.icon(
-                      onPressed: _showPhotoMessage,
-                      icon: const Icon(Icons.camera_alt_outlined),
-                      label: const Text('사진 변경'),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: Text(
+                        data.patientRelationshipLabel,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 28),
-              TextFormField(
-                controller: _nameController,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: '이름 또는 닉네임',
-                  prefixIcon: Icon(Icons.edit_outlined),
-                  border: OutlineInputBorder(),
+                Row(
+                  children: [
+                    const SizedBox(width: 14),
+                    settingsSvg('edit_profile', 'text_phone', height: 13),
+                    const SizedBox(width: 50),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                        decoration: const InputDecoration(
+                          filled: false,
+                          contentPadding: EdgeInsets.zero,
+                          border: InputBorder.none,
+                          hintText: '전화번호 입력',
+                          isDense: true,
+                        ),
+                        validator: (v) {
+                          final n = (v ?? '')
+                              .replaceAll(RegExp(r'[^0-9]'), '')
+                              .length;
+                          return n < 10 || n > 11 ? '전화번호를 확인해 주세요' : null;
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return '이름을 입력해 주세요.';
-                  }
-
-                  if (value.trim().length < 2) {
-                    return '이름은 두 글자 이상 입력해 주세요.';
-                  }
-
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: '전화번호',
-                  hintText: '010-1234-5678',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                  border: OutlineInputBorder(),
+              ],
+            ),
+            const SizedBox(height: 6),
+            SettingsPanel(
+              group: 'edit_profile',
+              asset: 'box_edit_profile',
+              height: 96,
+              children: [
+                SettingsAction(
+                  group: 'edit_profile',
+                  icon: 'icon_edit',
+                  text: 'text_change_password',
+                  textHeight: 13,
+                  label: '비밀번호 수정',
+                  onTap: () async {
+                    final value = await settingsEditText(
+                      context,
+                      '비밀번호 수정',
+                      '',
+                      obscure: true,
+                    );
+                    if (!context.mounted || value == null) return;
+                    final valid =
+                        value.length >= 8 &&
+                        value.length <= 16 &&
+                        RegExp(r'[A-Za-z]').hasMatch(value) &&
+                        RegExp(r'\d').hasMatch(value) &&
+                        RegExp(r'[^A-Za-z0-9]').hasMatch(value);
+                    if (!valid) {
+                      settingsUnavailable(
+                        context,
+                        '비밀번호는 8~16자의 영문, 숫자, 특수문자를 포함해 주세요.',
+                      );
+                      return;
+                    }
+                    _passwordController.text = value;
+                  },
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return '전화번호를 입력해 주세요.';
-                  }
-
-                  final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-
-                  if (digits.length < 10 || digits.length > 11) {
-                    return '올바른 전화번호를 입력해 주세요.';
-                  }
-
-                  return null;
-                },
-              ),
-              const SizedBox(height: 28),
-              FilledButton(
-                onPressed: _saveProfile,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
+                SettingsAction(
+                  group: 'edit_profile',
+                  icon: 'icon_delete',
+                  text: 'text_delete_account',
+                  textHeight: 13,
+                  label: '계정 삭제',
+                  onTap: _deleteAccount,
                 ),
-                child: const Text('저장'),
-              ),
-            ],
-          ),
+              ],
+            ),
+            SettingsSave(
+              group: 'edit_profile',
+              onTap: _saveProfile,
+              isChanged: _hasChanges,
+            ),
+          ],
         ),
       ),
     );

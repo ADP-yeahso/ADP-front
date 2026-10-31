@@ -467,4 +467,59 @@ void main() {
       expect(creates, 1);
     },
   );
+
+  test('settings mutations use authenticated backend endpoints', () async {
+    final requests = <http.Request>[];
+    final api = ApiService(
+      client: MockClient((request) async {
+        requests.add(request);
+        expect(request.headers['authorization'], 'Bearer access');
+        switch ((request.method, request.url.path)) {
+          case ('PATCH', '/api/v1/groups/7'):
+            expect(jsonDecode(request.body), {'group_name': '새 가족'});
+            return jsonResponse({
+              'id': 7,
+              'group_name': '새 가족',
+              'invite_code': 'INVITE',
+              'member_count': 2,
+              'created_at': '2026-10-20T00:00:00Z',
+            });
+          case ('PATCH', '/api/v1/patients/43'):
+            final body = jsonDecode(request.body) as Map<String, dynamic>;
+            expect(body['patient_name'], '환자 수정');
+            expect(body['memo'], contains('dementia_type'));
+            return jsonResponse({'id': 43, ...body});
+          case ('PUT', '/api/v1/users/me'):
+            expect(jsonDecode(request.body), {
+              'name': '사용자 수정',
+              'phone_number': '010-1111-2222',
+            });
+            return jsonResponse({'id': userId, ...jsonDecode(request.body)});
+          case ('PUT', '/api/v1/users/me/password'):
+            expect(jsonDecode(request.body), {'password': 'Password1!'});
+            return http.Response('', 204);
+          case ('DELETE', '/api/v1/groups/7/members/me'):
+          case ('DELETE', '/api/v1/users/me'):
+            return http.Response('', 204);
+        }
+        fail('Unexpected settings request: ${request.method} ${request.url}');
+      }),
+    );
+    addTearDown(api.close);
+
+    await GroupApi(api).update(tokens, 7, {'group_name': '새 가족'});
+    await PatientApi(api).update(tokens, 43, {
+      'patient_name': '환자 수정',
+      'memo': '{"dementia_type":"알츠하이머"}',
+    });
+    await UserApi(api).updateProfile(tokens, {
+      'name': '사용자 수정',
+      'phone_number': '010-1111-2222',
+    });
+    await UserApi(api).updatePassword(tokens, 'Password1!');
+    await GroupApi(api).leave(tokens, 7);
+    await UserApi(api).deleteAccount(tokens);
+
+    expect(requests, hasLength(6));
+  });
 }

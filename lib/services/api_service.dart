@@ -219,6 +219,15 @@ class GroupApi {
     int groupId,
   ) async => _maps(await _api.get('/groups/$groupId/members', tokens));
 
+  Future<Map<String, dynamic>> update(
+    AuthTokens tokens,
+    int groupId,
+    Map<String, dynamic> body,
+  ) async => _map(await _api.patch('/groups/$groupId', tokens, body));
+
+  Future<void> leave(AuthTokens tokens, int groupId) async =>
+      _api.delete('/groups/$groupId/members/me', tokens);
+
   Future<Map<String, dynamic>> updateMembership(
     AuthTokens tokens,
     int groupId, {
@@ -355,6 +364,14 @@ class UserApi {
     AuthTokens tokens,
     Map<String, dynamic> body,
   ) async => _map(await _api.put('/users/me', tokens, body: body));
+
+  Future<void> updatePassword(AuthTokens tokens, String password) async {
+    await _api.put('/users/me/password', tokens, body: {'password': password});
+  }
+
+  Future<void> deleteAccount(AuthTokens tokens) async {
+    await _api.delete('/users/me', tokens);
+  }
 }
 
 class LetterApi {

@@ -904,7 +904,7 @@ class _FlowerInfoCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
+          SizedBox(
             width: 100,
             height: 140,
             child: Image.asset(

@@ -142,13 +142,14 @@ let flowerBrowseGroup = null;
 let selectedFlowerIndex = -1;
 let previewCatalogController = null;
 
-// Preserve the original composition after its fixed polar angle was applied.
-const defaultCameraPos = new THREE.Vector3().setFromSphericalCoords(
-  Math.hypot(35, 50),
-  Math.PI / 3.2,
-  0,
-);
 const origin = new THREE.Vector3(0, 0, 0);
+// 기본 구도에서 정원이 화면 아래쪽에 보이도록 조정
+const defaultCameraTarget = new THREE.Vector3(0, 10, 0);
+const defaultCameraPos = new THREE.Vector3().setFromSphericalCoords(
+  70,
+  THREE.MathUtils.degToRad(65),
+  THREE.MathUtils.degToRad(0),
+).add(defaultCameraTarget);
 const defaultMinZoomDistance = 5;
 const maxOrbitCenterRadius = 32; // Flowers are placed within 30 world units.
 const zoomPointers = new Map();
@@ -360,7 +361,7 @@ function init() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
-  controls.target.copy(origin);
+  controls.target.copy(defaultCameraTarget);
   controls.enablePan = false; // Move the center through intentional zoom, not free panning.
   controls.zoomToCursor = true; // OrbitControls also uses the midpoint of a touch pinch.
   controls.screenSpacePanning = false; // Keep the moving orbit center on the garden plane.
@@ -611,6 +612,12 @@ function showGardenLoadError(message, generation, retry) {
   loading.style.display = 'block';
 }
 
+const FLOWER_TARGET_HEIGHT = 4.0;
+
+const FLOWER_SCALE_MULTIPLIERS = {
+  // 'Sadness_ebw.glb': 1.1, // 해당 꽃만 10% 크게
+};
+
 function createFlowerInstances(
   gltf,
   assignedDiaries,
@@ -621,8 +628,6 @@ function createFlowerInstances(
   const baseFlower = gltf.scene;
   const numInstances = assignedDiaries.length;
   const modelFile = modelUrl.split('?')[0].split('/').pop();
-  const flowerScale =
-    modelFile === 'Gratitude_Marigold.glb' ? 0.106 : 0.2;
   const dummy = new THREE.Object3D();
   const createdMeshes = [];
 
@@ -637,7 +642,19 @@ function createFlowerInstances(
 
     const baseBox = new THREE.Box3().setFromObject(baseFlower);
     const baseMinY = baseBox.min.y;
-    const flowerRadius = baseBox.getBoundingSphere(new THREE.Sphere()).radius * flowerScale;
+    const modelHeight = baseBox.max.y - baseBox.min.y;
+
+    if (!Number.isFinite(modelHeight) || modelHeight <= 0) {
+      throw new Error(`Invalid flower height: ${modelFile}`);
+    }
+
+    const sizeMultiplier = FLOWER_SCALE_MULTIPLIERS[modelFile] ?? 1;
+
+    const flowerScale =
+      (FLOWER_TARGET_HEIGHT / modelHeight) * sizeMultiplier;
+
+    const flowerRadius =
+      baseBox.getBoundingSphere(new THREE.Sphere()).radius * flowerScale;
     const minZoomDistance = THREE.MathUtils.clamp(
       flowerRadius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.15,
       2.5,
@@ -700,7 +717,7 @@ function createFlowerInstances(
         Math.sin(angle) * radius
       );
       dummy.scale.set(flowerScale, flowerScale, flowerScale);
-      dummy.lookAt(origin);
+      dummy.lookAt(origin.x, dummy.position.y, origin.z);
       dummy.updateMatrix();
 
       // 위치 객체도 일기별로 한 번만 생성한다.
@@ -1317,9 +1334,9 @@ window.resetCamera = function () {
   });
 
   gsap.to(controls.target, {
-    x: origin.x,
-    y: origin.y,
-    z: origin.z,
+    x: defaultCameraTarget.x,
+    y: defaultCameraTarget.y,
+    z: defaultCameraTarget.z,
     duration: 1.5,
     ease: "power3.inOut",
     onUpdate: requestRender,
@@ -1768,7 +1785,7 @@ window.clearGardenContent = function () {
   controls.enabled = isGardenViewerActive();
 
   camera.position.copy(defaultCameraPos);
-  controls.target.copy(origin);
+  controls.target.copy(defaultCameraTarget);
   controls.update();
 
   const oldFlowers = flowerMeshes;

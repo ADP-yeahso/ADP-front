@@ -522,4 +522,50 @@ void main() {
 
     expect(requests, hasLength(6));
   });
+
+  test(
+    'emotion analysis reads final labels directly from the database API',
+    () async {
+      final api = ApiService(
+        client: MockClient((request) async {
+          expect(request.method, 'GET');
+          expect(request.url.path, '/api/v1/diaries/analysis');
+          expect(request.url.queryParameters, {
+            'period': 'week',
+            'group_id': '7',
+            'from_date': '2026-10-26',
+            'to_date': '2026-11-01',
+          });
+          expect(request.headers['authorization'], 'Bearer access');
+          return jsonResponse({
+            'period': 'week',
+            'from_date': '2026-10-26',
+            'to_date': '2026-11-01',
+            'total': 2,
+            'emotions': [
+              {
+                'emotion_id': 3,
+                'emotion': 'sadness',
+                'display_name': '슬픔/소진',
+                'count': 2,
+                'ratio': 1.0,
+              },
+            ],
+          });
+        }),
+      );
+      addTearDown(api.close);
+
+      final result = await DiaryAnalysisApi(api).fetch(
+        tokens,
+        groupId: 7,
+        fromDate: DateTime(2026, 10, 26),
+        toDate: DateTime(2026, 11, 1),
+        period: 'week',
+      );
+
+      expect(result['total'], 2);
+      expect((result['emotions'] as List).single['emotion_id'], 3);
+    },
+  );
 }

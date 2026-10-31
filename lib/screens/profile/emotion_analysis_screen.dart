@@ -6,6 +6,7 @@ import '../../data/app_data.dart';
 import '../../models/diary.dart';
 import '../../models/emotions.dart';
 import '../../utils/emotion_utils.dart';
+import '../../services/api_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 enum EmotionAnalysisPeriod { week, month, sixMonths, year }
@@ -23,6 +24,13 @@ extension EmotionAnalysisPeriodInfo on EmotionAnalysisPeriod {
         return '1년';
     }
   }
+
+  String get apiValue => switch (this) {
+    EmotionAnalysisPeriod.week => 'week',
+    EmotionAnalysisPeriod.month => 'month',
+    EmotionAnalysisPeriod.sixMonths => 'six_months',
+    EmotionAnalysisPeriod.year => 'year',
+  };
 }
 
 /// 화면에 보여줄 기간의 시작일과 종료일을 함께 관리한다.
@@ -73,13 +81,57 @@ class EmotionAnalysisScreen extends StatefulWidget {
 
 class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
   EmotionAnalysisPeriod _selectedPeriod = EmotionAnalysisPeriod.week;
+  EmotionDistributionData? _remoteDistribution;
+  String? _analysisError;
+  int _analysisRequest = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AppData>().refreshRecords();
+      if (mounted) _loadRemoteAnalysis();
     });
+  }
+
+  Future<void> _loadRemoteAnalysis() async {
+    final request = ++_analysisRequest;
+    final range = _calculateDateRange();
+    try {
+      final response = await context.read<AppData>().fetchEmotionAnalysis(
+        fromDate: range.start,
+        toDate: range.end,
+        period: _selectedPeriod.apiValue,
+      );
+      if (!mounted || request != _analysisRequest || response == null) return;
+      final total = (response['total'] as num?)?.toInt() ?? 0;
+      final percentages = <Emotion, double>{
+        for (final emotion in EmotionValues.values) emotion: 0,
+      };
+      for (final row in (response['emotions'] as List? ?? const [])) {
+        if (row is! Map) continue;
+        final emotionId = (row['emotion_id'] as num?)?.toInt();
+        if (emotionId == null) continue;
+        final emotion = EmotionValues.values.firstWhere(
+          (item) => item.id == emotionId,
+          orElse: () => EmotionValues.neutral,
+        );
+        final ratio = (row['ratio'] as num?)?.toDouble();
+        final count = (row['count'] as num?)?.toDouble() ?? 0;
+        percentages[emotion] = ratio == null
+            ? (total == 0 ? 0 : count / total * 100)
+            : ratio * 100;
+      }
+      setState(() {
+        _remoteDistribution = EmotionDistributionData(
+          diaryCount: total,
+          percentages: percentages,
+        );
+        _analysisError = null;
+      });
+    } on ApiException catch (error) {
+      if (!mounted || request != _analysisRequest) return;
+      setState(() => _analysisError = error.message);
+    }
   }
 
   /// 0: 현재 기간
@@ -216,13 +268,19 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
 
       /// 탭을 변경하면 해당 기간의 현재 구간으로 되돌린다.
       _periodOffset = 0;
+      _remoteDistribution = null;
+      _analysisError = null;
     });
+    _loadRemoteAnalysis();
   }
 
   void _moveToPreviousPeriod() {
     setState(() {
       _periodOffset--;
+      _remoteDistribution = null;
+      _analysisError = null;
     });
+    _loadRemoteAnalysis();
   }
 
   void _moveToNextPeriod() {
@@ -233,7 +291,10 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
 
     setState(() {
       _periodOffset++;
+      _remoteDistribution = null;
+      _analysisError = null;
     });
+    _loadRemoteAnalysis();
   }
 
   void _handleDistributionSwipe(DragEndDetails details) {
@@ -313,9 +374,6 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
     );
   }
 
-  
- 
-
   EmotionSummaryData _buildEmotionSummary(
     EmotionDistributionData distribution,
   ) {
@@ -369,8 +427,9 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
 
     final diaries = _diariesInRange(appData, dateRange);
 
-    final distribution = _buildEmotionDistribution(diaries);
-    
+    final distribution =
+        _remoteDistribution ?? _buildEmotionDistribution(diaries);
+
     final summary = _buildEmotionSummary(distribution);
 
     return Scaffold(
@@ -408,6 +467,14 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
             diaryCount: distribution.diaryCount,
             emotionColor: _emotionColor,
           ),
+          if (_analysisError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _analysisError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: Colors.redAccent),
+            ),
+          ],
           const SizedBox(height: 24),
 
           _EmotionDistributionPreview(
@@ -420,7 +487,6 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
           ),
 
           const SizedBox(height: 24),
-
 
           const _EncouragementCard(),
         ],
@@ -960,11 +1026,6 @@ class _EmptyEmotionData extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
 
 class _EncouragementCard extends StatelessWidget {
   const _EncouragementCard();

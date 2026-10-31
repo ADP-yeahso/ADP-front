@@ -371,6 +371,22 @@ class AppData extends ChangeNotifier {
     if (generation == _generation) notifyListeners();
   }
 
+  Future<Map<String, dynamic>?> fetchEmotionAnalysis({
+    required DateTime fromDate,
+    required DateTime toDate,
+    required String period,
+  }) async {
+    final tokens = _tokens;
+    if (tokens == null || group.id <= 0) return null;
+    return DiaryAnalysisApi(_api).fetch(
+      tokens,
+      groupId: group.id,
+      fromDate: fromDate,
+      toDate: toDate,
+      period: period,
+    );
+  }
+
   Future<void> refreshDiary(int id) async {
     final tokens = _tokens;
     if (tokens == null) return;

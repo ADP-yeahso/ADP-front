@@ -304,6 +304,29 @@ class MemoryRecordApi {
       _api.delete('/memory-records/$id', tokens);
 }
 
+class DiaryAnalysisApi {
+  DiaryAnalysisApi(this._api);
+  final ApiService _api;
+
+  Future<Map<String, dynamic>> fetch(
+    AuthTokens tokens, {
+    required int groupId,
+    required DateTime fromDate,
+    required DateTime toDate,
+    required String period,
+  }) async {
+    final query = Uri(
+      queryParameters: {
+        'period': period,
+        'group_id': '$groupId',
+        'from_date': _date(fromDate),
+        'to_date': _date(toDate),
+      },
+    ).query;
+    return _map(await _api.get('/diaries/analysis?$query', tokens));
+  }
+}
+
 class MediaApi {
   MediaApi(this._api);
   final ApiService _api;

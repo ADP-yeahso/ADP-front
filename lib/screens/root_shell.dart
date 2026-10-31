@@ -169,13 +169,14 @@ class _RootShellState extends State<RootShell> with RouteAware {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        IgnorePointer(
-                          child: SvgPicture.asset(
-                            'assets/bottom_bar/bottom_bar_frame.svg',
-                            fit: BoxFit.fill,
-                            excludeFromSemantics: true,
-                          ),
+                      IgnorePointer(
+                        child: Image.asset(
+                          'assets/bottom_bar/bottom_bar_frame.png',
+                          fit: BoxFit.fill,
+                          filterQuality: FilterQuality.high,
+                          excludeFromSemantics: true,
                         ),
+                      ),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 12 * scale),
                           child: Row(

@@ -64,6 +64,7 @@ class DiaryStartScreen extends StatelessWidget {
                     height: 280,
                     child: _buildAssetWidget(
                       candidatePaths: const [
+                        'assets/record/squirrels/flower_bouquet.png',
                         'assets/record/choice/svg/3-2-0.svg/svg/3-2-0 다람쥐아이콘1.svg',
                         'assets/record/choice/png/3-2-0.png/png/3-2-0 다람쥐아이콘1.png',
                       ],

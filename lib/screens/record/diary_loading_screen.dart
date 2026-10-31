@@ -153,42 +153,11 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> with SingleTick
     return ScaleTransition(
       scale: _scaleAnimation,
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF7E6),
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFFFD591), width: 2),
-              ),
-              child: const Icon(
-                Icons.filter_vintage_outlined,
-                size: 84,
-                color: Color(0xFFE1613B),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              '민들레',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF333333),
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              '- 감사와 행복 -',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
+        child: Image.asset(
+          'assets/record/squirrels/diary_loading.png',
+          width: 280,
+          height: 280,
+          fit: BoxFit.contain,
         ),
       ),
     );

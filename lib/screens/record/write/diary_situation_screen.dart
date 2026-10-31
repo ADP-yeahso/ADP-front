@@ -561,6 +561,7 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
                   height: 150,
                   child: _buildAssetWidget(
                     candidatePaths: const [
+                      'assets/record/squirrels/flower_inside.png',
                       'assets/record/choice/svg/3-2-1.svg/svg/3-2-1 다람쥐2.svg',
                       'assets/record/choice/png/3-2-1.png/png/3-2-1 다람쥐2.png',
                     ],

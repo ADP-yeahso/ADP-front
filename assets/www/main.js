@@ -1408,6 +1408,41 @@ function cancelGardenRender() {
   pendingDiagnosticReason = null;
 }
 
+function updateGardenBackground() {
+  const background = document.getElementById('garden-background');
+  if (!background || !camera || !controls) return;
+
+  const dx = camera.position.x - controls.target.x;
+  const dy = camera.position.y - controls.target.y;
+  const dz = camera.position.z - controls.target.z;
+
+  const baseX = defaultCameraPos.x - defaultCameraTarget.x;
+  const baseY = defaultCameraPos.y - defaultCameraTarget.y;
+  const baseZ = defaultCameraPos.z - defaultCameraTarget.z;
+
+  const yaw = Math.atan2(dx, dz);
+  const baseYaw = Math.atan2(baseX, baseZ);
+  const tilt = Math.atan2(dy, Math.hypot(dx, dz));
+  const baseTilt = Math.atan2(baseY, Math.hypot(baseX, baseZ));
+
+  const shiftX = Math.sin(yaw - baseYaw) * 40;
+  const shiftY = Math.max(
+    -22,
+    Math.min(22, (baseTilt - tilt) * 70),
+  );
+
+  // 기존 background-image 순서: 땅, 산, 물, 구름, 하늘
+  const strengths = [1, 0.4, 0.7, 0.18, 0.04];
+
+  background.style.backgroundPosition = strengths
+    .map((strength) => {
+      const x = (shiftX * strength).toFixed(2);
+      const y = (shiftY * strength).toFixed(2);
+      return `calc(50% + ${x}px) calc(50% + ${y}px)`;
+    })
+    .join(', ');
+}
+
 function requestRender() {
   if (
     !isGardenViewerActive() ||
@@ -1455,6 +1490,7 @@ function requestRender() {
         return;
       }
 
+      updateGardenBackground();
       renderer.render(scene, camera);
 
       if (pendingDiagnosticReason !== null) {

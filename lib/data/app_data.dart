@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../models/comment.dart';
 import '../models/diary.dart';
+import '../models/emergency_contact.dart';
 import '../models/emotions.dart';
 import '../models/flower.dart';
 import '../models/groups.dart';
 import '../models/mail_letter.dart';
 import '../models/media.dart';
+import '../models/medication.dart';
 import '../models/memory.dart';
 import '../models/patients.dart';
 import '../models/users.dart';
@@ -18,6 +21,14 @@ bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
 extension UserUIInfo on User {
+  bool get isMe => id == 1;
+  String get nickname => name;
+  String get relation {
+    if (id == 1) return '딸';
+    if (id == 2) return '아들';
+    return '며느리';
+  }
+
   Color get color {
     if (id == 1) return const Color(0xFF6B93D1);
     if (id == 2) return const Color(0xFF6FBF8B);
@@ -40,11 +51,23 @@ class AppData extends ChangeNotifier {
     patientName: '고강민',
     patientBirthDate: 20060515,
     createdAt: DateTime(2024, 1, 1),
+    dementiaDiagnosisYearMonth: 202403,
+    majorDiseases: const ['고혈압', '당뇨'],
+    primaryHospital: '○○대학교병원',
+    medicalDepartment: '신경과',
+    medications: [
+      Medication(name: '도네페질', dosage: '1일 1회'),
+      Medication(name: '혈압약', dosage: '1일 1회'),
+    ],
+    emergencyContacts: [
+      EmergencyContact(label: '보호자', phoneNumber: '010-1234-5678'),
+      EmergencyContact(label: '가족 연락처', phoneNumber: '010-2345-6789'),
+    ],
   );
 
   Patient get patient => _patient;
 
-  final Group group = Group(
+  Group group = Group(
     id: 1,
     inviteCode: 'ABCD12',
     groupName: '고강민 가족',
@@ -58,6 +81,7 @@ class AppData extends ChangeNotifier {
       userId: 1,
       groupId: 1,
       patientsNickname: '아버지',
+      relationship: '아버지',
       joinedAt: DateTime(2024, 1, 1),
     ),
     UserGroup(
@@ -65,6 +89,7 @@ class AppData extends ChangeNotifier {
       userId: 2,
       groupId: 1,
       patientsNickname: '아버지',
+      relationship: '아버지',
       joinedAt: DateTime(2024, 1, 1),
     ),
     UserGroup(
@@ -72,9 +97,23 @@ class AppData extends ChangeNotifier {
       userId: 3,
       groupId: 1,
       patientsNickname: '시아버지',
+      relationship: '시아버지',
       joinedAt: DateTime(2024, 1, 1),
     ),
   ];
+
+  void updateGroupName(String name) {
+    if (name.trim().isEmpty) return;
+    group = Group(
+      id: group.id,
+      inviteCode: group.inviteCode,
+      groupName: name.trim(),
+      groupProfileImageUrl: group.groupProfileImageUrl,
+      members: group.members,
+      createdAt: group.createdAt,
+    );
+    notifyListeners();
+  }
 
   /// 현재 유저가 환자를 부르는 호칭 (UserGroup.patientsNickname 기반)
   String get patientRelationLabel {
@@ -85,6 +124,32 @@ class AppData extends ChangeNotifier {
     } catch (_) {
       return '환자';
     }
+  }
+
+  /// 현재 로그인 유저와 환자의 관계 (UserGroup.relationship 기반)
+  String get patientRelationshipLabel {
+    try {
+      final ug = userGroups.firstWhere(
+        (ug) => ug.userId == currentUserId && ug.groupId == _patient.groupId,
+      );
+      return ug.relationship.isNotEmpty ? ug.relationship : '관계 미설정';
+    } catch (_) {
+      return '관계 미설정';
+    }
+  }
+
+  /// 치매 진단 시기 표시용 라벨 (YYYYMM -> YYYY년 M월)
+  String get dementiaDiagnosisDateLabel {
+    final ym = _patient.dementiaDiagnosisYearMonth;
+    if (ym == null) return '미등록';
+    final str = ym.toString();
+    if (str.length != 6) return '미등록';
+    final year = int.tryParse(str.substring(0, 4));
+    final month = int.tryParse(str.substring(4, 6));
+    if (year == null || month == null || month < 1 || month > 12) {
+      return '미등록';
+    }
+    return '$year년 $month월';
   }
 
   /// userId가 현재 로그인 유저인지 확인
@@ -135,6 +200,7 @@ class AppData extends ChangeNotifier {
 
   User userById(int id) =>
       users.firstWhere((u) => u.id == id, orElse: () => me);
+
   void updateCurrentUserProfile({
     required String name,
     required String password,
@@ -162,16 +228,40 @@ class AppData extends ChangeNotifier {
   }
 
   void updatePatientInfo({
+    String? dementiaType,
+    String? diseaseStage,
+    String? behaviorPatterns,
+    String? livingArrangement,
     required String patientName,
     required int patientBirthDate,
     required String patientsNickname,
+    String? relationship,
+    int? dementiaDiagnosisYearMonth,
+    List<String>? majorDiseases,
+    String? primaryHospital,
+    String? medicalDepartment,
+    List<Medication>? medications,
+    List<EmergencyContact>? emergencyContacts,
+    String? profileImageUrl,
   }) {
     _patient = Patient(
+      dementiaType: dementiaType ?? _patient.dementiaType,
+      diseaseStage: diseaseStage ?? _patient.diseaseStage,
+      behaviorPatterns: behaviorPatterns ?? _patient.behaviorPatterns,
+      livingArrangement: livingArrangement ?? _patient.livingArrangement,
       id: _patient.id,
       groupId: _patient.groupId,
       patientName: patientName,
       patientBirthDate: patientBirthDate,
       createdAt: _patient.createdAt,
+      profileImageUrl: profileImageUrl ?? _patient.profileImageUrl,
+      dementiaDiagnosisYearMonth:
+          dementiaDiagnosisYearMonth ?? _patient.dementiaDiagnosisYearMonth,
+      majorDiseases: majorDiseases ?? _patient.majorDiseases,
+      primaryHospital: primaryHospital ?? _patient.primaryHospital,
+      medicalDepartment: medicalDepartment ?? _patient.medicalDepartment,
+      medications: medications ?? _patient.medications,
+      emergencyContacts: emergencyContacts ?? _patient.emergencyContacts,
     );
 
     final relationIndex = userGroups.indexWhere(
@@ -188,6 +278,7 @@ class AppData extends ChangeNotifier {
         userId: currentRelation.userId,
         groupId: currentRelation.groupId,
         patientsNickname: patientsNickname,
+        relationship: relationship ?? currentRelation.relationship,
         joinedAt: currentRelation.joinedAt,
       );
     }
@@ -207,6 +298,35 @@ class AppData extends ChangeNotifier {
 
   final List<Memory> memories = [];
   final List<Diary> diaries = [];
+  final List<Comment> comments = [];
+
+  List<Comment> commentsForMemory(int memoryRecordId) {
+    return comments
+        .where((c) => c.memoryRecordId == memoryRecordId && c.deletedAt == null)
+        .toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  void addMemoryComment({
+    required int memoryRecordId,
+    required String commentText,
+    int? userId,
+  }) {
+    final text = commentText.trim();
+    if (text.isEmpty) return;
+    final now = DateTime.now();
+    comments.add(
+      Comment(
+        id: _nextId(),
+        memoryRecordId: memoryRecordId,
+        userId: userId ?? currentUserId,
+        commentText: text,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    notifyListeners();
+  }
 
   // To keep track of public states since Diary doesn't have isPublic
   final Set<int> _publicDiaryIds = {};
@@ -233,6 +353,7 @@ class AppData extends ChangeNotifier {
             fileUrl: m.fileUrl,
             fileType: m.fileType,
             duration: m.duration,
+            thumbnailPath: m.thumbnailPath,
             sortOrder: m.sortOrder,
             createdAt: m.createdAt,
           ),
@@ -244,6 +365,7 @@ class AppData extends ChangeNotifier {
         id: memoryId,
         patientId: 1,
         userId: me.id,
+        title: title,
         contextText: content,
         mediaList: updatedMedia,
         isPublic: isPublic,
@@ -252,28 +374,29 @@ class AppData extends ChangeNotifier {
         updatedAt: DateTime.now(),
       ),
     );
-
     notifyListeners();
   }
 
   Diary addDiary({
     required DateTime date,
     required String content,
+    String? title,
+    Emotion? emotion,
     List<Media> mediaList = const [],
     bool isPublic = true,
   }) {
     final analysis = analyzeEmotion(content);
+    final finalEmotion = emotion ?? analysis.primary;
 
     final flower = Flower(
-      id: analysis.primary.id,
-      emotionId: analysis.primary,
+      id: finalEmotion.id,
+      emotionId: finalEmotion,
       flowerName: 'Mock Flower',
       colorCode: '#000000',
       sentence: 'Mock sentence',
     );
 
     final diaryId = _nextId();
-
     final updatedMedia = mediaList
         .map(
           (m) => Media(
@@ -283,6 +406,7 @@ class AppData extends ChangeNotifier {
             fileUrl: m.fileUrl,
             fileType: m.fileType,
             duration: m.duration,
+            thumbnailPath: m.thumbnailPath,
             sortOrder: m.sortOrder,
             createdAt: m.createdAt,
           ),
@@ -292,6 +416,7 @@ class AppData extends ChangeNotifier {
     final entry = Diary(
       id: diaryId,
       userId: me.id,
+      title: title,
       context: content,
       flowerType: flower,
       mediaList: updatedMedia,
@@ -328,6 +453,7 @@ class AppData extends ChangeNotifier {
         id: old.id,
         patientId: old.patientId,
         userId: old.userId,
+        title: old.title,
         contextText: old.contextText,
         mediaList: old.mediaList,
         isPublic: !old.isPublic,
@@ -346,6 +472,73 @@ class AppData extends ChangeNotifier {
       _publicDiaryIds.add(id);
     }
     notifyListeners();
+  }
+
+  bool updateMemoryText(int id, String? title, String content) {
+    if (content.trim().isEmpty) return false;
+
+    final index = memories.indexWhere((m) => m.id == id);
+    if (index == -1) return false;
+
+    final old = memories[index];
+    memories[index] = Memory(
+      id: old.id,
+      patientId: old.patientId,
+      userId: old.userId,
+      title: title,
+      contextText: content.trim(),
+      mediaList: old.mediaList,
+      isPublic: old.isPublic,
+      recordDate: old.recordDate,
+      createdAt: old.createdAt,
+      updatedAt: DateTime.now(),
+      deletedAt: old.deletedAt,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool updateDiaryText(int id, String? title, String content) {
+    if (content.trim().isEmpty) return false;
+
+    final index = diaries.indexWhere((d) => d.id == id);
+    if (index == -1) return false;
+
+    final old = diaries[index];
+    diaries[index] = Diary(
+      id: old.id,
+      userId: old.userId,
+      title: title,
+      context: content.trim(),
+      flowerType: old.flowerType,
+      mediaList: old.mediaList,
+      recordDate: old.recordDate,
+      createdAt: old.createdAt,
+      updatedAt: DateTime.now(),
+      deletedAt: old.deletedAt,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool deleteMemory(int id) {
+    final index = memories.indexWhere((m) => m.id == id);
+    if (index == -1) return false;
+
+    memories.removeAt(index);
+    comments.removeWhere((c) => c.memoryRecordId == id);
+    notifyListeners();
+    return true;
+  }
+
+  bool deleteDiary(int id) {
+    final index = diaries.indexWhere((d) => d.id == id);
+    if (index == -1) return false;
+
+    diaries.removeAt(index);
+    _publicDiaryIds.remove(id);
+    notifyListeners();
+    return true;
   }
 
   List<Memory> memoriesForMonth(DateTime month) =>
@@ -569,6 +762,28 @@ class AppData extends ChangeNotifier {
       date: d(2, 6),
       title: '함께 본 옛날 사진',
       content: '$patientRelationLabel과 함께 젊은 시절 사진을 꺼내 보았다. 잠시 웃으셨다.',
+      mediaList: [],
+    );
+    addMemory(
+      date: d(1, 12),
+      title: '병원 정기 검진',
+      content: '정기 검진을 다녀왔다. 컨디션은 평소와 비슷하다는 소견을 들었다.',
+    );
+    addMemory(
+      date: d(0, 3),
+      title: '산책',
+      content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
+      mediaList: [],
+    );
+    addMemory(
+      date: d(0, 8),
+      title: '가족 모임',
+      content: '오랜만에 온 가족이 모여 식사를 했다. $patientRelationLabel이 무척 즐거워하셨다.',
+    );
+    addMemory(
+      date: d(0, 11),
+      title: '옛 동네 방문',
+      content: '예전에 살던 동네를 차로 둘러보았다. 기억이 조금씩 나시는 듯했다.',
       mediaList: [
         Media(
           id: 0,
@@ -583,14 +798,14 @@ class AppData extends ChangeNotifier {
       ],
     );
     addMemory(
-      date: d(1, 12),
-      title: '병원 정기 검진',
-      content: '정기 검진을 다녀왔다. 컨디션은 평소와 비슷하다는 소견을 들었다.',
+      date: d(0, 18),
+      title: '좋아하시는 노래',
+      content: '라디오에서 옛날 노래가 나오자 따라 부르셨다.',
     );
     addMemory(
-      date: d(0, 3),
-      title: '산책',
-      content: '날씨가 좋아 근처 공원을 함께 걸었다. $patientRelationLabel이 꽃 이름을 물으셨다.',
+      date: d(0, 22),
+      title: '손주와의 영상통화',
+      content: '손주와 영상통화를 하며 활짝 웃으시는 모습을 보니 내 마음도 따뜻해졌다.',
       mediaList: [
         Media(
           id: 0,
@@ -621,6 +836,33 @@ class AppData extends ChangeNotifier {
     );
     addDiary(date: d(0, 5), content: '오늘은 그냥 편안하고 괜찮은 하루였다.');
     _seedEmotionAnalysisTestData();
+
+    // ── 댓글 더미 데이터 생성 ────────────────────
+    final now = DateTime.now();
+    for (var m in memories) {
+      if (m.contextText?.contains('라디오') ?? false) {
+        comments.add(
+          Comment(
+            id: _nextId(),
+            memoryRecordId: m.id,
+            userId: 2, // 강지민
+            commentText: '멋진 기록입니다!',
+            createdAt: now.subtract(const Duration(hours: 1)),
+            updatedAt: now.subtract(const Duration(hours: 1)),
+          ),
+        );
+        comments.add(
+          Comment(
+            id: _nextId(),
+            memoryRecordId: m.id,
+            userId: 3, // 정인선
+            commentText: '와, 나도 가보고 싶다.',
+            createdAt: now.subtract(const Duration(hours: 2)),
+            updatedAt: now.subtract(const Duration(hours: 2)),
+          ),
+        );
+      }
+    }
   }
 
   // ── 편지함 (Mailbox) 관련 상태 및 데이터 ──────────────

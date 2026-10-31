@@ -7,7 +7,9 @@ import '../../models/mail_letter.dart';
 
 /// 가족 편지함 스크린 (디자인 에셋 적용 완결 버전)
 class FamilyMailboxScreen extends StatefulWidget {
-  const FamilyMailboxScreen({super.key});
+  const FamilyMailboxScreen({super.key, this.onOpenSharedRecords});
+
+  final VoidCallback? onOpenSharedRecords;
 
   @override
   State<FamilyMailboxScreen> createState() => _FamilyMailboxScreenState();
@@ -570,6 +572,20 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
             ),
           ),
           // 좌측 뒤로가기 화살표 탭 히트박스 영역
+          if (widget.onOpenSharedRecords != null)
+            Positioned(
+              right: 8,
+              top: 0,
+              bottom: 0,
+              child: IconButton(
+                tooltip: '가족 공유 기록',
+                onPressed: widget.onOpenSharedRecords,
+                icon: const Icon(
+                  Icons.groups_outlined,
+                  color: Color(0xFF386622),
+                ),
+              ),
+            ),
           Positioned(
             left: 0,
             top: 0,
@@ -701,7 +717,6 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
       ),
     );
   }
-
 
   // 1 & 3. 받은/보낸 편지함 리스트 (빈 상태 및 카드리스트)
   Widget _buildLetterList() {
@@ -880,7 +895,10 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFBE8),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF7E9F67), width: 1.2),
+                  border: Border.all(
+                    color: const Color(0xFF7E9F67),
+                    width: 1.2,
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -929,11 +947,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
                       ),
                     ),
                     child: _isAnonymous
-                        ? const Icon(
-                            Icons.check,
-                            size: 16,
-                            color: Colors.white,
-                          )
+                        ? const Icon(Icons.check, size: 16, color: Colors.white)
                         : null,
                   ),
                   const SizedBox(width: 10),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../root_shell.dart';
 
 class GroupCreatedScreen extends StatelessWidget {
@@ -6,88 +7,54 @@ class GroupCreatedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-
     return Scaffold(
+      backgroundColor: const Color(0xFFFFFBF0),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 80),
-              // 일러스트 플레이스홀더
+              const Spacer(flex: 2),
               Center(
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: primaryColor, width: 2),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.spa_outlined,
-                    size: 60,
-                    color: primaryColor,
-                  ),
+                child: SvgPicture.asset(
+                  'assets/auth/group_created/icon_family_group.svg',
+                  width: 220,
+                  height: 220,
                 ),
               ),
               const SizedBox(height: 32),
-              Text(
-                '그룹 생성 완료',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: primaryColor,
+              Center(
+                child: SvgPicture.asset(
+                  'assets/auth/group_created/text_group_name.svg',
+                  height: 36,
                 ),
               ),
-              const Spacer(),
-              OutlinedButton(
-                onPressed: () {
-                  // 메인 정원 화면으로 이동하며 모든 이전 스택을 제거
+              const SizedBox(height: 12),
+              Center(
+                child: SvgPicture.asset(
+                  'assets/auth/group_created/text_subtitle.svg',
+                  height: 18,
+                ),
+              ),
+              const Spacer(flex: 3),
+              GestureDetector(
+                onTap: () {
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (_) => const RootShell()),
                     (route) => false,
                   );
                 },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(color: primaryColor, width: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Text('정원 들어가기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: () {
-                  // 임시 초대 코드 복사 알림
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('초대 코드가 복사되었습니다.')),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(color: primaryColor, width: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Text('구성원 초대하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  '초대 코드 복사',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: primaryColor.withValues(alpha: 0.7),
-                    decoration: TextDecoration.underline,
+                child: SizedBox(
+                  height: 72,
+                  child: Image.asset(
+                    'assets/auth/group_created/btn_enter_garden.png',
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 16),
             ],
           ),
         ),

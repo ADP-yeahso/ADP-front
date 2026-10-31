@@ -755,7 +755,7 @@ function createFlowerInstances(
 
       const radius = assetPreview
         ? (previewIndex < 8 ? 10 : 18)
-        : 10 + radiusRandom * 20;
+        : 7 + radiusRandom * 6;
 
       dummy.position.set(
         Math.cos(angle) * radius,

@@ -6,15 +6,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  void useIPhone14Size(WidgetTester tester) {
-    tester.view.physicalSize = const Size(390, 844);
+  void usePhoneSize(WidgetTester tester, Size size) {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
   }
 
   testWidgets('iPhone 14 너비에서 월간 달력 셀이 넘치지 않는다', (tester) async {
-    useIPhone14Size(tester);
+    usePhoneSize(tester, const Size(390, 844));
     final appData = AppData();
     addTearDown(appData.dispose);
 
@@ -32,9 +32,18 @@ void main() {
   });
 
   testWidgets('iPhone 14에서 키보드가 열려도 기록 화면이 넘치지 않는다', (tester) async {
-    useIPhone14Size(tester);
+    usePhoneSize(tester, const Size(390, 844));
     tester.view.viewInsets = const FakeViewPadding(bottom: 336);
     addTearDown(tester.view.resetViewInsets);
+
+    await tester.pumpWidget(const MaterialApp(home: DiarySituationScreen()));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('iPhone 14 Pro에서도 기록 asset과 입력 영역이 넘치지 않는다', (tester) async {
+    usePhoneSize(tester, const Size(393, 852));
 
     await tester.pumpWidget(const MaterialApp(home: DiarySituationScreen()));
     await tester.pumpAndSettle();

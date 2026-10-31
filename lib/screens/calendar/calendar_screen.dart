@@ -20,19 +20,20 @@ const _weekdayAssetPaths = [
   'assets/page2/weekdays/thursday.svg',
   'assets/page2/weekdays/friday.svg',
   'assets/page2/weekdays/saturday_blue.svg',
-  ];
-
-const _bgGradient = LinearGradient(
-  begin: Alignment.topCenter,
-  end: Alignment.bottomCenter,
-  colors: [Color(0xFF12281F), Color(0xFF1E4A38)],
-);
+];
 
 class CalendarScreen extends StatefulWidget {
   final DateTime? initialDay;
+  final DateTime? initialMonth;
   final Memory? initialMemory;
   final Diary? initialDiary;
-  const CalendarScreen({super.key, this.initialDay, this.initialMemory, this.initialDiary});
+  const CalendarScreen({
+    super.key,
+    this.initialDay,
+    this.initialMonth,
+    this.initialMemory,
+    this.initialDiary,
+  });
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -48,7 +49,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _anchor = gardenAnchorMonth();
-    _year = _anchor.year;
+    final initialMonth = widget.initialMonth == null
+        ? null
+        : DateTime(widget.initialMonth!.year, widget.initialMonth!.month);
+    _year = initialMonth?.year ?? widget.initialDay?.year ?? _anchor.year;
+    _drilldownMonth = initialMonth;
     _selectedDay = widget.initialDay;
   }
 
@@ -65,11 +70,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return afterMin && beforeMax;
   }
 
-void _selectDay(DateTime day) {
+  void _selectDay(DateTime day) {
     setState(() {
       _selectedDay = day;
     });
-}
+  }
 
   void _goBack() {
     if (_selectedDay != null) {
@@ -91,21 +96,21 @@ void _selectDay(DateTime day) {
   }
 
   void _changeMonth(int delta) {
-  final currentMonth = _drilldownMonth;
-  if (currentMonth == null) return;
+    final currentMonth = _drilldownMonth;
+    if (currentMonth == null) return;
 
-  final nextMonth = DateTime(
-    currentMonth.year,
-    currentMonth.month + delta,
-    1,
-  );
+    final nextMonth = DateTime(
+      currentMonth.year,
+      currentMonth.month + delta,
+      1,
+    );
 
-  if (!_isNavigable(nextMonth)) return;
+    if (!_isNavigable(nextMonth)) return;
 
-  setState(() {
-    _drilldownMonth = nextMonth;
-  });
-}
+    setState(() {
+      _drilldownMonth = nextMonth;
+    });
+  }
 
   String _formatDay(DateTime day) {
     final month = day.month.toString().padLeft(2, '0');
@@ -129,11 +134,7 @@ void _selectDay(DateTime day) {
     return '$_year년 전체보기';
   }
 
-  bool get _isMonthCalendar =>
-    _drilldownMonth != null && _selectedDay == null;
-
-  bool get _isDetail =>
-    _selectedDay != null;
+  bool get _isMonthCalendar => _drilldownMonth != null && _selectedDay == null;
 
   Widget _buildContent() {
     // 날짜를 선택한 경우 날짜 상세 기록 화면을 보여준다.
@@ -142,7 +143,7 @@ void _selectDay(DateTime day) {
         key: ValueKey(
           '${_selectedDay!}-'
           '${widget.initialMemory?.id ?? 'memory'}-'
-          '${widget.initialDiary?.id ?? 'diary'}'
+          '${widget.initialDiary?.id ?? 'diary'}',
         ),
         day: _selectedDay!,
         selectedMemory: widget.initialMemory,
@@ -167,7 +168,10 @@ void _selectDay(DateTime day) {
       );
     }
 
-    return _DayGrid(month: _drilldownMonth!, onSelectDay: _selectDay, onMonthChange: _changeMonth,
+    return _DayGrid(
+      month: _drilldownMonth!,
+      onSelectDay: _selectDay,
+      onMonthChange: _changeMonth,
       onBackToYear: () {
         setState(() {
           _drilldownMonth = null;
@@ -182,9 +186,7 @@ void _selectDay(DateTime day) {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFFFFBF0),
-        ),
+        decoration: const BoxDecoration(color: Color(0xFFFFFBF0)),
         child: SafeArea(
           child: Column(
             children: [
@@ -234,23 +236,23 @@ class _TopBar extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             SvgPicture.asset(
-             'assets/page2/record_detail/top_bar.svg',
+              'assets/page2/record_detail/top_bar.svg',
               width: double.infinity,
               height: 69,
               fit: BoxFit.fill,
-           ),
-           Positioned(
+            ),
+            Positioned(
               left: 20,
               child: GestureDetector(
                 onTap: onBack,
                 child: SvgPicture.asset(
                   'assets/page2/record_detail/back_button.svg',
-                 width: 12,
-                 height: 22,
+                  width: 12,
+                  height: 22,
                 ),
-             ),
+              ),
             ),
-           Text(
+            Text(
               title,
               style: const TextStyle(
                 fontFamily: 'Meetme',
@@ -261,8 +263,8 @@ class _TopBar extends StatelessWidget {
             ),
           ],
         ),
-    );
-}
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 4),
       child: Row(
@@ -456,7 +458,8 @@ class _MiniMonthCalendar extends StatelessWidget {
                           DateTime(month.year, month.month, day),
                           today,
                         ),
-                        flowerEmotion: latestDiaryByDay[day]?.flowerType.emotionId,
+                        flowerEmotion:
+                            latestDiaryByDay[day]?.flowerType.emotionId,
                       ),
                   ],
                 ),
@@ -512,13 +515,14 @@ class _MiniDayNumber extends StatelessWidget {
       case 6:
         moodAsset = 'assets/page2/moods/a_s.svg';
         break;
+      case 0:
       case 7:
         moodAsset = 'assets/page2/moods/joonglib.svg';
-       break;
+        break;
     }
 
     return Center(
-     child: SizedBox(
+      child: SizedBox(
         width: 17,
         height: 17,
         child: Stack(
@@ -527,6 +531,9 @@ class _MiniDayNumber extends StatelessWidget {
             if (moodAsset != null)
               SvgPicture.asset(
                 moodAsset,
+                key: ValueKey(
+                  'calendar-year-mood-${date.year}-${date.month}-${date.day}',
+                ),
                 width: 17,
                 height: 17,
               ),
@@ -539,11 +546,7 @@ class _MiniDayNumber extends StatelessWidget {
                   color: Color(0xFF7FA36B),
                 ),
               ),
-            SvgPicture.asset(
-              numberAsset,
-              width: 10,
-              height: 10,
-            ),
+            SvgPicture.asset(numberAsset, width: 10, height: 10),
           ],
         ),
       ),
@@ -551,14 +554,18 @@ class _MiniDayNumber extends StatelessWidget {
   }
 }
 
-
 class _DayGrid extends StatelessWidget {
   final DateTime month;
   final void Function(DateTime day) onSelectDay;
   final void Function(int delta) onMonthChange;
   final VoidCallback onBackToYear;
 
-  const _DayGrid({required this.month, required this.onSelectDay, required this.onMonthChange, required this.onBackToYear});
+  const _DayGrid({
+    required this.month,
+    required this.onSelectDay,
+    required this.onMonthChange,
+    required this.onBackToYear,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -593,63 +600,55 @@ class _DayGrid extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 28),
         children: [
-
           Container(
+            width: double.infinity,
+            padding: const EdgeInsets.only(top: 4, bottom: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Color(0xFFE5E1D8), width: 1),
+              ),
+            ),
+            child: SizedBox(
               width: double.infinity,
-              padding: const EdgeInsets.only(
-                top: 4,
-                bottom: 12,
-              ),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: Color(0xFFE5E1D8),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Center(
-                      child: SvgPicture.asset(
-                        'assets/page2/title.svg',
-                        width: 145,
-                        height: 50,
-                        fit: BoxFit.contain,
-                      ),
+              height: 60,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Center(
+                    child: SvgPicture.asset(
+                      'assets/page2/title.svg',
+                      width: 145,
+                      height: 50,
+                      fit: BoxFit.contain,
                     ),
-                    Positioned(
-                      left: 10,
-                      top: 0,
-                      bottom: 0,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          onBackToYear();
-                        },
-                        child: SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Center(
-                            child: SvgPicture.asset(
-                              'assets/page2/record_detail/back_button.svg',
-                              width: 24,
-                              height: 24,
-                              fit: BoxFit.contain,
-                            ),
+                  ),
+                  Positioned(
+                    left: 10,
+                    top: 0,
+                    bottom: 0,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        onBackToYear();
+                      },
+                      child: SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Center(
+                          child: SvgPicture.asset(
+                            'assets/page2/record_detail/back_button.svg',
+                            width: 24,
+                            height: 24,
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-
+          ),
 
           SizedBox(
             height: 48,
@@ -692,28 +691,30 @@ class _DayGrid extends StatelessWidget {
           const SizedBox(height: 25),
 
           Row(
-            children: _weekdayAssetPaths
-                .map((assetPath) {
-                  final isFriday = assetPath.endsWith('friday.svg');
-                  final isSaturday = assetPath.endsWith('saturday_blue.svg');
+            children: _weekdayAssetPaths.map((assetPath) {
+              final isFriday = assetPath.endsWith('friday.svg');
+              final isSaturday = assetPath.endsWith('saturday_blue.svg');
 
-                  final scale = isFriday ? 0.9 : isSaturday ? 0.8 : 1.0;
+              final scale = isFriday
+                  ? 0.9
+                  : isSaturday
+                  ? 0.8
+                  : 1.0;
 
-                  return Expanded(
-                    child: Center(
-                      child: Transform.scale(
-                        scale: scale,
-                        child: SvgPicture.asset(
-                          assetPath,
-                          width: 14,
-                          height: 15,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+              return Expanded(
+                child: Center(
+                  child: Transform.scale(
+                    scale: scale,
+                    child: SvgPicture.asset(
+                      assetPath,
+                      width: 14,
+                      height: 15,
+                      fit: BoxFit.contain,
                     ),
-                  );
-                })
-                .toList(),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
 
           const SizedBox(height: 20),
@@ -724,8 +725,7 @@ class _DayGrid extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              for (int i = 0; i < leadingBlanks; i++)
-                const SizedBox.shrink(),
+              for (int i = 0; i < leadingBlanks; i++) const SizedBox.shrink(),
 
               for (int day = 1; day <= daysInMonth; day++)
                 _DayCell(
@@ -737,9 +737,7 @@ class _DayGrid extends StatelessWidget {
                   hasMemory: memoryDays.contains(day),
                   flowerEmotion: latestDiaryByDay[day]?.flowerType.emotionId,
                   onTap: () {
-                    onSelectDay(
-                      DateTime(month.year, month.month, day),
-                    );
+                    onSelectDay(DateTime(month.year, month.month, day));
                   },
                 ),
             ],
@@ -747,7 +745,6 @@ class _DayGrid extends StatelessWidget {
         ],
       ),
     );
-
   }
 }
 
@@ -785,9 +782,9 @@ class _DayCell extends StatelessWidget {
     if (emotion == null) return null;
     switch (emotion.id) {
       case 1:
-       return 'assets/page2/moods/b_d.svg'; // 분노·답답함
+        return 'assets/page2/moods/b_d.svg'; // 분노·답답함
       case 2:
-       return 'assets/page2/moods/b_ch.svg'; // 불안·초조함
+        return 'assets/page2/moods/b_ch.svg'; // 불안·초조함
       case 3:
         return 'assets/page2/moods/s_s.svg'; // 슬픔·소진
       case 4:
@@ -796,10 +793,11 @@ class _DayCell extends StatelessWidget {
         return 'assets/page2/moods/g_a.svg'; // 감사·안도
       case 6:
         return 'assets/page2/moods/a_s.svg'; // 애틋함·수용
+      case 0:
       case 7:
-       return 'assets/page2/moods/joonglib.svg'; // 중립
+        return 'assets/page2/moods/joonglib.svg'; // 중립
       default:
-       return null;
+        return null;
     }
   }
 
@@ -813,10 +811,12 @@ class _DayCell extends StatelessWidget {
       size: 13,
       color: _calendarLeafColor,
     );
-
     final flower = flowerEmotion == null
         ? null
         : ColorFiltered(
+            key: ValueKey(
+              'calendar-emotion-${date.year}-${date.month}-${date.day}',
+            ),
             colorFilter: ColorFilter.mode(
               flowerEmotion!.color,
               BlendMode.srcIn,
@@ -855,34 +855,41 @@ class _DayCell extends StatelessWidget {
     final moodAssetPath = _moodAssetPath();
 
     return InkWell(
+      key: ValueKey('calendar-day-${date.year}-${date.month}-${date.day}'),
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 78,
-            height: 60,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (moodAssetPath != null)
+          Expanded(
+            child: SizedBox(
+              width: 78,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (moodAssetPath != null)
+                    SvgPicture.asset(
+                      moodAssetPath,
+                      key: ValueKey(
+                        'calendar-mood-${date.year}-${date.month}-${date.day}',
+                      ),
+                      semanticsLabel: '${flowerEmotion!.displayName} 감정',
+                      width: 78,
+                      height: 65,
+                      fit: BoxFit.contain,
+                    ),
                   SvgPicture.asset(
-                    moodAssetPath,
-                    width: 78,
-                    height: 65,
+                    _numberAssetPath(),
+                    semanticsLabel: '${date.year}년 ${date.month}월 ${date.day}일',
+                    width: 24,
+                    height: 24,
                     fit: BoxFit.contain,
                   ),
-                SvgPicture.asset(
-                  _numberAssetPath(),
-                  width: 24,
-                  height: 24,
-                  fit: BoxFit.contain,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        const SizedBox(height: 17),
+          _buildRecordMarker(),
         ],
       ),
     );

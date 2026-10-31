@@ -74,6 +74,14 @@ class EmotionAnalysisScreen extends StatefulWidget {
 class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
   EmotionAnalysisPeriod _selectedPeriod = EmotionAnalysisPeriod.week;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AppData>().refreshRecords();
+    });
+  }
+
   /// 0: 현재 기간
   /// -1: 바로 이전 기간
   /// -2: 그 이전 기간
@@ -277,7 +285,7 @@ class _EmotionAnalysisScreenState extends State<EmotionAnalysisScreen> {
 
     for (final diary in diaries) {
       final emotion = EmotionValues.values.firstWhere(
-        (value) => value.id == diary.flowerType.emotionId.id,
+        (value) => value.id == diary.statisticsEmotion.id,
         orElse: () => EmotionValues.neutral,
       );
       totals[emotion] = totals[emotion]! + 1;

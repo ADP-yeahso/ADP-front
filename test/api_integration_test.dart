@@ -100,6 +100,39 @@ void main() {
     },
   );
 
+  test('wrapped group response and string patient id are hydrated', () async {
+    final data = AppData(
+      api: ApiService(
+        client: MockClient((request) async {
+          switch (request.url.path) {
+            case '/api/v1/users/me':
+              return jsonResponse({'id': userId, 'name': '사용자'});
+            case '/api/v1/groups/7':
+              final detail = groupDetail(7);
+              detail['patient'] = {
+                ...detail['patient'] as Map<String, dynamic>,
+                'id': '43',
+              };
+              return jsonResponse({
+                'data': {'group': detail},
+              });
+            case '/api/v1/patients/43/memory-records':
+            case '/api/v1/diaries':
+              return jsonResponse([]);
+          }
+          fail('Unexpected request: ${request.url}');
+        }),
+      ),
+    );
+    addTearDown(data.dispose);
+
+    await data.openGroup(tokens, 7);
+
+    expect(data.patientLookupAvailable, isTrue);
+    expect(data.patient.id, 43);
+    expect(data.patient.patientName, '환자');
+  });
+
   test(
     'selected group hydrates UUID users, server record IDs and signed media',
     () async {
@@ -136,11 +169,17 @@ void main() {
                   'user_id': userId,
                   'situation_text': '고마운 하루',
                   'title': '감사 일기',
+                  'correct_emotion_id': 3,
                   'finalized_at': '2026-10-21T12:00:00Z',
                   'emotion': {
                     'id': 5,
                     'emotion': 'gratitude',
                     'display_name': '감사/안도',
+                  },
+                  'correct_emotion': {
+                    'id': 3,
+                    'emotion': 'sadness',
+                    'display_name': '슬픔/소진',
                   },
                   'flower': {'id': 4, 'flower_name': '꽃', 'sentence': '오늘의 문장'},
                   'media': [
@@ -170,6 +209,8 @@ void main() {
       expect(data.me.name, '사용자');
       expect(data.patientRelationLabel, '아버지');
       expect(data.patient.id, 43);
+      expect(data.diaries.single.flowerType.emotionId.id, 5);
+      expect(data.diaries.single.statisticsEmotion.id, 3);
       expect(data.memories.single.id, 81);
       expect(data.diaries.single.id, 92);
       expect(data.diaries.single.title, '감사 일기');
@@ -268,6 +309,40 @@ void main() {
       contentType: 'image/png',
     );
     expect(uploaded['id'], 71);
+  });
+
+  test('memory files use the new authenticated multipart endpoint', () async {
+    final api = ApiService(
+      client: MockClient((request) async {
+        expect(request.url.path, '/api/v1/memory-records/81/media');
+        expect(request.headers['authorization'], 'Bearer access');
+        expect(
+          request.headers['content-type'],
+          startsWith('multipart/form-data;'),
+        );
+        expect(request.body, contains('filename="patient-photo.heic"'));
+        expect(request.body, contains('content-type: image/heic'));
+        expect(request.body, contains('name="sort_order"'));
+        return jsonResponse({
+          'id': 72,
+          'memory_record_id': 81,
+          'file_type': 'image',
+        }, 201);
+      }),
+    );
+    addTearDown(api.close);
+
+    final uploaded = await MediaApi(api).uploadMemory(
+      tokens,
+      81,
+      bytes: Uint8List.fromList([1, 2, 3]),
+      filename: 'patient-photo.heic',
+      contentType: 'image/heic',
+      sortOrder: 1,
+    );
+
+    expect(uploaded['id'], 72);
+    expect(uploaded['memory_record_id'], 81);
   });
 
   test('profile updates use PUT and FastAPI errors retain status', () async {

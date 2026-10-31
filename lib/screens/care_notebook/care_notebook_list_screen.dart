@@ -9,6 +9,7 @@ import '../../services/care_notebook_service.dart';
 import 'care_notebook_write_screen.dart';
 import 'care_record_view_data.dart';
 import 'care_notebook_detail_screen.dart';
+import '../profile/patient_info_screen.dart' as profile;
 
 class CareNotebookListScreen extends StatefulWidget {
   const CareNotebookListScreen({super.key});
@@ -21,6 +22,7 @@ class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
   List<CareRecordViewData> _records = [];
   bool _isLoading = true;
   String? _error;
+  bool _needsPatientRegistration = false;
   DateTime? _selectedDate;
 
   @override
@@ -33,9 +35,9 @@ class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
   Future<void> _loadRecords() async {
     final data = context.read<AppData>();
     final tokens = context.read<AuthSession>().tokens;
-    if (tokens == null || !data.hasPatient) {
+    if (tokens == null) {
       setState(() {
-        _error = '환자 정보를 먼저 불러와주세요.';
+        _error = '로그인이 만료되었습니다. 다시 로그인해주세요.';
         _isLoading = false;
       });
       return;
@@ -43,9 +45,21 @@ class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
     setState(() {
       _isLoading = true;
       _error = null;
+      _needsPatientRegistration = false;
     });
     final api = ApiService();
     try {
+      if (!data.hasPatient && !await data.ensurePatientLoaded()) {
+        if (mounted) {
+          setState(() {
+            _needsPatientRegistration = data.patientLookupAvailable;
+            _error = data.patientLookupAvailable
+                ? '등록된 환자 정보가 없습니다.'
+                : '환자 정보를 불러오지 못했습니다.';
+          });
+        }
+        return;
+      }
       final records = await CareNotebookService(
         api,
       ).list(tokens, data.patient.id);
@@ -56,6 +70,14 @@ class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
       api.close();
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _openPatientRegistration() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const profile.PatientInfoScreen()),
+    );
+    if (mounted) await _loadRecords();
   }
 
   bool _isSameDay(DateTime first, DateTime second) {
@@ -163,7 +185,9 @@ class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
                     ),
                   ),
                   FilledButton.icon(
-                    onPressed: _openWriteScreen,
+                    onPressed: _isLoading || _error != null
+                        ? null
+                        : _openWriteScreen,
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(0, 54),
                       padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -204,6 +228,11 @@ class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
                               onPressed: _loadRecords,
                               child: const Text('다시 시도'),
                             ),
+                            if (_needsPatientRegistration)
+                              FilledButton(
+                                onPressed: _openPatientRegistration,
+                                child: const Text('환자 정보 등록하기'),
+                              ),
                           ],
                         ),
                       )

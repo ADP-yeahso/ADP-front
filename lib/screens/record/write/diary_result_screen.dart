@@ -4,6 +4,8 @@ import '../../../models/emotions.dart';
 import '../../../utils/emotion_utils.dart';
 import '../../../services/diary_service.dart';
 import 'diary_care_content_screen.dart';
+import '../../care_notebook/dementia_care_manual_screen.dart';
+import '../../letters/family_letter_screen.dart';
 import 'pending_flower_card.dart';
 
 class DiaryResultScreen extends StatelessWidget {
@@ -190,6 +192,19 @@ class DiaryResultScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => DiaryCareContentScreen(
                               emotion: recommendationEmotion,
+                              onOpenLetter: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const FamilyLetterScreen(),
+                                ),
+                              ),
+                              onOpenManual: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const DementiaCareManualScreen(),
+                                ),
+                              ),
                             ),
                           ),
                         );

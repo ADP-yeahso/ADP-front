@@ -180,41 +180,72 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
       return;
     }
     final appData = context.read<AppData>();
-    if (!appData.hasPatient || _attachedMedia.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            !appData.hasPatient
-                ? '환자 정보를 먼저 불러와주세요.'
-                : '환자 기록 첨부는 아직 지원되지 않습니다. 첨부 파일을 제거한 뒤 저장해주세요.',
-          ),
-        ),
-      );
-      return;
+    if (!appData.hasPatient) {
+      try {
+        await appData.ensurePatientLoaded();
+      } on ApiException catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+        return;
+      }
+      if (!mounted) return;
+      if (!appData.hasPatient) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('환자 정보를 등록한 뒤 기록을 작성해주세요.')),
+        );
+        return;
+      }
     }
     setState(() => _isSaving = true);
+    var recordCreated = false;
     try {
-      final saved = await appData.createMemory({
+      final memory = await appData.createMemoryRecord({
         'title': _titleController.text.trim(),
         'context': _contentController.text.trim(),
         'record_date': _date.toIso8601String().split('T').first,
       });
-      if (!mounted || !saved) return;
+      if (!mounted || memory == null) return;
+      recordCreated = true;
+      await appData.uploadMemoryAttachments(
+        memory.id,
+        List<Media>.from(_attachedMedia),
+      );
+      if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('나무에 새 잎이 달렸어요 🌿')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _attachedMedia.isEmpty ? '나무에 새 잎이 달렸어요 🌿' : '기록과 첨부 파일이 저장됐어요 🌿',
+          ),
+        ),
+      );
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        if (recordCreated) Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              recordCreated
+                  ? '기록은 저장됐지만 첨부 파일 업로드에 실패했어요: ${error.message}'
+                  : error.message,
+            ),
+          ),
+        );
       }
     } on Exception {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('기록 저장 중 오류가 발생했습니다.')));
+        if (recordCreated) Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              recordCreated
+                  ? '기록은 저장됐지만 첨부 파일 업로드에 실패했어요.'
+                  : '기록 저장 중 오류가 발생했습니다.',
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -280,7 +311,7 @@ class _PatientInfoScreenState extends State<PatientInfoScreen> {
                         vertical: 8,
                       ),
                       child: Text(
-                        '현재 환자 기록은 글만 저장할 수 있어요.',
+                        '사진, 영상, 음성을 기록과 함께 저장할 수 있어요.',
                         style: TextStyle(fontSize: 12, color: Colors.black54),
                       ),
                     ),

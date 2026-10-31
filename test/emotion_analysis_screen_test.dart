@@ -1,5 +1,7 @@
 import 'package:care_garden/data/app_data.dart';
+import 'package:care_garden/models/diary.dart';
 import 'package:care_garden/models/emotions.dart';
+import 'package:care_garden/models/flower.dart';
 import 'package:care_garden/screens/profile/emotion_analysis_screen.dart';
 import 'package:care_garden/utils/emotion_utils.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -40,4 +42,44 @@ void main() {
       ]);
     },
   );
+
+  testWidgets('charts prioritize the final emotion selected by the user', (
+    tester,
+  ) async {
+    final data = AppData();
+    addTearDown(data.dispose);
+    final now = DateTime.now();
+    data.diaries.add(
+      Diary(
+        id: 101,
+        userId: data.me.id,
+        context: 'AI 예측과 다른 감정을 선택했어요.',
+        flowerType: Flower(
+          id: 1,
+          emotionId: EmotionValues.neutral,
+          flowerName: 'AI 추천 꽃',
+          colorCode: '',
+          sentence: '',
+        ),
+        selectedEmotion: EmotionValues.sadness,
+        mediaList: const [],
+        recordDate: now,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppData>.value(
+        value: data,
+        child: const MaterialApp(home: EmotionAnalysisScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final chart = tester.widget<PieChart>(find.byType(PieChart));
+    expect(chart.data.sections, hasLength(1));
+    expect(chart.data.sections.single.value, 100);
+    expect(chart.data.sections.single.color, EmotionValues.sadness.color);
+  });
 }

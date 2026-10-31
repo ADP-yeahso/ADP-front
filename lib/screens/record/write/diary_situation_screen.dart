@@ -189,28 +189,31 @@ class _DiarySituationScreenState extends State<DiarySituationScreen> {
     }
   }
 
-  // '사진 첨부' 누를 때: 타일 영역을 띄우고 최근 사진 타일로 갱신 (팝업은 열리지 않음)
-  void _pickImages() {
+  // iOS does not expose its photo library as a scannable file-system folder.
+  // Open the system picker immediately so the attachment button behaves the
+  // same way on a physical iPhone and Android.
+  Future<void> _pickImages() async {
     setState(() {
       _isTileRowVisible = true;
       _updateActiveMediaList('image');
     });
+    await _pickFromSystemGallery((update) => setState(update));
   }
 
-  // '영상 첨부' 누를 때: 타일 영역을 띄우고 최근 영상 타일로 갱신 (팝업은 열리지 않음)
-  void _pickVideo() {
+  Future<void> _pickVideo() async {
     setState(() {
       _isTileRowVisible = true;
       _updateActiveMediaList('video');
     });
+    await _pickFromSystemGallery((update) => setState(update));
   }
 
-  // '음성 첨부' 누를 때: 타일 영역을 띄우고 최근 음성 타일로 갱신 (팝업은 열리지 않음)
-  void _pickAudio() {
+  Future<void> _pickAudio() async {
     setState(() {
       _isTileRowVisible = true;
       _updateActiveMediaList('audio');
     });
+    await _pickFromSystemGallery((update) => setState(update));
   }
 
   // 팝업 내부에서 갤러리 추가 선택

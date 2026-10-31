@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../models/comment.dart';
@@ -187,11 +189,35 @@ class AppData extends ChangeNotifier {
           ),
         );
       }
-      patientLookupAvailable = detail.containsKey('patient');
-      final rawPatient = patientLookupAvailable
-          ? detail['patient']
+      final hasPatientField =
+          detail.containsKey('patient') ||
+          detail.containsKey('patient_info') ||
+          detail.containsKey('patientInfo') ||
+          detail.containsKey('patients') ||
+          detail.containsKey('patient_id');
+      dynamic rawPatient =
+          detail['patient'] ??
+          detail['patient_info'] ??
+          detail['patientInfo'] ??
+          detail['patients'];
+      if (rawPatient is List && rawPatient.isNotEmpty) {
+        rawPatient = rawPatient.first;
+      }
+      final patientId = _intValue(
+        detail['patient_id'] ??
+            (rawPatient is Map<String, dynamic> ? rawPatient['id'] : null),
+      );
+      if (rawPatient is! Map<String, dynamic> && patientId > 0) {
+        rawPatient = await PatientApi(_api).get(tokens, patientId);
+        if (generation != _generation) return;
+      }
+      patientLookupAvailable = hasPatientField;
+      final resolvedPatient = hasPatientField
+          ? rawPatient
           : _createdPatients[groupId];
-      _setPatient(rawPatient is Map<String, dynamic> ? rawPatient : {});
+      _setPatient(
+        resolvedPatient is Map<String, dynamic> ? resolvedPatient : {},
+      );
       notifyListeners();
       await refreshRecords();
     } finally {
@@ -206,7 +232,7 @@ class AppData extends ChangeNotifier {
     patientDetails = value;
     final birth = DateTime.tryParse('${value['patient_birth_date']}');
     _patient = Patient(
-      id: value['id'] as int? ?? 0,
+      id: _intValue(value['id'] ?? value['patient_id']),
       groupId: group.id,
       patientName: (value['patient_name'] ?? '').toString(),
       patientBirthDate: birth == null
@@ -215,6 +241,13 @@ class AppData extends ChangeNotifier {
       createdAt: _time(value['created_at']),
     );
   }
+
+  int _intValue(dynamic value) => switch (value) {
+    int number => number,
+    num number => number.toInt(),
+    String text => int.tryParse(text) ?? 0,
+    _ => 0,
+  };
 
   Future<void> refreshGroup() async {
     final tokens = _tokens;
@@ -225,6 +258,14 @@ class AppData extends ChangeNotifier {
       loadError = error.message;
       notifyListeners();
     }
+  }
+
+  Future<bool> ensurePatientLoaded() async {
+    if (hasPatient) return true;
+    final tokens = _tokens;
+    if (tokens == null || group.id <= 0) return false;
+    await openGroup(tokens, group.id);
+    return hasPatient;
   }
 
   Future<List<Map<String, dynamic>>> _allPages(
@@ -314,23 +355,101 @@ class AppData extends ChangeNotifier {
     notifyListeners();
   }
 
-  void cacheMemory(Map<String, dynamic> value) {
+  Memory cacheMemory(Map<String, dynamic> value) {
     _recordsRequest++;
     final memory = _memory(value);
     memories.removeWhere((item) => item.id == memory.id);
     memories.add(memory);
     notifyListeners();
+    return memory;
   }
 
-  Future<bool> createMemory(Map<String, dynamic> body) async {
+  Future<Memory?> createMemoryRecord(Map<String, dynamic> body) async {
     final tokens = _requireTokens();
     if (!hasPatient) throw const ApiException('환자 정보를 먼저 불러와주세요.');
     final generation = _generation;
     _recordsRequest++;
     final value = await MemoryRecordApi(_api).create(tokens, patient.id, body);
-    if (generation != _generation) return false;
-    cacheMemory(value);
-    return true;
+    if (generation != _generation) return null;
+    return cacheMemory(value);
+  }
+
+  Future<bool> createMemory(Map<String, dynamic> body) async =>
+      await createMemoryRecord(body) != null;
+
+  Future<void> uploadMemoryAttachments(
+    int recordId,
+    List<Media> attachments,
+  ) async {
+    if (attachments.isEmpty) return;
+    final tokens = _requireTokens();
+    final generation = _generation;
+    Object? uploadError;
+    StackTrace? uploadStackTrace;
+
+    try {
+      for (var index = 0; index < attachments.length; index++) {
+        final attachment = attachments[index];
+        final contentType = _attachmentContentType(attachment.fileUrl);
+        if (contentType == null) {
+          throw const ApiException('지원하지 않는 첨부 파일 형식입니다.');
+        }
+        final file = File(attachment.fileUrl);
+        if (!await file.exists()) {
+          throw const ApiException('첨부 파일을 읽을 수 없습니다. 다시 선택해주세요.');
+        }
+        if (await file.length() > 50 * 1024 * 1024) {
+          throw const ApiException('첨부 파일은 50MB 이하로 선택해주세요.');
+        }
+        await MediaApi(_api).uploadMemory(
+          tokens,
+          recordId,
+          bytes: await file.readAsBytes(),
+          filename: file.uri.pathSegments.last,
+          contentType: contentType,
+          duration: attachment.duration,
+          sortOrder: index,
+        );
+      }
+    } catch (error, stackTrace) {
+      uploadError = error;
+      uploadStackTrace = stackTrace;
+    }
+
+    // Re-read the record so successful uploads, including uploads completed
+    // before a later failure, immediately appear in the shared gallery/cache.
+    try {
+      final value = await MemoryRecordApi(_api).detail(tokens, recordId);
+      if (generation == _generation) cacheMemory(value);
+    } catch (_) {
+      if (uploadError == null) rethrow;
+    }
+
+    if (uploadError != null) {
+      Error.throwWithStackTrace(uploadError, uploadStackTrace!);
+    }
+  }
+
+  String? _attachmentContentType(String path) {
+    final extension = path.split('.').last.toLowerCase();
+    return const {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'heic': 'image/heic',
+      'webp': 'image/webp',
+      'gif': 'image/gif',
+      'mp4': 'video/mp4',
+      'mov': 'video/quicktime',
+      'm4v': 'video/x-m4v',
+      'mp3': 'audio/mpeg',
+      'm4a': 'audio/mp4',
+      'wav': 'audio/wav',
+      'aac': 'audio/aac',
+      'caf': 'audio/x-caf',
+      'aiff': 'audio/aiff',
+      'flac': 'audio/flac',
+    }[extension];
   }
 
   User _user(Map<String, dynamic> value) => User(
@@ -376,6 +495,8 @@ class AppData extends ChangeNotifier {
 
   Diary _diary(Map<String, dynamic> value) {
     final emotion = value['emotion'] as Map<String, dynamic>? ?? {};
+    final correctEmotion =
+        value['correct_emotion'] as Map<String, dynamic>? ?? {};
     final flower = value['flower'] as Map<String, dynamic>? ?? {};
     final emotionId =
         value['final_emotion_id'] as int? ?? emotion['id'] as int? ?? 0;
@@ -384,6 +505,31 @@ class AppData extends ChangeNotifier {
       orElse: () => EmotionValues.neutral,
     );
     final matchesFinalEmotion = emotion['id'] == emotionId;
+    final correctEmotionId =
+        value['correct_emotion_id'] as int? ?? correctEmotion['id'] as int?;
+    final selectedEmotion = correctEmotionId == null
+        ? null
+        : Emotion(
+            id: correctEmotionId,
+            name:
+                (correctEmotion['emotion'] ??
+                        EmotionValues.values
+                            .firstWhere(
+                              (item) => item.id == correctEmotionId,
+                              orElse: () => EmotionValues.neutral,
+                            )
+                            .name)
+                    .toString(),
+            displayName:
+                (correctEmotion['display_name'] ??
+                        EmotionValues.values
+                            .firstWhere(
+                              (item) => item.id == correctEmotionId,
+                              orElse: () => EmotionValues.neutral,
+                            )
+                            .displayName)
+                    .toString(),
+          );
     return Diary(
       id: value['id'] as int,
       userId: value['user_id'] as String,
@@ -404,6 +550,7 @@ class AppData extends ChangeNotifier {
         colorCode: '',
         sentence: (flower['sentence'] ?? '').toString(),
       ),
+      selectedEmotion: selectedEmotion,
       mediaList: _media(value['media']),
       recordDate: _time(
         value['finalized_at'] ??
@@ -647,6 +794,7 @@ class AppData extends ChangeNotifier {
       title: title,
       context: content,
       flowerType: flower,
+      selectedEmotion: finalEmotion,
       mediaList: updatedMedia,
       recordDate: date,
       createdAt: DateTime.now(),
@@ -744,6 +892,7 @@ class AppData extends ChangeNotifier {
       title: value['title'] as String?,
       context: value['situation_text'] as String,
       flowerType: old.flowerType,
+      selectedEmotion: old.selectedEmotion,
       mediaList: old.mediaList,
       recordDate: old.recordDate,
       createdAt: old.createdAt,

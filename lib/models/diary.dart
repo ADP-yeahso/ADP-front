@@ -1,3 +1,4 @@
+import 'emotions.dart';
 import 'flower.dart';
 import 'media.dart';
 
@@ -7,6 +8,7 @@ class Diary {
   final String? title;
   final String context;
   final Flower flowerType;
+  final Emotion? selectedEmotion;
   final List<Media> mediaList;
   final DateTime recordDate;
   final DateTime createdAt;
@@ -15,6 +17,10 @@ class Diary {
   final bool isFinalized;
 
   bool get hasFlower => flowerType.id > 0;
+
+  /// The majority parent emotion of the three tags selected by the user.
+  /// Older records fall back to the saved final emotion.
+  Emotion get statisticsEmotion => selectedEmotion ?? flowerType.emotionId;
 
   /// A draft is displayable only after the server has persisted all three
   /// selected tags and their majority label against the saved AI snapshot.
@@ -66,6 +72,7 @@ class Diary {
     this.title,
     required this.context,
     required this.flowerType,
+    this.selectedEmotion,
     required this.mediaList,
     required this.recordDate,
     required this.createdAt,

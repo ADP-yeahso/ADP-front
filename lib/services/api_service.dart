@@ -129,12 +129,15 @@ class ApiService {
           : response.statusCode == expectedStatus;
       if (!okay) {
         final detail = body is Map<String, dynamic> ? body['detail'] : null;
+        final detailMessage = detail == 'Media upload failed'
+            ? '첨부 파일 업로드에 실패했어요. 잠시 후 다시 시도해주세요.'
+            : detail;
         throw ApiException(
           response.statusCode == 401
               ? '로그인이 만료되었습니다. 다시 로그인해주세요.'
-              : detail is String && detail.isNotEmpty
-              ? detail
-              : detail is List
+              : detailMessage is String && detailMessage.isNotEmpty
+              ? detailMessage
+              : detailMessage is List
               ? '입력한 정보를 확인해주세요.'
               : 'API 요청에 실패했습니다. (${response.statusCode})',
           statusCode: response.statusCode,
@@ -195,8 +198,21 @@ class GroupApi {
     await _api.post('/groups/join', tokens, body: {'invite_code': inviteCode}),
   );
 
-  Future<Map<String, dynamic>> detail(AuthTokens tokens, int groupId) async =>
-      _map(await _api.get('/groups/$groupId', tokens));
+  Future<Map<String, dynamic>> detail(AuthTokens tokens, int groupId) async {
+    final response = _map(await _api.get('/groups/$groupId', tokens));
+
+    // Some API gateways wrap a single resource in `data` and/or `group`.
+    // Keep the app compatible with both the deployed direct response and those
+    // envelopes instead of treating a valid group as if it had no patient.
+    var detail = response;
+    final data = detail['data'];
+    if (data is Map<String, dynamic>) detail = data;
+    final group = detail['group'];
+    if (group is Map<String, dynamic>) {
+      detail = {...detail, ...group}..remove('group');
+    }
+    return detail;
+  }
 
   Future<List<Map<String, dynamic>>> members(
     AuthTokens tokens,
@@ -304,6 +320,28 @@ class MediaApi {
       },
     ),
   );
+
+  Future<Map<String, dynamic>> uploadMemory(
+    AuthTokens tokens,
+    int recordId, {
+    required Uint8List bytes,
+    required String filename,
+    required String contentType,
+    int? duration,
+    int sortOrder = 0,
+  }) async => _map(
+    await _api.upload(
+      '/memory-records/$recordId/media',
+      tokens,
+      bytes: bytes,
+      filename: filename,
+      contentType: contentType,
+      fields: {
+        'sort_order': '$sortOrder',
+        if (duration != null) 'duration': '$duration',
+      },
+    ),
+  );
 }
 
 class UserApi {
@@ -317,6 +355,49 @@ class UserApi {
     AuthTokens tokens,
     Map<String, dynamic> body,
   ) async => _map(await _api.put('/users/me', tokens, body: body));
+}
+
+class LetterApi {
+  LetterApi(this._api);
+  final ApiService _api;
+
+  Future<List<Map<String, dynamic>>> list(
+    AuthTokens tokens,
+    int groupId, {
+    bool sent = false,
+  }) async {
+    final query = Uri(
+      queryParameters: {
+        'group_id': '$groupId',
+        'box_type': sent ? 'sent' : 'inbox',
+      },
+    ).query;
+    return _maps(await _api.get('/letters?$query', tokens));
+  }
+
+  Future<Map<String, dynamic>> send(
+    AuthTokens tokens, {
+    required int groupId,
+    required String content,
+    String? receiverUserId,
+  }) async => _map(
+    await _api.post(
+      '/letters',
+      tokens,
+      body: {
+        'group_id': groupId,
+        'receiver_user_id': receiverUserId,
+        'content': content,
+      },
+      expectedStatus: 201,
+    ),
+  );
+
+  Future<Map<String, dynamic>> detail(AuthTokens tokens, int letterId) async =>
+      _map(await _api.get('/letters/$letterId', tokens));
+
+  Future<void> remove(AuthTokens tokens, int letterId) =>
+      _api.delete('/letters/$letterId', tokens);
 }
 
 class CareApi {

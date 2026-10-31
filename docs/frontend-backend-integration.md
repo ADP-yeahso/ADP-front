@@ -32,6 +32,7 @@ VS Code의 Android, 기본 기기, Chrome 실행 설정 모두 이 파일을 사
 | 환자 정보 | `PATCH /patients/{id}`, 환자가 없는 그룹은 `POST /groups/{id}/patients` |
 | 프로필 편집 | `PUT /users/me`로 이름·전화번호 저장 |
 | 환자 기록 | `POST /patients/{id}/memory-records`, 응답의 실제 ID로 화면 캐시 갱신 |
+| 환자 기록 첨부 | `POST /memory-records/{id}/media`, 인증된 multipart 요청·파일 MIME 포함 |
 | 환자 기록 편집·삭제 | `PATCH /memory-records/{id}`, `DELETE /memory-records/{id}` 성공 후 캐시 반영 |
 | 감정 일기 | 선택 그룹으로 초안 생성 → 질문 → 답변 → 추천 태그 선택 → 태그를 포함한 `POST /diaries/{id}/finalize` |
 | 꽃 기록 편집·삭제 | `PATCH /diaries/{id}`, `DELETE /diaries/{id}`; 확정 일기 편집은 아래 서버 제한 참조 |
@@ -77,7 +78,6 @@ git apply /path/to/ADP-front/docs/backend-group-patient.patch
 
 - 확정 꽃 일기 편집: PATCH 경로는 있으나 백엔드 `update_diary`가 완료된 일기에 409를 반환합니다. 프론트는 서버에 요청하고 거절되면 원본을 유지하며 한국어로 이유를 안내합니다. 환자 기록 편집과 두 종류 기록의 삭제는 지원합니다.
 
-- 환자 기록 첨부: `/media/presign`, 기억 기록 미디어 업로드·등록 API가 없습니다. 첨부가 있는 경우 서버에 글부터 중복 생성하지 않고 저장을 막고 안내합니다.
 - 갤러리 직접 추가: 그룹 갤러리 등록·목록 API가 없습니다. 일기 첨부 파일 조회는 동작합니다.
 - 댓글·북마크·공개 범위 변경: 대응 API가 없습니다. 공개 범위 스위치는 비활성화하고 댓글 저장은 준비 중 안내를 표시합니다. 환자 기록은 그룹 멤버가, 감정 일기는 작성자가 조회합니다.
 - 비밀번호 변경·프로필 사진 업로드: 대응 API가 없어 프로필 저장 항목에서 비밀번호 입력을 제외했습니다.

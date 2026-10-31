@@ -49,6 +49,7 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
   }
 
   Future<void> _showMoreMenu(BuildContext context) async {
+    final canEdit = _selectedType == _RecordViewType.tree;
     final action = await showDialog<_MoreAction>(
       context: context,
       barrierColor: Colors.black26,
@@ -66,35 +67,49 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
             alignment: Alignment.topRight,
             child: SizedBox(
               width: 184,
-              height: 141,
+              height: canEdit ? 141 : 80,
               child: Stack(
                 children: [
-                  full_svg.SvgPicture.asset(
-                    'assets/page2/record_detail/more_frame.svg',
-                    width: 184,
-                    height: 141,
-                    fit: BoxFit.contain,
-                  ),
-
-                  Positioned(
-                    left: 34,
-                    top: 35,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        Navigator.of(dialogContext).pop(_MoreAction.edit);
-                      },
-                      child: full_svg.SvgPicture.asset(
-                        'assets/page2/record_detail/edit.svg',
-                        width: 62,
-                        height: 21,
+                  if (canEdit)
+                    full_svg.SvgPicture.asset(
+                      'assets/page2/record_detail/more_frame.svg',
+                      width: 184,
+                      height: 141,
+                      fit: BoxFit.contain,
+                    )
+                  else
+                    Container(
+                      width: 184,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBF0),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 4),
+                        ],
                       ),
                     ),
-                  ),
+
+                  if (canEdit)
+                    Positioned(
+                      left: 34,
+                      top: 35,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          Navigator.of(dialogContext).pop(_MoreAction.edit);
+                        },
+                        child: full_svg.SvgPicture.asset(
+                          'assets/page2/record_detail/edit.svg',
+                          width: 62,
+                          height: 21,
+                        ),
+                      ),
+                    ),
 
                   Positioned(
                     left: 34,
-                    top: 85,
+                    top: canEdit ? 85 : 30,
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () {

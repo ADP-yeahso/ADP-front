@@ -131,74 +131,9 @@ class _RootShellState extends State<RootShell> with RouteAware {
       ),
       bottomNavigationBar: _hideSettingsNav
           ? null
-          : _index == 3
-              ? _settingsNavigation()
-              : _buildBottomBar(),
+          : _buildBottomBar(),
     );
   }
-
-  // 디자인팀이 적용한 설정 탭 전용 하단 내비게이션.
-  Widget _settingsNavigation() => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-          child: SizedBox(
-            height: 88,
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                Container(
-                  height: 62,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(36),
-                    border: Border.all(color: const Color(0xFFE8E5DA)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x26000000),
-                        blurRadius: 2,
-                        offset: Offset(1, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _settingsNavIcon(0, Icons.home_outlined, '홈'),
-                      _settingsNavIcon(1, Icons.park, '기억 보기'),
-                      const SizedBox(width: 54),
-                      _settingsNavIcon(2, Icons.photo_library_outlined, '갤러리'),
-                      _settingsNavIcon(3, Icons.settings_outlined, '설정'),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  child: SizedBox(
-                    width: 60,
-                    height: 60,
-                    child: FloatingActionButton(
-                      heroTag: 'settings_record',
-                      onPressed: _openRecordChoice,
-                      backgroundColor: const Color(0xFF386723),
-                      shape: const CircleBorder(),
-                      elevation: 2,
-                      tooltip: '기록 추가',
-                      child: const Icon(Icons.add, size: 42, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-
-  Widget _settingsNavIcon(int index, IconData icon, String label) => IconButton(
-        tooltip: label,
-        icon: Icon(icon, size: 32, color: const Color(0xFF1E3815)),
-        onPressed: () => _selectTab(index),
-      );
 
   // front-develop에 적용된 SVG 하단 바를 유지.
   Widget _buildBottomBar() {

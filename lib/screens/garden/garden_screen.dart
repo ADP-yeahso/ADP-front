@@ -12,7 +12,6 @@ import '../../data/garden_range.dart';
 import 'dart:async';
 import '../../utils/garden_viewer_session.dart';
 import '../care_notebook/care_notebook_list_screen.dart';
-import '../family/family_share_screen.dart';
 import 'entry_detail_sheet.dart';
 import '../mailbox/family_mailbox_screen.dart';
 import '../calendar/calendar_screen.dart';
@@ -66,8 +65,6 @@ class _GardenScreenState extends State<GardenScreen>
   bool _isFlowerBrowsing = false;
   int _flowerIndex = 0;
   int _flowerCount = 0;
-  // Read state lasts for this home session until a persistent inbox is added.
-  final Set<String> _openedSharedRecordIds = {};
   bool _disposed = false;
   bool _appForeground = true;
   bool _innerRouteVisible = true;
@@ -821,11 +818,7 @@ class _GardenScreenState extends State<GardenScreen>
                       month: month,
                       showTitleAndActions: !_isFlowerBrowsing,
                       groupName: appData.group.groupName,
-                      hasUnreadRecords:
-                          appData.hasUnreadMail ||
-                          _sharedRecordIds(
-                            appData,
-                          ).difference(_openedSharedRecordIds).isNotEmpty,
+                      hasUnreadRecords: appData.hasUnreadMail,
                       onOpenMailbox: _openMailbox,
                       onOpenNotebook: () => Navigator.push(
                         context,
@@ -1009,32 +1002,8 @@ class _GardenScreenState extends State<GardenScreen>
     }
   }
 
-  Set<String> _sharedRecordIds(AppData appData) => {
-    for (final memory in appData.sharedMemories)
-      if (!appData.isCurrentUser(memory.userId))
-        'memory:${memory.id}:${memory.updatedAt.microsecondsSinceEpoch}',
-    for (final diary in appData.sharedDiaries)
-      if (!appData.isCurrentUser(diary.userId))
-        'diary:${diary.id}:${diary.updatedAt.microsecondsSinceEpoch}',
-  };
-
   void _openMailbox() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            FamilyMailboxScreen(onOpenSharedRecords: _openSharedRecords),
-      ),
-    );
-  }
-
-  void _openSharedRecords() {
-    final records = _sharedRecordIds(context.read<AppData>());
-    setState(() => _openedSharedRecordIds.addAll(records));
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const FamilyShareScreen()),
-    );
+    openFamilyMailbox(context);
   }
 }
 

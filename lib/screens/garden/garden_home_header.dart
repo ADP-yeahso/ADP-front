@@ -126,9 +126,7 @@ class GardenHomeHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 IconButton(
-                  tooltip: hasUnreadRecords
-                      ? '편지함 · 읽지 않은 편지 또는 새 공유 기록'
-                      : '편지함',
+                  tooltip: hasUnreadRecords ? '편지함 · 읽지 않은 편지' : '편지함',
                   onPressed: onOpenMailbox,
                   padding: const EdgeInsets.all(4),
                   constraints: const BoxConstraints.tightFor(

@@ -824,12 +824,7 @@ class _GardenScreenState extends State<GardenScreen>
                         appData,
                       ).difference(_openedSharedRecordIds).isNotEmpty,
                       onOpenMailbox: _openMailbox,
-                      onOpenNotebook: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CareNotebookListScreen(),
-                        ),
-                      ),
+                      onOpenNotebook: () => openCareNotebook(context),
                     ),
                   ),
 

@@ -28,10 +28,12 @@ class SettingsPage extends StatelessWidget {
     required this.title,
     required this.child,
     this.headerAsset,
+    this.onBack,
   });
   final Widget title;
   final Widget child;
   final String? headerAsset;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -66,7 +68,10 @@ class SettingsPage extends StatelessWidget {
                       top: 9,
                       child: IconButton(
                         tooltip: '뒤로',
-                        onPressed: () => Navigator.of(context).maybePop(),
+                        onPressed: onBack ??
+                          () {
+                            Navigator.of(context).maybePop();
+                          },
                         icon: settingsSvg(
                           'my_page',
                           'icon_exit',

@@ -11,7 +11,8 @@ import 'app_settings_screen.dart';
 import 'emotion_analysis_menu.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.onBack});
+  final VoidCallback? onBack;
   void open(BuildContext c, Widget w) =>
       Navigator.push(c, MaterialPageRoute(builder: (_) => w));
   Future<void> logout(BuildContext context) async {
@@ -57,6 +58,7 @@ class ProfileScreen extends StatelessWidget {
     );
     return SettingsPage(
       title: settingsTitle('my_page', '마이페이지'),
+      onBack: onBack,
       child: Column(
         children: [
           SettingsIdentity(

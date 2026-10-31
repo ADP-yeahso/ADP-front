@@ -32,7 +32,7 @@ class _RootShellState extends State<RootShell> with RouteAware {
       }
     });
   });
-
+  int _previousTabIndex = 0;
   bool _hideSettingsNav = false;
   PageRoute<dynamic>? _observedRootRoute;
   GardenNavController? _navController;
@@ -71,7 +71,11 @@ class _RootShellState extends State<RootShell> with RouteAware {
   void _selectTab(int index) {
     _navigatorKey.currentState?.popUntil((route) => route.isFirst);
     if (_index == index) return;
-    setState(() => _tabIndex.value = index);
+
+    setState(() {
+      _previousTabIndex = _index;
+      _tabIndex.value = index;
+    });
   }
 
   void _handleNavRequest() {
@@ -122,7 +126,9 @@ class _RootShellState extends State<RootShell> with RouteAware {
                   ),
                   const CalendarScreen(),
                   const GalleryScreen(),
-                  const ProfileScreen(),
+                  ProfileScreen(
+                    onBack: () => _selectTab(_previousTabIndex),
+                  ),
                 ],
               ),
             ),

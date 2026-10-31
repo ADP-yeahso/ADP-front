@@ -824,12 +824,7 @@ class _GardenScreenState extends State<GardenScreen>
                         appData,
                       ).difference(_openedSharedRecordIds).isNotEmpty,
                       onOpenMailbox: _openMailbox,
-                      onOpenNotebook: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CareNotebookListScreen(),
-                        ),
-                      ),
+                      onOpenNotebook: () => openCareNotebook(context),
                     ),
                   ),
 
@@ -974,12 +969,12 @@ Future<void> _handleFlowerTap(String diaryId) async {
         session.jsSessionId == documentId) {
       setState(() => _isFocusing = false);
       unawaited(
-      session.runScript(
-        _isFlowerBrowsing
-            ? 'window.resumeFlowerBrowse?.()'
-            : 'window.resetCamera?.()',
-      ),
-    );
+        session.runScript(
+          _isFlowerBrowsing
+              ? 'window.resumeFlowerBrowse?.()'
+              : 'window.resetCamera?.()',
+        ),
+      );
     }
   }
 }

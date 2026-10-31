@@ -8,6 +8,7 @@ import 'profile/profile_screen.dart';
 import 'record/record_choice_sheet.dart';
 import 'gallery/gallery_screen.dart';
 import '../utils/garden_route_observers.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -95,6 +96,7 @@ class _RootShellState extends State<RootShell> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: _index == 0,
       body: Navigator(
         key: _navigatorKey,
         observers: [_gardenInnerRouteObserver],
@@ -126,57 +128,7 @@ class _RootShellState extends State<RootShell> with RouteAware {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openRecordChoice,
-        elevation: 2,
-        backgroundColor: Theme.of(context).primaryColor,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, size: 32, color: Colors.white),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              // 1. 홈
-              _buildNavItem(
-                index: 0,
-                icon: Icons.home_outlined,
-                selectedIcon: Icons.home,
-                label: '홈',
-              ),
-              // 2. 기억 보기
-              _buildNavItem(
-                index: 1,
-                icon: Icons.park_outlined,
-                selectedIcon: Icons.park,
-                label: '기억 보기',
-              ),
-              // 가운데 + 버튼을 위한 여백
-              const SizedBox(width: 48),
-              // 3. 갤러리
-              _buildNavItem(
-                index: 2,
-                icon: Icons.photo_library_outlined,
-                selectedIcon: Icons.photo_library,
-                label: '갤러리',
-              ),
-              // 4. Setting
-              _buildNavItem(
-                index: 3,
-                icon: Icons.settings_outlined,
-                selectedIcon: Icons.settings,
-                label: 'Setting',
-              ),
-            ],
-          ),
-        ),
-      ),
+      bottomNavigationBar: _buildBottomBar(),
     );
   }
 

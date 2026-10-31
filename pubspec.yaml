@@ -84,6 +84,7 @@ flutter:
 
   assets:
     - assets/icons/
+    - assets/garden/home/
     - assets/images/
     - assets/images/flower/
     - assets/www/
@@ -101,6 +102,8 @@ flutter:
     - assets/page2/weekdays/
     - assets/page2/moods/
     - assets/page2/record_detail/
+
+    - assets/bottom_bar/
 
     - assets/record/
     - assets/record/choice/

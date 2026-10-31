@@ -6,18 +6,15 @@ import 'package:full_svg_flutter/full_svg_flutter.dart' as full_svg;
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
-import '../../services/api_service.dart';
 import '../../models/diary.dart';
 import '../../models/memory.dart';
 import '../../models/media.dart';
-import '../../utils/emotion_utils.dart';
 import '../garden/entry_detail_sheet.dart';
 import 'record_text_edit_screen.dart';
 
 import 'package:audioplayers/audioplayers.dart';
 
 enum _RecordViewType { tree, flower }
-
 enum _MoreAction { edit, delete }
 
 class DayRecordDetailView extends StatefulWidget {
@@ -25,12 +22,7 @@ class DayRecordDetailView extends StatefulWidget {
   final Memory? selectedMemory;
   final Diary? selectedDiary;
 
-  const DayRecordDetailView({
-    super.key,
-    required this.day,
-    this.selectedMemory,
-    this.selectedDiary,
-  });
+  const DayRecordDetailView({super.key, required this.day, this.selectedMemory, this.selectedDiary});
 
   @override
   State<DayRecordDetailView> createState() => _DayRecordDetailViewState();
@@ -39,19 +31,16 @@ class DayRecordDetailView extends StatefulWidget {
 class _DayRecordDetailViewState extends State<DayRecordDetailView> {
   // 상세 화면 진입 시 초기에는 나무 기록 선택
   _RecordViewType _selectedType = _RecordViewType.tree;
-  bool _isDeleting = false;
 
   @override
   void initState() {
-    super.initState();
+   super.initState();
 
     if (widget.selectedDiary != null) {
       _selectedType = _RecordViewType.flower;
     }
   }
-
   Future<void> _showMoreMenu(BuildContext context) async {
-    if (_isDeleting) return;
     final action = await showDialog<_MoreAction>(
       context: context,
       barrierColor: Colors.black26,
@@ -127,26 +116,36 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
 
     if (_selectedType == _RecordViewType.tree) {
       final records = widget.selectedMemory == null
-          ? data.memories.where((m) => isSameDay(m.recordDate, widget.day))
-          : data.memories.where((m) => m.id == widget.selectedMemory!.id);
+          ? data.memories.where((m) => isSameDay(m.recordDate, widget.day),)
+          : data.memories.where((m) => m.id == widget.selectedMemory!.id,);
 
-      for (final record in records) {
-        options.add((id: record.id, title: record.title ?? '나무 기록'));
-      }
+    for (final record in records) {
+      options.add((
+        id: record.id,
+        title: record.title ?? '나무 기록',
+      ));
+    }
     } else {
       final records = widget.selectedDiary == null
-          ? data.diaries.where((d) => isSameDay(d.recordDate, widget.day))
-          : data.diaries.where((d) => d.id == widget.selectedDiary!.id);
+          ? data.diaries.where(
+              (d) => isSameDay(d.recordDate, widget.day),
+            )
+          : data.diaries.where(
+              (d) => d.id == widget.selectedDiary!.id,
+            );
 
       for (final record in records) {
-        options.add((id: record.id, title: record.title ?? '꽃 기록'));
+        options.add((
+          id: record.id,
+          title: record.title ?? '꽃 기록',
+        ));
       }
     }
 
     if (options.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('이 탭에는 기록이 없어요.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이 탭에는 기록이 없어요.')),
+      );
       return null;
     }
 
@@ -160,7 +159,8 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
         children: [
           for (final option in options)
             SimpleDialogOption(
-              onPressed: () => Navigator.of(pickContext).pop(option.id),
+              onPressed: () =>
+                  Navigator.of(pickContext).pop(option.id),
               child: Text('${option.title} (#${option.id})'),
             ),
         ],
@@ -176,22 +176,10 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
     final isTree = _selectedType == _RecordViewType.tree;
 
     if (action == _MoreAction.delete) {
-      if (_isDeleting) return;
-      setState(() => _isDeleting = true);
-      try {
-        if (isTree) {
-          await data.deleteMemory(id);
-        } else {
-          await data.deleteDiary(id);
-        }
-      } on ApiException catch (error) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(error.message)));
-        }
-      } finally {
-        if (mounted) setState(() => _isDeleting = false);
+      if (isTree) {
+        data.deleteMemory(id);
+      } else {
+        data.deleteDiary(id);
       }
       return;
     }
@@ -233,24 +221,18 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
 
-    final treeRecords =
-        widget.selectedMemory != null
-              ? appData.memories
-                    .where((memory) => memory.id == widget.selectedMemory!.id)
-                    .toList()
-              : appData.memories
-                    .where((memory) => isSameDay(memory.recordDate, widget.day))
-                    .toList()
+    final treeRecords = widget.selectedMemory != null
+      ? appData.memories.where((memory) => memory.id == widget.selectedMemory!.id).toList()
+      : appData.memories
+            .where((memory) => isSameDay(memory.recordDate, widget.day))
+            .toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final flowerRecords =
-        widget.selectedDiary != null
-              ? appData.diaries
-                    .where((diary) => diary.id == widget.selectedDiary!.id)
-                    .toList()
-              : appData.diaries
-                    .where((diary) => isSameDay(diary.recordDate, widget.day))
-                    .toList()
+    final flowerRecords = widget.selectedDiary != null
+        ? appData.diaries.where((diary) => diary.id == widget.selectedDiary!.id).toList()
+        : appData.diaries
+            .where((diary) => isSameDay(diary.recordDate, widget.day))
+            .toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return Padding(
@@ -338,7 +320,6 @@ class _RecordTypeSelector extends StatelessWidget {
                           child: Center(
                             child: full_svg.SvgPicture.asset(
                               'assets/page2/record_detail/tree_record_label.svg',
-                              semanticsLabel: '나무 기록',
                               width: 57,
                               height: 16,
                             ),
@@ -351,13 +332,13 @@ class _RecordTypeSelector extends StatelessWidget {
                           child: Center(
                             child: full_svg.SvgPicture.asset(
                               'assets/page2/record_detail/flower_record_label.svg',
-                              semanticsLabel: '꽃 기록',
                               width: 58,
                               height: 16,
                             ),
                           ),
                         ),
                       ),
+
                     ],
                   ),
                 ],
@@ -377,7 +358,6 @@ class _RecordTypeSelector extends StatelessWidget {
                 child: Center(
                   child: full_svg.SvgPicture.asset(
                     'assets/page2/record_detail/more_icon.svg',
-                    semanticsLabel: '기록 더보기',
                     width: 24,
                     height: 24,
                   ),
@@ -399,7 +379,9 @@ class _TreeRecordList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (records.isEmpty) {
-      return const _EmptyRecordView(message: '이 날짜에는 나무 기록이 없어요.');
+      return const _EmptyRecordView(
+        message: '이 날짜에는 나무 기록이 없어요.',
+      );
     }
 
     return ListView.separated(
@@ -428,8 +410,8 @@ class _TreeRecordCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final audioMedia = memory.mediaList
-        .where((item) => item.fileType == 'audio')
-        .toList();
+      .where((item) => item.fileType == 'audio')
+      .toList();
 
     final hasAudio = audioMedia.isNotEmpty;
 
@@ -442,18 +424,24 @@ class _TreeRecordCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(10, 16, 10, 20),
           child: Column(
             children: [
-              _DetailTitleBlock(title: memory.title),
+              _DetailTitleBlock(
+                title: memory.title,
+              ),
               const SizedBox(height: 18),
 
               _MediaImageRow(media: memory.mediaList),
 
               if (hasAudio) ...[
                 const SizedBox(height: 12),
-                _DetailAudioBar(media: audioMedia.first),
+                _DetailAudioBar(
+                  media: audioMedia.first,
+                ),
               ],
 
               const SizedBox(height: 22),
-              _DetailContentLines(text: memory.contextText),
+              _DetailContentLines(
+                text: memory.contextText,
+              ),
             ],
           ),
         ),
@@ -470,7 +458,9 @@ class _FlowerRecordList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (records.isEmpty) {
-      return const _EmptyRecordView(message: '이 날짜에는 꽃 기록이 없어요.');
+      return const _EmptyRecordView(
+        message: '이 날짜에는 꽃 기록이 없어요.',
+      );
     }
 
     return ListView.separated(
@@ -494,13 +484,16 @@ class _FlowerRecordCard extends StatelessWidget {
   final Diary diary;
   final VoidCallback onTap;
 
-  const _FlowerRecordCard({required this.diary, required this.onTap});
+  const _FlowerRecordCard({
+    required this.diary,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final audioMedia = diary.mediaList
-        .where((item) => item.fileType == 'audio')
-        .toList();
+      .where((item) => item.fileType == 'audio')
+      .toList();
 
     final hasAudio = audioMedia.isNotEmpty;
 
@@ -513,14 +506,18 @@ class _FlowerRecordCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(10, 16, 10, 20),
           child: Column(
             children: [
-              _DetailTitleBlock(title: diary.title),
+              _DetailTitleBlock(
+                title: diary.title,
+              ),
               const SizedBox(height: 18),
 
               _MediaImageRow(media: diary.mediaList),
 
               if (hasAudio) ...[
                 const SizedBox(height: 12),
-                _DetailAudioBar(media: audioMedia.first),
+                _DetailAudioBar(
+                  media: audioMedia.first,
+                ),
               ],
 
               if (diary.mediaList.any((item) => item.fileType == 'image'))
@@ -529,13 +526,14 @@ class _FlowerRecordCard extends StatelessWidget {
               _FlowerInfoCard(
                 diary: diary,
                 compact: diary.mediaList.any(
-                  (item) =>
-                      item.fileType == 'image' || item.fileType == 'video',
+                  (item) => item.fileType == 'image' || item.fileType == 'video',
                 ),
               ),
 
               const SizedBox(height: 22),
-              _DetailContentLines(text: diary.context),
+              _DetailContentLines(
+                text: diary.context,
+              ),
             ],
           ),
         ),
@@ -549,7 +547,9 @@ const double _referenceDetailWidth = 334.0;
 class _DetailTitleBlock extends StatelessWidget {
   final String? title;
 
-  const _DetailTitleBlock({this.title});
+  const _DetailTitleBlock({
+    this.title,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -609,7 +609,9 @@ class _DetailTitleBlock extends StatelessWidget {
 class _DetailContentLines extends StatelessWidget {
   final String? text;
 
-  const _DetailContentLines({this.text});
+  const _DetailContentLines({
+    this.text,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -671,7 +673,9 @@ class _DetailContentLines extends StatelessWidget {
 class _DetailAudioBar extends StatefulWidget {
   final Media media;
 
-  const _DetailAudioBar({required this.media});
+  const _DetailAudioBar({
+    required this.media,
+  });
 
   @override
   State<_DetailAudioBar> createState() => _DetailAudioBarState();
@@ -760,7 +764,10 @@ class _DetailAudioBarState extends State<_DetailAudioBar> {
             left: 14,
             child: Text(
               _formatTime(_position),
-              style: const TextStyle(fontSize: 11, color: Colors.black87),
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.black87,
+              ),
             ),
           ),
 
@@ -801,14 +808,7 @@ class _EmptyRecordView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(
-        message,
-        style: const TextStyle(
-          fontSize: 13,
-          color: Colors.black38,
-          fontWeight: FontWeight.w400,
-        ),
-      ),
+      child: Text(message, style: const TextStyle(fontSize: 13, color: Colors.black38, fontWeight: FontWeight.w400,)),
     );
   }
 }
@@ -863,7 +863,7 @@ class _MediaImage extends StatelessWidget {
       File(media.fileUrl),
       height: 190,
       fit: BoxFit.cover,
-      errorBuilder: (_, _, _) {
+      errorBuilder: (_, __, ___) {
         return Image.asset(
           'assets/images/flower.png',
           height: 190,
@@ -878,37 +878,23 @@ class _FlowerInfoCard extends StatelessWidget {
   final Diary diary;
   final bool compact;
 
-  const _FlowerInfoCard({required this.diary, this.compact = false});
+  const _FlowerInfoCard({
+    required this.diary,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final flower = diary.flowerType;
 
-    if (!diary.hasFlower) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: flower.emotionId.color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              flower.emotionId.displayName,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            const Text('감정 라벨은 저장됐어요. 꽃 카드는 아직 준비 중이에요.'),
-          ],
-        ),
-      );
-    }
-
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(14, compact ? 8 : 14, 14, compact ? 8 : 14),
+      padding: EdgeInsets.fromLTRB(
+        14,
+        compact ? 8 : 14,
+        14,
+        compact ? 8 : 14,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -933,7 +919,7 @@ class _FlowerInfoCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Text(
-                  flower.flowerName,
+                  '꽃 이름',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -942,7 +928,7 @@ class _FlowerInfoCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  flower.sentence,
+                  '꽃말',
                   style: const TextStyle(fontSize: 13, color: Colors.black87),
                 ),
               ],

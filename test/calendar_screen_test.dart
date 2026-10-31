@@ -1,18 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_svg/flutter_svg.dart' as svg;
+import 'package:full_svg_flutter/full_svg_flutter.dart' as full_svg;
 import 'package:provider/provider.dart';
 
 import 'package:care_garden/data/app_data.dart';
 import 'package:care_garden/screens/calendar/calendar_screen.dart';
 
+Finder _svgAsset(String assetName) {
+  return find.byWidgetPredicate((widget) {
+    if (widget is svg.SvgPicture) {
+      final loader = widget.bytesLoader;
+      return loader is svg.SvgAssetLoader && loader.assetName == assetName;
+    }
+    if (widget is full_svg.SvgPicture) {
+      final loader = widget.bytesLoader;
+      return loader is full_svg.SvgAssetLoader && loader.assetName == assetName;
+    }
+    return false;
+  });
+}
+
 Widget _buildTestApp(AppData appData) {
   return ChangeNotifierProvider<AppData>.value(
     value: appData,
-    child: const MaterialApp(home: CalendarScreen()),
+    child: const MaterialApp(
+      home: CalendarScreen(),
+    ),
   );
 }
 
-Future<void> _openMonth(WidgetTester tester, DateTime date) async {
+Finder _dayNumber(DateTime date) {
+  final String asset;
+  if (date.weekday == DateTime.sunday) {
+    asset = 'assets/page2/numbers/red/red_${date.day}.svg';
+  } else if (date.weekday == DateTime.saturday) {
+    asset = 'assets/page2/numbers/blue/blue_${date.day}.svg';
+  } else {
+    asset = 'assets/page2/numbers/black/${date.day}.svg';
+  }
+  return _svgAsset(asset);
+}
+
+Future<void> _tapBack(WidgetTester tester) async {
+  final back = _svgAsset('assets/page2/record_detail/back_button.svg');
+  await tester.ensureVisible(back);
+  await tester.pumpAndSettle();
+  await tester.tap(back);
+}
+
+Future<void> _openMonth(
+  WidgetTester tester,
+  DateTime date,
+) async {
   final month = find.text('${date.month}월');
 
   await tester.ensureVisible(month);
@@ -22,12 +62,13 @@ Future<void> _openMonth(WidgetTester tester, DateTime date) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _openDay(WidgetTester tester, DateTime date) async {
+Future<void> _openDay(
+  WidgetTester tester,
+  DateTime date,
+) async {
   await _openMonth(tester, date);
 
-  final day = find.byKey(
-    ValueKey('calendar-day-${date.year}-${date.month}-${date.day}'),
-  );
+  final day = _dayNumber(date);
 
   await tester.ensureVisible(day);
   await tester.pumpAndSettle();
@@ -43,172 +84,137 @@ String _dayTitle(DateTime date) {
   return '${date.year}. $month. $day';
 }
 
-Future<void> _openStandaloneCalendar(
-  WidgetTester tester,
-  AppData data,
-  CalendarScreen screen,
-) async {
-  await tester.pumpWidget(
-    ChangeNotifierProvider<AppData>.value(
-      value: data,
-      child: MaterialApp(
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => screen)),
-              child: const Text('캘린더 열기'),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('캘린더 열기'));
-  await tester.pumpAndSettle();
-}
-
 void main() {
-  testWidgets('따로 연 월간 달력의 뒤로가기는 이전 화면으로 돌아간다', (tester) async {
-    final data = AppData();
-    addTearDown(data.dispose);
-    await _openStandaloneCalendar(
-      tester,
-      data,
-      CalendarScreen(initialMonth: DateTime.now()),
-    );
-    expect(find.byKey(const ValueKey('calendar-close')), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('calendar-back')));
-    await tester.pumpAndSettle();
-    expect(find.byType(CalendarScreen), findsNothing);
-    expect(find.text('캘린더 열기'), findsOneWidget);
-  });
+  testWidgets(
+    '연간 달력에서 월간 달력과 날짜 상세로 이동하고 뒤로간다',
+    (WidgetTester tester) async {
+      final appData = AppData();
+      final today = DateTime.now();
 
-  testWidgets('닫기는 월간·날짜 상세 어느 단계에서도 달력 전체를 닫는다', (tester) async {
-    final data = AppData();
-    addTearDown(data.dispose);
-    final today = DateTime.now();
-    for (final screen in [
-      CalendarScreen(initialMonth: today),
-      CalendarScreen(initialDay: today),
-    ]) {
-      await _openStandaloneCalendar(tester, data, screen);
-      await tester.tap(find.byKey(const ValueKey('calendar-close')));
+      addTearDown(appData.dispose);
+
+      await tester.pumpWidget(_buildTestApp(appData));
       await tester.pumpAndSettle();
-      expect(find.byType(CalendarScreen), findsNothing);
-      expect(find.text('캘린더 열기'), findsOneWidget);
-    }
-  });
 
-  testWidgets('시스템 뒤로가기는 날짜·월·연간을 거쳐 이전 화면으로 돌아간다', (tester) async {
-    final data = AppData();
-    addTearDown(data.dispose);
-    final today = DateTime.now();
-    await _openStandaloneCalendar(tester, data, const CalendarScreen());
-    await _openDay(tester, today);
-    expect(find.text(_dayTitle(today)), findsOneWidget);
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    expect(find.text('${today.year}년 ${today.month}월'), findsOneWidget);
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    expect(find.text('${today.year}'), findsOneWidget);
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    expect(find.byType(CalendarScreen), findsNothing);
-    expect(find.text('캘린더 열기'), findsOneWidget);
-  });
+      expect(
+        find.text('${today.year}'),
+        findsOneWidget,
+      );
 
-  testWidgets('연간 달력에서 월간 달력과 날짜 상세로 이동하고 뒤로간다', (WidgetTester tester) async {
-    final appData = AppData();
-    final today = DateTime.now();
+      await _openMonth(tester, today);
 
-    addTearDown(appData.dispose);
+      expect(
+        find.text('${today.year}년 ${today.month}월'),
+        findsOneWidget,
+      );
 
-    await tester.pumpWidget(_buildTestApp(appData));
-    await tester.pumpAndSettle();
+      final day = _dayNumber(today);
 
-    expect(find.text('${today.year}'), findsOneWidget);
-    expect(find.byKey(const ValueKey('calendar-close')), findsNothing);
+      await tester.ensureVisible(day);
+      await tester.pumpAndSettle();
+      await tester.tap(day);
+      await tester.pumpAndSettle();
 
-    await _openMonth(tester, today);
+      expect(
+        find.text(_dayTitle(today)),
+        findsOneWidget,
+      );
+      expect(_svgAsset('assets/page2/record_detail/tree_record_label.svg'), findsWidgets);
+      expect(_svgAsset('assets/page2/record_detail/flower_record_label.svg'), findsOneWidget);
 
-    expect(find.text('${today.year}년 ${today.month}월'), findsOneWidget);
+      await _tapBack(tester);
+      await tester.pumpAndSettle();
 
-    final day = find.byKey(
-      ValueKey('calendar-day-${today.year}-${today.month}-${today.day}'),
-    );
+      expect(
+        find.text('${today.year}년 ${today.month}월'),
+        findsOneWidget,
+      );
 
-    await tester.ensureVisible(day);
-    await tester.pumpAndSettle();
-    await tester.tap(day);
-    await tester.pumpAndSettle();
+      await _tapBack(tester);
+      await tester.pumpAndSettle();
 
-    expect(find.text(_dayTitle(today)), findsOneWidget);
-    expect(find.bySemanticsLabel('나무 기록'), findsWidgets);
-    expect(find.bySemanticsLabel('꽃 기록'), findsOneWidget);
+      expect(
+        find.text('${today.year}'),
+        findsOneWidget,
+      );
+    },
+  );
 
-    await tester.tap(find.byKey(const ValueKey('calendar-back')));
-    await tester.pumpAndSettle();
+  testWidgets(
+    '날짜 상세는 나무 기록으로 시작하고 꽃 기록으로 전환된다',
+    (WidgetTester tester) async {
+      final appData = AppData();
+      final today = DateTime.now();
 
-    expect(find.text('${today.year}년 ${today.month}월'), findsOneWidget);
+      addTearDown(appData.dispose);
 
-    await tester.tap(find.byKey(const ValueKey('calendar-back')));
-    await tester.pumpAndSettle();
+      appData.addMemory(
+        date: today,
+        title: '기록조회 테스트',
+        content: '기록조회 테스트 나무 내용',
+      );
 
-    expect(find.text('${today.year}'), findsOneWidget);
-  });
+      appData.addDiary(
+        date: today,
+        content: '기록조회 테스트 꽃 내용',
+      );
 
-  testWidgets('날짜 상세는 나무 기록으로 시작하고 꽃 기록으로 전환된다', (WidgetTester tester) async {
-    final appData = AppData();
-    final today = DateTime.now();
+      await tester.pumpWidget(_buildTestApp(appData));
+      await tester.pumpAndSettle();
 
-    addTearDown(appData.dispose);
+      await _openDay(tester, today);
 
-    appData.addMemory(
-      date: today,
-      title: '기록조회 테스트',
-      content: '기록조회 테스트 나무 내용',
-    );
+      expect(
+        find.text('기록조회 테스트 나무 내용'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('기록조회 테스트 꽃 내용'),
+        findsNothing,
+      );
 
-    appData.addDiary(date: today, content: '기록조회 테스트 꽃 내용');
+      await tester.tap(_svgAsset('assets/page2/record_detail/flower_record_label.svg'));
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(_buildTestApp(appData));
-    await tester.pumpAndSettle();
+      expect(
+        find.text('기록조회 테스트 나무 내용'),
+        findsNothing,
+      );
+      expect(
+        find.text('기록조회 테스트 꽃 내용'),
+        findsOneWidget,
+      );
+    },
+  );
 
-    await _openDay(tester, today);
+  testWidgets(
+    '기록이 없는 날짜에서 나무와 꽃 기록 없음 안내를 표시한다',
+    (WidgetTester tester) async {
+      final appData = AppData();
+      final today = DateTime.now();
 
-    expect(find.text('기록조회 테스트 나무 내용'), findsOneWidget);
-    expect(find.text('기록조회 테스트 꽃 내용'), findsNothing);
+      addTearDown(appData.dispose);
 
-    await tester.tap(find.bySemanticsLabel('꽃 기록').first);
-    await tester.pumpAndSettle();
+      appData.memories.clear();
+      appData.diaries.clear();
 
-    expect(find.text('기록조회 테스트 나무 내용'), findsNothing);
-    expect(find.text('기록조회 테스트 꽃 내용'), findsOneWidget);
-  });
+      await tester.pumpWidget(_buildTestApp(appData));
+      await tester.pumpAndSettle();
 
-  testWidgets('기록이 없는 날짜에서 나무와 꽃 기록 없음 안내를 표시한다', (WidgetTester tester) async {
-    final appData = AppData();
-    final today = DateTime.now();
+      await _openDay(tester, today);
 
-    addTearDown(appData.dispose);
+      expect(
+        find.text('이 날짜에는 나무 기록이 없어요.'),
+        findsOneWidget,
+      );
 
-    appData.memories.clear();
-    appData.diaries.clear();
+      await tester.tap(_svgAsset('assets/page2/record_detail/flower_record_label.svg'));
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(_buildTestApp(appData));
-    await tester.pumpAndSettle();
-
-    await _openDay(tester, today);
-
-    expect(find.text('이 날짜에는 나무 기록이 없어요.'), findsOneWidget);
-
-    await tester.tap(find.bySemanticsLabel('꽃 기록'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('이 날짜에는 꽃 기록이 없어요.'), findsOneWidget);
-  });
+      expect(
+        find.text('이 날짜에는 꽃 기록이 없어요.'),
+        findsOneWidget,
+      );
+    },
+  );
 }

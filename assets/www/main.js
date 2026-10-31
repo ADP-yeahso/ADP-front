@@ -460,7 +460,10 @@ function createGardenGround() {
   const lawn = new THREE.Mesh(
     new THREE.PlaneGeometry(96, 96),
     new THREE.MeshBasicMaterial({
-      map: lawnTexture, transparent: true, depthWrite: false,
+      map: lawnTexture,
+      transparent: true,
+      depthWrite: false,
+      colorWrite: false,
     }),
   );
   lawn.rotation.x = -Math.PI / 2;

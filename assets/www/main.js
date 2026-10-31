@@ -142,13 +142,14 @@ let flowerBrowseGroup = null;
 let selectedFlowerIndex = -1;
 let previewCatalogController = null;
 
-// Preserve the original composition after its fixed polar angle was applied.
-const defaultCameraPos = new THREE.Vector3().setFromSphericalCoords(
-  Math.hypot(35, 50),
-  Math.PI / 3.2,
-  0,
-);
 const origin = new THREE.Vector3(0, 0, 0);
+// 기본 구도에서 정원이 화면 아래쪽에 보이도록 조정
+const defaultCameraTarget = new THREE.Vector3(0, 10, 0);
+const defaultCameraPos = new THREE.Vector3().setFromSphericalCoords(
+  70,
+  THREE.MathUtils.degToRad(65),
+  THREE.MathUtils.degToRad(0),
+).add(defaultCameraTarget);
 const defaultMinZoomDistance = 5;
 const maxOrbitCenterRadius = 32; // Flowers are placed within 30 world units.
 const zoomPointers = new Map();
@@ -360,7 +361,7 @@ function init() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
-  controls.target.copy(origin);
+  controls.target.copy(defaultCameraTarget);
   controls.enablePan = false; // Move the center through intentional zoom, not free panning.
   controls.zoomToCursor = true; // OrbitControls also uses the midpoint of a touch pinch.
   controls.screenSpacePanning = false; // Keep the moving orbit center on the garden plane.
@@ -1317,9 +1318,9 @@ window.resetCamera = function () {
   });
 
   gsap.to(controls.target, {
-    x: origin.x,
-    y: origin.y,
-    z: origin.z,
+    x: defaultCameraTarget.x,
+    y: defaultCameraTarget.y,
+    z: defaultCameraTarget.z,
     duration: 1.5,
     ease: "power3.inOut",
     onUpdate: requestRender,
@@ -1768,7 +1769,7 @@ window.clearGardenContent = function () {
   controls.enabled = isGardenViewerActive();
 
   camera.position.copy(defaultCameraPos);
-  controls.target.copy(origin);
+  controls.target.copy(defaultCameraTarget);
   controls.update();
 
   const oldFlowers = flowerMeshes;

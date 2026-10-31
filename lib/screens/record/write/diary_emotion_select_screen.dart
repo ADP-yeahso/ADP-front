@@ -68,7 +68,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     [
       EmotionModel(name: '사랑스러움', color: Color(0xFFFF9131)),
       EmotionModel(name: '다행스러움', color: Color(0xFFFFE367)),
-      EmotionModel(name: '무력감', color: Color(0xFF5EA7FF)),
+      EmotionModel(name: '무력감', color: Color(0xFFE36887)),
     ],
   ];
 

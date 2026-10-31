@@ -8,6 +8,7 @@ import 'profile/profile_screen.dart';
 import 'record/record_choice_sheet.dart';
 import 'gallery/gallery_screen.dart';
 import '../utils/garden_route_observers.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -95,6 +96,7 @@ class _RootShellState extends State<RootShell> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: _index == 0,
       body: Navigator(
         key: _navigatorKey,
         observers: [_gardenInnerRouteObserver],
@@ -126,55 +128,118 @@ class _RootShellState extends State<RootShell> with RouteAware {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openRecordChoice,
-        elevation: 2,
-        backgroundColor: Theme.of(context).primaryColor,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, size: 32, color: Colors.white),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              // 1. 홈
-              _buildNavItem(
-                index: 0,
-                icon: Icons.home_outlined,
-                selectedIcon: Icons.home,
-                label: '홈',
+      bottomNavigationBar: _buildBottomBar(),
+    );
+  }
+  Widget _buildBottomBar() {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 원본 프레임 너비 315를 기준으로 전체 비율 유지
+            final scale = constraints.maxWidth / 315;
+            final barHeight = 68 * scale;
+            final barTop = 32 * scale;
+            final plusWidth = 64 * scale;
+            final plusHeight = 66 * scale;
+            final iconSize = 35 * scale;
+
+            return SizedBox(
+              width: constraints.maxWidth,
+              height: barTop + barHeight,
+              child: Stack(
+                children: [
+                  // 흰색 프레임과 네 개의 탭
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: barTop,
+                    height: barHeight,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        IgnorePointer(
+                          child: SvgPicture.asset(
+                            'assets/bottom_bar/bottom_bar_frame.svg',
+                            fit: BoxFit.fill,
+                            excludeFromSemantics: true,
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12 * scale,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildNavItem(
+                                  index: 0,
+                                  assetName: 'home',
+                                  label: '홈',
+                                  iconSize: iconSize,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildNavItem(
+                                  index: 1,
+                                  assetName: 'record',
+                                  label: '기억 보기',
+                                  iconSize: iconSize,
+                                ),
+                              ),
+
+                              // 중앙 + 버튼 아래 공간
+                              SizedBox(width: plusWidth),
+
+                              Expanded(
+                                child: _buildNavItem(
+                                  index: 2,
+                                  assetName: 'gallery',
+                                  label: '갤러리',
+                                  iconSize: iconSize,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildNavItem(
+                                  index: 3,
+                                  assetName: 'setting',
+                                  label: '설정',
+                                  iconSize: iconSize,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 프레임 위쪽에 반쯤 걸치는 + 버튼
+                  Positioned(
+                    top: 0,
+                    left: (constraints.maxWidth - plusWidth) / 2,
+                    width: plusWidth,
+                    height: plusHeight,
+                    child: Semantics(
+                      button: true,
+                      label: '기록하기',
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _openRecordChoice,
+                        child: SvgPicture.asset(
+                          'assets/bottom_bar/plus_button.svg',
+                          fit: BoxFit.contain,
+                          excludeFromSemantics: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              // 2. 기억 보기
-              _buildNavItem(
-                index: 1,
-                icon: Icons.park_outlined,
-                selectedIcon: Icons.park,
-                label: '기억 보기',
-              ),
-              // 가운데 + 버튼을 위한 여백
-              const SizedBox(width: 48),
-              // 3. 갤러리
-              _buildNavItem(
-                index: 2,
-                icon: Icons.photo_library_outlined,
-                selectedIcon: Icons.photo_library,
-                label: '갤러리',
-              ),
-              // 4. Setting
-              _buildNavItem(
-                index: 3,
-                icon: Icons.settings_outlined,
-                selectedIcon: Icons.settings,
-                label: 'Setting',
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -182,43 +247,36 @@ class _RootShellState extends State<RootShell> with RouteAware {
 
   Widget _buildNavItem({
     required int index,
-    required IconData icon,
-    required IconData selectedIcon,
+    required String assetName,
     required String label,
+    required double iconSize,
   }) {
     final isSelected = _index == index;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey[600];
+    final state = isSelected ? 'after' : 'before';
 
-    return InkWell(
-      onTap: () {
-        _navigatorKey.currentState?.popUntil((route) => route.isFirst);
-        _selectTab(index);
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isSelected ? selectedIcon : icon,
-              color: color,
-              size: 24,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: color,
-              ),
-            ),
-          ],
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          // 기존 동작 유지: 내부 상세 화면을 닫고 탭 이동
+          _navigatorKey.currentState?.popUntil(
+            (route) => route.isFirst,
+          );
+          _selectTab(index);
+        },
+        child: Center(
+          child: SvgPicture.asset(
+            'assets/bottom_bar/${assetName}_click_$state.svg',
+            width: iconSize,
+            height: iconSize,
+            fit: BoxFit.contain,
+            excludeFromSemantics: true,
+          ),
         ),
       ),
     );
   }
 }
-

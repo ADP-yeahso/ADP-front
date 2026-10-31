@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../models/comment.dart';
 import '../models/diary.dart';
+import '../models/emergency_contact.dart';
 import '../models/emotions.dart';
 import '../models/flower.dart';
 import '../models/groups.dart';
 import '../models/media.dart';
+import '../models/medication.dart';
 import '../models/memory.dart';
 import '../models/patients.dart';
 import '../models/users.dart';
@@ -48,11 +50,23 @@ class AppData extends ChangeNotifier {
     patientName: '고강민',
     patientBirthDate: 20060515,
     createdAt: DateTime(2024, 1, 1),
+    dementiaDiagnosisYearMonth: 202403,
+    majorDiseases: const ['고혈압', '당뇨'],
+    primaryHospital: '○○대학교병원',
+    medicalDepartment: '신경과',
+    medications: [
+      Medication(name: '도네페질', dosage: '1일 1회'),
+      Medication(name: '혈압약', dosage: '1일 1회'),
+    ],
+    emergencyContacts: [
+      EmergencyContact(label: '보호자', phoneNumber: '010-1234-5678'),
+      EmergencyContact(label: '가족 연락처', phoneNumber: '010-2345-6789'),
+    ],
   );
 
   Patient get patient => _patient;
 
-  final Group group = Group(
+  Group group = Group(
     id: 1,
     inviteCode: 'ABCD12',
     groupName: '고강민 가족',
@@ -66,6 +80,7 @@ class AppData extends ChangeNotifier {
       userId: 1,
       groupId: 1,
       patientsNickname: '아버지',
+      relationship: '아버지',
       joinedAt: DateTime(2024, 1, 1),
     ),
     UserGroup(
@@ -73,6 +88,7 @@ class AppData extends ChangeNotifier {
       userId: 2,
       groupId: 1,
       patientsNickname: '아버지',
+      relationship: '아버지',
       joinedAt: DateTime(2024, 1, 1),
     ),
     UserGroup(
@@ -80,9 +96,23 @@ class AppData extends ChangeNotifier {
       userId: 3,
       groupId: 1,
       patientsNickname: '시아버지',
+      relationship: '시아버지',
       joinedAt: DateTime(2024, 1, 1),
     ),
   ];
+
+  void updateGroupName(String name) {
+    if (name.trim().isEmpty) return;
+    group = Group(
+      id: group.id,
+      inviteCode: group.inviteCode,
+      groupName: name.trim(),
+      groupProfileImageUrl: group.groupProfileImageUrl,
+      members: group.members,
+      createdAt: group.createdAt,
+    );
+    notifyListeners();
+  }
 
   /// 현재 유저가 환자를 부르는 호칭 (UserGroup.patientsNickname 기반)
   String get patientRelationLabel {
@@ -93,6 +123,32 @@ class AppData extends ChangeNotifier {
     } catch (_) {
       return '환자';
     }
+  }
+
+  /// 현재 로그인 유저와 환자의 관계 (UserGroup.relationship 기반)
+  String get patientRelationshipLabel {
+    try {
+      final ug = userGroups.firstWhere(
+        (ug) => ug.userId == currentUserId && ug.groupId == _patient.groupId,
+      );
+      return ug.relationship.isNotEmpty ? ug.relationship : '관계 미설정';
+    } catch (_) {
+      return '관계 미설정';
+    }
+  }
+
+  /// 치매 진단 시기 표시용 라벨 (YYYYMM -> YYYY년 M월)
+  String get dementiaDiagnosisDateLabel {
+    final ym = _patient.dementiaDiagnosisYearMonth;
+    if (ym == null) return '미등록';
+    final str = ym.toString();
+    if (str.length != 6) return '미등록';
+    final year = int.tryParse(str.substring(0, 4));
+    final month = int.tryParse(str.substring(4, 6));
+    if (year == null || month == null || month < 1 || month > 12) {
+      return '미등록';
+    }
+    return '$year년 $month월';
   }
 
   /// userId가 현재 로그인 유저인지 확인
@@ -171,16 +227,40 @@ class AppData extends ChangeNotifier {
   }
 
   void updatePatientInfo({
+    String? dementiaType,
+    String? diseaseStage,
+    String? behaviorPatterns,
+    String? livingArrangement,
     required String patientName,
     required int patientBirthDate,
     required String patientsNickname,
+    String? relationship,
+    int? dementiaDiagnosisYearMonth,
+    List<String>? majorDiseases,
+    String? primaryHospital,
+    String? medicalDepartment,
+    List<Medication>? medications,
+    List<EmergencyContact>? emergencyContacts,
+    String? profileImageUrl,
   }) {
     _patient = Patient(
+      dementiaType: dementiaType ?? _patient.dementiaType,
+      diseaseStage: diseaseStage ?? _patient.diseaseStage,
+      behaviorPatterns: behaviorPatterns ?? _patient.behaviorPatterns,
+      livingArrangement: livingArrangement ?? _patient.livingArrangement,
       id: _patient.id,
       groupId: _patient.groupId,
       patientName: patientName,
       patientBirthDate: patientBirthDate,
       createdAt: _patient.createdAt,
+      profileImageUrl: profileImageUrl ?? _patient.profileImageUrl,
+      dementiaDiagnosisYearMonth:
+          dementiaDiagnosisYearMonth ?? _patient.dementiaDiagnosisYearMonth,
+      majorDiseases: majorDiseases ?? _patient.majorDiseases,
+      primaryHospital: primaryHospital ?? _patient.primaryHospital,
+      medicalDepartment: medicalDepartment ?? _patient.medicalDepartment,
+      medications: medications ?? _patient.medications,
+      emergencyContacts: emergencyContacts ?? _patient.emergencyContacts,
     );
 
     final relationIndex = userGroups.indexWhere(
@@ -197,6 +277,7 @@ class AppData extends ChangeNotifier {
         userId: currentRelation.userId,
         groupId: currentRelation.groupId,
         patientsNickname: patientsNickname,
+        relationship: relationship ?? currentRelation.relationship,
         joinedAt: currentRelation.joinedAt,
       );
     }
@@ -703,7 +784,16 @@ class AppData extends ChangeNotifier {
       title: '옛 동네 방문',
       content: '예전에 살던 동네를 차로 둘러보았다. 기억이 조금씩 나시는 듯했다.',
       mediaList: [
-        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+        Media(
+          id: 0,
+          memoryId: null,
+          diaryId: null,
+          fileUrl: 'dummy.jpg',
+          fileType: 'image',
+          duration: 0,
+          sortOrder: 1,
+          createdAt: DateTime.now(),
+        ),
       ],
     );
     addMemory(
@@ -716,7 +806,16 @@ class AppData extends ChangeNotifier {
       title: '손주와의 영상통화',
       content: '손주와 영상통화를 하며 활짝 웃으시는 모습을 보니 내 마음도 따뜻해졌다.',
       mediaList: [
-        Media(id: 0, memoryId: null, diaryId: null, fileUrl: 'dummy.jpg', fileType: 'image', duration: 0, sortOrder: 1, createdAt: DateTime.now())
+        Media(
+          id: 0,
+          memoryId: null,
+          diaryId: null,
+          fileUrl: 'dummy.jpg',
+          fileType: 'image',
+          duration: 0,
+          sortOrder: 1,
+          createdAt: DateTime.now(),
+        ),
       ],
     );
 

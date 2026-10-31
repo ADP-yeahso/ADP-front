@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../data/garden_nav_controller.dart';
+import '../utils/garden_route_observers.dart';
 import 'calendar/calendar_screen.dart';
+import 'gallery/gallery_screen.dart';
 import 'garden/garden_screen.dart';
 import 'profile/profile_screen.dart';
 import 'record/record_choice_sheet.dart';
-import 'gallery/gallery_screen.dart';
-import '../utils/garden_route_observers.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -20,13 +20,20 @@ class RootShell extends StatefulWidget {
 class _RootShellState extends State<RootShell> with RouteAware {
   final ValueNotifier<int> _tabIndex = ValueNotifier<int>(0);
   final ValueNotifier<bool> _rootRouteVisible = ValueNotifier<bool>(true);
-
-  final GlobalKey<NavigatorState> _navigatorKey =
-      GlobalKey<NavigatorState>();
-
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   final RouteObserver<PageRoute<dynamic>> _gardenInnerRouteObserver =
       RouteObserver<PageRoute<dynamic>>();
 
+  late final _SettingsRouteObserver _settingsRouteObserver =
+      _SettingsRouteObserver((hide) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _hideSettingsNav != hide) {
+        setState(() => _hideSettingsNav = hide);
+      }
+    });
+  });
+  int _previousTabIndex = 0;
+  bool _hideSettingsNav = false;
   PageRoute<dynamic>? _observedRootRoute;
   GardenNavController? _navController;
 
@@ -62,9 +69,11 @@ class _RootShellState extends State<RootShell> with RouteAware {
   }
 
   void _selectTab(int index) {
+    _navigatorKey.currentState?.popUntil((route) => route.isFirst);
     if (_index == index) return;
 
     setState(() {
+      _previousTabIndex = _index;
       _tabIndex.value = index;
     });
   }
@@ -96,41 +105,43 @@ class _RootShellState extends State<RootShell> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: _index == 0,
+      extendBody: true,
       body: Navigator(
         key: _navigatorKey,
-        observers: [_gardenInnerRouteObserver],
+        observers: [_gardenInnerRouteObserver, _settingsRouteObserver],
         onGenerateRoute: (settings) => MaterialPageRoute(
           settings: settings,
           builder: (_) => ValueListenableBuilder<int>(
             valueListenable: _tabIndex,
-            builder: (context, index, child) {
-              return ValueListenableBuilder<bool>(
-                valueListenable: _rootRouteVisible,
-                builder: (context, routeVisible, child) {
-                  return IndexedStack(
-                    index: index,
-                    children: [
-                      GardenScreen(
-                        key: const ValueKey('garden-screen'),
-                        isActive: index == 0,
-                        isRouteVisible: routeVisible,
-                        routeObserver: _gardenInnerRouteObserver,
-                      ),
-                      const CalendarScreen(),
-                      const GalleryScreen(),
-                      const ProfileScreen(),
-                    ],
-                  );
-                },
-              );
-            },
+            builder: (context, index, child) => ValueListenableBuilder<bool>(
+              valueListenable: _rootRouteVisible,
+              builder: (context, routeVisible, child) => IndexedStack(
+                index: index,
+                children: [
+                  GardenScreen(
+                    key: const ValueKey('garden-screen'),
+                    isActive: index == 0,
+                    isRouteVisible: routeVisible,
+                    routeObserver: _gardenInnerRouteObserver,
+                  ),
+                  const CalendarScreen(),
+                  const GalleryScreen(),
+                  ProfileScreen(
+                    onBack: () => _selectTab(_previousTabIndex),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomBar(),
+      bottomNavigationBar: _index == 3 && _hideSettingsNav
+          ? null
+          : _buildBottomBar(),
     );
   }
+
+  // front-develop에 적용된 SVG 하단 바를 유지.
   Widget _buildBottomBar() {
     return SafeArea(
       top: false,
@@ -138,7 +149,6 @@ class _RootShellState extends State<RootShell> with RouteAware {
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // 원본 프레임 너비 315를 기준으로 전체 비율 유지
             final scale = constraints.maxWidth / 315;
             final barHeight = 68 * scale;
             final barTop = 32 * scale;
@@ -151,7 +161,6 @@ class _RootShellState extends State<RootShell> with RouteAware {
               height: barTop + barHeight,
               child: Stack(
                 children: [
-                  // 흰색 프레임과 네 개의 탭
                   Positioned(
                     left: 0,
                     right: 0,
@@ -168,9 +177,7 @@ class _RootShellState extends State<RootShell> with RouteAware {
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12 * scale,
-                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 12 * scale),
                           child: Row(
                             children: [
                               Expanded(
@@ -189,10 +196,7 @@ class _RootShellState extends State<RootShell> with RouteAware {
                                   iconSize: iconSize,
                                 ),
                               ),
-
-                              // 중앙 + 버튼 아래 공간
                               SizedBox(width: plusWidth),
-
                               Expanded(
                                 child: _buildNavItem(
                                   index: 2,
@@ -215,8 +219,6 @@ class _RootShellState extends State<RootShell> with RouteAware {
                       ],
                     ),
                   ),
-
-                  // 프레임 위쪽에 반쯤 걸치는 + 버튼
                   Positioned(
                     top: 0,
                     left: (constraints.maxWidth - plusWidth) / 2,
@@ -260,13 +262,7 @@ class _RootShellState extends State<RootShell> with RouteAware {
       label: label,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () {
-          // 기존 동작 유지: 내부 상세 화면을 닫고 탭 이동
-          _navigatorKey.currentState?.popUntil(
-            (route) => route.isFirst,
-          );
-          _selectTab(index);
-        },
+        onTap: () => _selectTab(index),
         child: Center(
           child: SvgPicture.asset(
             'assets/bottom_bar/${assetName}_click_$state.svg',
@@ -277,6 +273,30 @@ class _RootShellState extends State<RootShell> with RouteAware {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SettingsRouteObserver extends NavigatorObserver {
+  _SettingsRouteObserver(this.onChange);
+
+  final ValueChanged<bool> onChange;
+
+  @override
+  void didPush(
+    Route<dynamic> route,
+    Route<dynamic>? previousRoute,
+  ) {
+    onChange(!route.isFirst);
+  }
+
+  @override
+  void didPop(
+    Route<dynamic> route,
+    Route<dynamic>? previousRoute,
+  ) {
+    onChange(
+      previousRoute != null && !previousRoute.isFirst,
     );
   }
 }

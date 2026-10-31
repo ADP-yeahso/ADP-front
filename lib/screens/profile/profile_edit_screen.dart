@@ -91,8 +91,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   Widget build(BuildContext context) {
     final data = context.watch<AppData>();
     return SettingsPage(
-      headerAsset: 'assets/settings/edit_profile/top_bar.png',
-      title: const SizedBox.shrink(),
+      title: settingsTitle('edit_profile', '프로필 수정'),
       child: Form(
         key: _formKey,
         child: Column(
@@ -119,7 +118,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     Expanded(
                       child: Text(
                         data.patientRelationshipLabel,
-                        style: const TextStyle(fontSize: 14),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ],
@@ -133,7 +136,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       child: TextFormField(
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
-                        style: const TextStyle(fontSize: 14),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
                         decoration: const InputDecoration(
                           filled: false,
                           contentPadding: EdgeInsets.zero,
@@ -163,6 +170,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   group: 'edit_profile',
                   icon: 'icon_edit',
                   text: 'text_change_password',
+                  textHeight: 13,
                   label: '비밀번호 수정',
                   onTap: () async {
                     final value = await settingsEditText(
@@ -183,6 +191,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   group: 'edit_profile',
                   icon: 'icon_delete',
                   text: 'text_delete_account',
+                  textHeight: 13,
                   label: '계정 삭제',
                   onTap: () =>
                       settingsUnavailable(context, '계정 삭제는 현재 지원되지 않아요.'),

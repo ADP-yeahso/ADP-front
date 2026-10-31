@@ -11,7 +11,7 @@ class PatientInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = context.watch<AppData>();
     return SettingsPage(
-      title: settingsSvg('patient_info', 'text_patient_info', height: 34),
+      title: settingsTitle('patient_info', '환자 정보'),
       child: Column(
         children: [
           SettingsIdentity(

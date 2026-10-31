@@ -41,9 +41,9 @@ class EmotionAnalysisMenu extends StatelessWidget {
                     const Text(
                       '감정 분석하기',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: settingsGreen,
+                        color: Colors.black,
                       ),
                     ),
               ],

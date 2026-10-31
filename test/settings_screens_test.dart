@@ -90,6 +90,9 @@ void main() {
         final font = FontLoader('Pretendard')
           ..addFont(rootBundle.load('assets/fonts/Pretendard-Regular.ttf'));
         await font.load();
+        final nameFont = FontLoader('OwnglyphMeetme')
+          ..addFont(rootBundle.load('assets/fonts/OwnglyphMeetme-Regular.ttf'));
+        await nameFont.load();
         final boundary = GlobalKey();
         await tester.pumpWidget(
           ChangeNotifierProvider(

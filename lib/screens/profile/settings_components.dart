@@ -4,6 +4,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 const settingsBackground = Color(0xFFFFFBF0);
 const settingsGreen = Color(0xFF1E3815);
 
+Widget settingsTitle(String group, String label) => Semantics(
+  header: true,
+  label: label,
+  excludeSemantics: true,
+  child: settingsSvg(group, 'header_title', height: 27.5),
+);
+
 Widget settingsSvg(
   String group,
   String name, {
@@ -36,7 +43,11 @@ class SettingsPage extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                height: 66,
+                height: headerAsset != null
+                    ? (MediaQuery.sizeOf(context).width.clamp(0, 430) *
+                          69 /
+                          351)
+                    : 66,
                 decoration: const BoxDecoration(
                   border: Border(bottom: BorderSide(color: Color(0xFFE8E5DA))),
                 ),
@@ -44,7 +55,10 @@ class SettingsPage extends StatelessWidget {
                   children: [
                     if (headerAsset != null)
                       Positioned.fill(
-                        child: Image.asset(headerAsset!, fit: BoxFit.fill),
+                        child: SvgPicture.asset(
+                          headerAsset!.replaceAll('.png', '.svg'),
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     Center(child: title),
                     Positioned(
@@ -105,11 +119,10 @@ class SettingsPanel extends StatelessWidget {
                 children: [
                   for (var i = 0; i < children.length; i++) ...[
                     if (i > 0)
-                      settingsSvg(
-                        'my_page',
-                        'line_info_divider',
+                      const Divider(
                         height: 1,
-                        width: double.infinity,
+                        thickness: 1,
+                        color: Color(0x80386622),
                       ),
                     Expanded(child: children[i]),
                   ],
@@ -131,9 +144,11 @@ class SettingsAction extends StatelessWidget {
     required this.text,
     required this.label,
     required this.onTap,
+    this.textHeight = 15,
   });
   final String group, icon, text, label;
   final VoidCallback onTap;
+  final double textHeight;
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
@@ -146,7 +161,7 @@ class SettingsAction extends StatelessWidget {
           children: [
             settingsSvg(group, icon, width: 17, height: 17),
             const SizedBox(width: 6),
-            settingsSvg(group, text, height: 13),
+            settingsSvg(group, text, height: textHeight),
           ],
         ),
       ),
@@ -197,9 +212,10 @@ class SettingsIdentity extends StatelessWidget {
                       ],
                       Text(
                         name,
-                        style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
+                        style: TextStyle(
+                          fontFamily: 'OwnglyphMeetme',
+                          fontSize: 24,
+                          fontWeight: FontWeight.w400,
                           color: settingsGreen,
                         ),
                       ),
@@ -224,8 +240,8 @@ class SettingsIdentity extends StatelessWidget {
                   child: settingsSvg(
                     'my_page',
                     'text_edit',
-                    width: 39,
-                    height: 18,
+                    width: 45.5,
+                    height: 21,
                   ),
                 ),
               ),
@@ -248,65 +264,95 @@ class SettingsEditIdentity extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onPhoto;
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      const SizedBox(height: 8),
-      SizedBox(
-        width: 130,
-        height: 130,
-        child: Stack(
-          children: [
-            Image.asset(
-              'assets/settings/$group/illustration.png',
-              width: 130,
-              height: 130,
-            ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Semantics(
-                label: '사진 변경',
-                button: true,
-                child: InkWell(
-                  onTap: onPhoto,
-                  child: settingsSvg(group, 'icon_plus', width: 28, height: 28),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final scale = group == 'edit_profile' ? constraints.maxWidth / 315 : 1.0;
+      return Column(
+        children: [
+          SizedBox(height: 8 * scale),
+          SizedBox(
+            width: 130 * scale,
+            height: 130 * scale,
+            child: Stack(
+              children: [
+                Image.asset(
+                  'assets/settings/$group/illustration.png',
+                  width: 130 * scale,
+                  height: 130 * scale,
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 8),
-      SizedBox(
-        width: 160,
-        child: TextFormField(
-          controller: controller,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            color: settingsGreen,
-          ),
-          decoration: InputDecoration(
-            filled: false,
-            contentPadding: const EdgeInsets.symmetric(vertical: 4),
-            isDense: true,
-            border: InputBorder.none,
-            suffixIconConstraints: const BoxConstraints(maxWidth: 18),
-            suffixIcon: settingsSvg(
-              group,
-              'icon_edit_name',
-              width: 14,
-              height: 14,
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Semantics(
+                    label: '사진 변경',
+                    button: true,
+                    child: InkWell(
+                      onTap: onPhoto,
+                      child: settingsSvg(
+                        group,
+                        'icon_plus',
+                        width: 28 * scale,
+                        height: 28 * scale,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          validator: (value) =>
-              value == null || value.trim().isEmpty ? '이름을 입력해 주세요' : null,
-        ),
-      ),
-      settingsSvg(group, 'line_edit_name', width: 137, height: 3),
-      const SizedBox(height: 18),
-    ],
+          SizedBox(height: 8 * scale),
+          SizedBox(
+            width: 180 * scale,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 137 * scale,
+                  child: TextFormField(
+                    controller: controller,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'OwnglyphMeetme',
+                      fontSize: 24 * scale,
+                      fontWeight: FontWeight.w400,
+                      color: settingsGreen,
+                    ),
+                    decoration: InputDecoration(
+                      filled: false,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      isDense: true,
+                      border: InputBorder.none,
+                    ),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? '이름을 입력해 주세요'
+                        : null,
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: ExcludeSemantics(
+                    child: settingsSvg(
+                      group,
+                      'icon_edit_name',
+                      width: 14 * scale,
+                      height: 14 * scale,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          settingsSvg(
+            group,
+            'line_edit_name',
+            width: 137 * scale,
+            height: 3 * scale,
+          ),
+          SizedBox(height: 18 * scale),
+        ],
+      );
+    },
   );
 }
 

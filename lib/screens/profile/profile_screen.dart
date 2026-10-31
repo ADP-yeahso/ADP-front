@@ -56,7 +56,7 @@ class ProfileScreen extends StatelessWidget {
       onTap: tap,
     );
     return SettingsPage(
-      title: settingsSvg('my_page', 'text_my_page', height: 55),
+      title: settingsTitle('my_page', '마이페이지'),
       child: Column(
         children: [
           SettingsIdentity(

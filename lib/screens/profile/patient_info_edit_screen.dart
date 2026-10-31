@@ -108,7 +108,7 @@ class _PatientInfoEditScreenState extends State<PatientInfoEditScreen> {
 
   @override
   Widget build(BuildContext context) => SettingsPage(
-    title: settingsSvg('edit_patient', 'text_edit_patient_info', height: 55),
+    title: settingsTitle('edit_patient', '환자 정보 수정'),
     child: Form(
       key: form,
       child: Column(

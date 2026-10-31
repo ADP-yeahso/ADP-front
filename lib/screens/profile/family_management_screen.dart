@@ -63,7 +63,7 @@ class FamilyManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = context.watch<AppData>();
     return SettingsPage(
-      title: settingsSvg('group_info', 'text_group_info', height: 55),
+      title: settingsTitle('group_info', '그룹 정보'),
       child: Column(
         children: [
           SettingsIdentity(
@@ -103,6 +103,7 @@ class FamilyManagementScreen extends StatelessWidget {
                     Text(
                       user.name,
                       style: const TextStyle(
+                        fontFamily: 'Pretendard',
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),

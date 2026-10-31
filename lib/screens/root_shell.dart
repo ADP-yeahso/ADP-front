@@ -135,7 +135,7 @@ class _RootShellState extends State<RootShell> with RouteAware {
           ),
         ),
       ),
-      bottomNavigationBar: _hideSettingsNav
+      bottomNavigationBar: _index == 3 && _hideSettingsNav
           ? null
           : _buildBottomBar(),
     );
@@ -279,15 +279,24 @@ class _RootShellState extends State<RootShell> with RouteAware {
 
 class _SettingsRouteObserver extends NavigatorObserver {
   _SettingsRouteObserver(this.onChange);
+
   final ValueChanged<bool> onChange;
 
   @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    onChange(route.settings.name == 'edit_patient');
+  void didPush(
+    Route<dynamic> route,
+    Route<dynamic>? previousRoute,
+  ) {
+    onChange(!route.isFirst);
   }
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    onChange(previousRoute?.settings.name == 'edit_patient');
+  void didPop(
+    Route<dynamic> route,
+    Route<dynamic>? previousRoute,
+  ) {
+    onChange(
+      previousRoute != null && !previousRoute.isFirst,
+    );
   }
 }

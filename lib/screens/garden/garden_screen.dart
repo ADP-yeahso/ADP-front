@@ -73,6 +73,8 @@ class _GardenScreenState extends State<GardenScreen>
   bool _releaseRequested = false;
   bool _retryRequired = false;
   String? _viewerError;
+  String? _loadedGardenDataSignature;
+  bool _gardenDataReloadScheduled = false;
 
   DateTime get _currentMonth => gardenMonthAt(_anchor, _pageIndex);
 
@@ -585,6 +587,7 @@ class _GardenScreenState extends State<GardenScreen>
 
     final appData = context.read<AppData>();
     final diaries = appData.diariesForGarden(_gardenAsOf);
+    _loadedGardenDataSignature = _gardenDataSignature(appData);
 
     final realDiaryPayload = diaries
         .map(
@@ -684,6 +687,36 @@ class _GardenScreenState extends State<GardenScreen>
     );
   }
 
+  String _gardenDataSignature(AppData appData) => appData
+      .diariesForGarden(_gardenAsOf)
+      .map((diary) => '${diary.id}:${diary.flowerType.emotionId.id}')
+      .join(',');
+
+  void _scheduleGardenDataReload(AppData appData) {
+    final loadedSignature = _loadedGardenDataSignature;
+    if (loadedSignature == null ||
+        loadedSignature == _gardenDataSignature(appData) ||
+        _gardenDataReloadScheduled) {
+      return;
+    }
+
+    _gardenDataReloadScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _gardenDataReloadScheduled = false;
+      if (!_shouldRun) return;
+
+      final currentData = context.read<AppData>();
+      if (_loadedGardenDataSignature == _gardenDataSignature(currentData)) {
+        return;
+      }
+
+      if (_isFlowerBrowsing) {
+        setState(_resetFlowerBrowse);
+      }
+      _reload3DScene();
+    });
+  }
+
   Future<void> _runGardenDiagnosticAction(String action) async {
     if (!_gardenDiagnosticsEnabled || !mounted) {
       return;
@@ -737,6 +770,7 @@ class _GardenScreenState extends State<GardenScreen>
   @override
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
+    _scheduleGardenDataReload(appData);
     final month = _currentMonth;
     final controller = _session?.controller;
 

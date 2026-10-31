@@ -189,6 +189,7 @@ void main() {
       expect(paths, ['/api/v1/memory-records/81', '/api/v1/diaries/92']);
       expect(data.memories, isEmpty);
       expect(data.diaries, isEmpty);
+      expect(data.diariesForGarden(DateTime(2026, 10, 31)), isEmpty);
       expect(data.sharedMemories, isEmpty);
     },
   );

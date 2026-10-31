@@ -9,6 +9,7 @@ import '../../data/app_data.dart';
 import '../../models/diary.dart';
 import '../../models/memory.dart';
 import '../../models/media.dart';
+import '../../services/api_service.dart';
 import '../garden/entry_detail_sheet.dart';
 import 'record_text_edit_screen.dart';
 
@@ -172,10 +173,17 @@ class _DayRecordDetailViewState extends State<DayRecordDetailView> {
     final isTree = _selectedType == _RecordViewType.tree;
 
     if (action == _MoreAction.delete) {
-      if (isTree) {
-        data.deleteMemory(id);
-      } else {
-        data.deleteDiary(id);
+      try {
+        if (isTree) {
+          await data.deleteMemory(id);
+        } else {
+          await data.deleteDiary(id);
+        }
+      } on ApiException catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
       return;
     }

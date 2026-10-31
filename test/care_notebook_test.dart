@@ -180,21 +180,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetViewInsets);
       await tester.pumpWidget(
-        app(
-          AppData(),
-          Scaffold(
-            body: const CareNotebookWriteScreen(),
-            floatingActionButton: FloatingActionButton(
-              onPressed: () {},
-              child: const Icon(Icons.add),
-            ),
-            floatingActionButtonLocation:
-                FloatingActionButtonLocation.centerDocked,
-            bottomNavigationBar: const BottomAppBar(
-              child: SizedBox(height: 60),
-            ),
-          ),
-        ),
+        app(AppData(), const CareNotebookWriteScreen()),
       );
       final before = tester.getSize(button('식사 좋음'));
       final beforeImage = tester.getSize(
@@ -238,24 +224,53 @@ void main() {
       await tester.pumpAndSettle();
       tester.view.viewInsets = const FakeViewPadding(bottom: 280);
       await tester.pumpAndSettle();
-      final field = find.byType(TextField).at(2);
-      await tester.ensureVisible(field);
-      await tester.enterText(field, '변경 내용 유지');
-      await tester.pumpAndSettle();
+
       final scroll = find
           .descendant(
             of: find.byKey(const ValueKey('care-write-scroll')),
             matching: find.byType(Scrollable),
           )
           .first;
-      await tester.scrollUntilVisible(button('저장하기'), 160, scrollable: scroll);
+
+      final field = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.labelText == '진료 내용',
+      );
+
+      final saveBeforeScroll = tester.getRect(button('저장하기'));
+
+      await tester.scrollUntilVisible(
+        field,
+        100,
+        scrollable: scroll,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(field, '변경 내용 유지');
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<TextField>(field).controller!.text,
+        '변경 내용 유지',
+      );
+
       final position = tester.state<ScrollableState>(scroll).position;
       position.jumpTo(position.maxScrollExtent);
       await tester.pumpAndSettle();
+
+      // 입력 영역을 스크롤해도 저장 버튼은 같은 위치를 유지합니다.
+      expect(tester.getRect(button('저장하기')), saveBeforeScroll);
       final save = tester.getRect(button('저장하기'));
-      final dock = tester.getRect(find.byType(FloatingActionButton));
-      expect(save.bottom, lessThan(dock.top));
+
+      final keyboardTop =
+          (tester.view.physicalSize.height -
+              tester.view.viewInsets.bottom) /
+          tester.view.devicePixelRatio;
+
+      expect(save.bottom, lessThanOrEqualTo(keyboardTop));
       expect(save.top, greaterThan(0));
+      expect(button('저장하기').hitTestable(), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

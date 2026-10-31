@@ -149,28 +149,22 @@ class FamilyManagementScreen extends StatelessWidget {
                 text: 'text_leave_group',
                 label: '그룹 탈퇴',
                 onTap: () async {
-                  final leave = await showDialog<bool>(
-                    context: context,
-                    builder: (dialogContext) => AlertDialog(
-                      title: const Text('그룹 탈퇴'),
-                      content: const Text('현재 가족 그룹에서 탈퇴하시겠어요?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext, false),
-                          child: const Text('취소'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text('탈퇴'),
-                        ),
-                      ],
-                    ),
+                  final rootNavigator = Navigator.of(
+                    context,
+                    rootNavigator: true,
+                  );
+                  final messenger = ScaffoldMessenger.of(context);
+                  final leave = await settingsConfirm(
+                    context,
+                    title: '그룹 탈퇴',
+                    message: '현재 가족 그룹에서 탈퇴하시겠어요?',
+                    confirmLabel: '탈퇴',
                   );
                   if (leave != true || !context.mounted) return;
                   try {
                     await data.leaveCurrentGroup();
                     if (!context.mounted) return;
-                    Navigator.of(context).pushAndRemoveUntil(
+                    rootNavigator.pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (_) => const FamilyGroupListScreen(),
                       ),
@@ -178,9 +172,9 @@ class FamilyManagementScreen extends StatelessWidget {
                     );
                   } on ApiException catch (error) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(error.message)));
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(error.message)),
+                      );
                     }
                   }
                 },

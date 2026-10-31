@@ -68,10 +68,11 @@ class SettingsPage extends StatelessWidget {
                       top: 9,
                       child: IconButton(
                         tooltip: '뒤로',
-                        onPressed: onBack ??
-                          () {
-                            Navigator.of(context).maybePop();
-                          },
+                        onPressed:
+                            onBack ??
+                            () {
+                              Navigator.of(context).maybePop();
+                            },
                         icon: settingsSvg(
                           'my_page',
                           'icon_exit',
@@ -424,6 +425,38 @@ Future<String?> settingsEditText(
   await route.completed;
   controller.dispose();
   return value;
+}
+
+Future<bool> settingsConfirm(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String confirmLabel,
+}) async {
+  final navigator = Navigator.of(context, rootNavigator: true);
+  final route = DialogRoute<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: Text(confirmLabel),
+        ),
+      ],
+    ),
+  );
+  final confirmed = await navigator.push(route) ?? false;
+  // Navigator.push completes when pop starts. Wait until the dialog's reverse
+  // transition has detached its inherited dependencies before replacing the
+  // route tree underneath it.
+  await route.completed;
+  return confirmed;
 }
 
 void settingsUnavailable(BuildContext context, String message) =>

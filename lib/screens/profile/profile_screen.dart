@@ -18,27 +18,17 @@ class ProfileScreen extends StatelessWidget {
   void open(BuildContext c, Widget w) =>
       Navigator.push(c, MaterialPageRoute(builder: (_) => w));
   Future<void> logout(BuildContext context) async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('로그아웃'),
-        content: const Text('로그아웃하시겠어요?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(c, false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(c, true),
-            child: const Text('로그아웃'),
-          ),
-        ],
-      ),
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    final yes = await settingsConfirm(
+      context,
+      title: '로그아웃',
+      message: '로그아웃하시겠어요?',
+      confirmLabel: '로그아웃',
     );
     if (yes == true && context.mounted) {
       context.read<AuthSession>().signOut();
       context.read<AppData>().clear();
-      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      rootNavigator.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (_) => false,
       );
@@ -46,37 +36,26 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Future<void> deleteAccount(BuildContext context) async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('계정 삭제'),
-        content: const Text('계정과 작성한 데이터가 삭제되며 복구할 수 없습니다. 정말 삭제할까요?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    final yes = await settingsConfirm(
+      context,
+      title: '계정 삭제',
+      message: '계정과 작성한 데이터가 삭제되며 복구할 수 없습니다. 정말 삭제할까요?',
+      confirmLabel: '삭제',
     );
     if (yes != true || !context.mounted) return;
     try {
       await context.read<AppData>().deleteCurrentUserAccount();
       if (!context.mounted) return;
       context.read<AuthSession>().signOut();
-      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      rootNavigator.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (_) => false,
       );
     } on ApiException catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 

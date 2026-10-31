@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:care_garden/data/app_data.dart';
+import 'package:care_garden/data/auth_session.dart';
+import 'package:care_garden/screens/auth/login_screen.dart';
 import 'package:care_garden/screens/profile/profile_screen.dart';
 import 'package:care_garden/screens/profile/profile_edit_screen.dart';
 import 'package:care_garden/screens/profile/patient_info_screen.dart';
@@ -13,6 +15,7 @@ import 'package:care_garden/screens/profile/patient_info_edit_screen.dart';
 import 'package:care_garden/screens/profile/family_management_screen.dart';
 import 'package:care_garden/screens/profile/settings_components.dart';
 import 'package:care_garden/theme/app_theme.dart';
+import 'package:care_garden/services/auth_service.dart';
 
 void main() {
   for (final patient in [false, true]) {
@@ -181,4 +184,51 @@ void main() {
     expect(find.text('수정'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'logout waits for the confirmation route before replacing a nested navigator',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final data = AppData();
+      final session = AuthSession()
+        ..signIn(
+          const AuthTokens(
+            accessToken: 'access',
+            refreshToken: 'refresh',
+            tokenType: 'bearer',
+          ),
+        );
+      addTearDown(data.dispose);
+      addTearDown(session.dispose);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AppData>.value(value: data),
+            ChangeNotifierProvider<AuthSession>.value(value: session),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Navigator(
+              onGenerateRoute: (_) =>
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.bySemanticsLabel('로그아웃'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('로그아웃').last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(session.isAuthenticated, isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

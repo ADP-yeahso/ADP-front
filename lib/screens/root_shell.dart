@@ -131,46 +131,152 @@ class _RootShellState extends State<RootShell> with RouteAware {
       bottomNavigationBar: _buildBottomBar(),
     );
   }
+  Widget _buildBottomBar() {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 원본 프레임 너비 315를 기준으로 전체 비율 유지
+            final scale = constraints.maxWidth / 315;
+            final barHeight = 68 * scale;
+            final barTop = 32 * scale;
+            final plusWidth = 64 * scale;
+            final plusHeight = 66 * scale;
+            final iconSize = 35 * scale;
+
+            return SizedBox(
+              width: constraints.maxWidth,
+              height: barTop + barHeight,
+              child: Stack(
+                children: [
+                  // 흰색 프레임과 네 개의 탭
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: barTop,
+                    height: barHeight,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        IgnorePointer(
+                          child: SvgPicture.asset(
+                            'assets/bottom_bar/bottom_bar_frame.svg',
+                            fit: BoxFit.fill,
+                            excludeFromSemantics: true,
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12 * scale,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildNavItem(
+                                  index: 0,
+                                  assetName: 'home',
+                                  label: '홈',
+                                  iconSize: iconSize,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildNavItem(
+                                  index: 1,
+                                  assetName: 'record',
+                                  label: '기억 보기',
+                                  iconSize: iconSize,
+                                ),
+                              ),
+
+                              // 중앙 + 버튼 아래 공간
+                              SizedBox(width: plusWidth),
+
+                              Expanded(
+                                child: _buildNavItem(
+                                  index: 2,
+                                  assetName: 'gallery',
+                                  label: '갤러리',
+                                  iconSize: iconSize,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildNavItem(
+                                  index: 3,
+                                  assetName: 'setting',
+                                  label: '설정',
+                                  iconSize: iconSize,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 프레임 위쪽에 반쯤 걸치는 + 버튼
+                  Positioned(
+                    top: 0,
+                    left: (constraints.maxWidth - plusWidth) / 2,
+                    width: plusWidth,
+                    height: plusHeight,
+                    child: Semantics(
+                      button: true,
+                      label: '기록하기',
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _openRecordChoice,
+                        child: SvgPicture.asset(
+                          'assets/bottom_bar/plus_button.svg',
+                          fit: BoxFit.contain,
+                          excludeFromSemantics: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
   Widget _buildNavItem({
     required int index,
-    required IconData icon,
-    required IconData selectedIcon,
+    required String assetName,
     required String label,
+    required double iconSize,
   }) {
     final isSelected = _index == index;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey[600];
+    final state = isSelected ? 'after' : 'before';
 
-    return InkWell(
-      onTap: () {
-        _navigatorKey.currentState?.popUntil((route) => route.isFirst);
-        _selectTab(index);
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isSelected ? selectedIcon : icon,
-              color: color,
-              size: 24,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: color,
-              ),
-            ),
-          ],
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          // 기존 동작 유지: 내부 상세 화면을 닫고 탭 이동
+          _navigatorKey.currentState?.popUntil(
+            (route) => route.isFirst,
+          );
+          _selectTab(index);
+        },
+        child: Center(
+          child: SvgPicture.asset(
+            'assets/bottom_bar/${assetName}_click_$state.svg',
+            width: iconSize,
+            height: iconSize,
+            fit: BoxFit.contain,
+            excludeFromSemantics: true,
+          ),
         ),
       ),
     );
   }
 }
-

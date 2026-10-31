@@ -6,7 +6,9 @@ import '../../data/auth_session.dart';
 import '../../services/api_service.dart';
 
 class FamilyLetterScreen extends StatefulWidget {
-  const FamilyLetterScreen({super.key});
+  const FamilyLetterScreen({super.key, this.api});
+
+  final ApiService? api;
 
   @override
   State<FamilyLetterScreen> createState() => _FamilyLetterScreenState();
@@ -15,7 +17,8 @@ class FamilyLetterScreen extends StatefulWidget {
 class _FamilyLetterScreenState extends State<FamilyLetterScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
-  final ApiService _api = ApiService();
+  late final ApiService _api;
+  late final bool _ownsApi;
   List<Map<String, dynamic>> _letters = const [];
   bool _loading = true;
   String? _error;
@@ -23,6 +26,8 @@ class _FamilyLetterScreenState extends State<FamilyLetterScreen>
   @override
   void initState() {
     super.initState();
+    _ownsApi = widget.api == null;
+    _api = widget.api ?? ApiService();
     _tabs = TabController(length: 2, vsync: this)..addListener(_tabChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
@@ -32,7 +37,7 @@ class _FamilyLetterScreenState extends State<FamilyLetterScreen>
     _tabs
       ..removeListener(_tabChanged)
       ..dispose();
-    _api.close();
+    if (_ownsApi) _api.close();
     super.dispose();
   }
 
@@ -73,10 +78,20 @@ class _FamilyLetterScreenState extends State<FamilyLetterScreen>
     final controller = TextEditingController();
     String? receiverId;
     var sending = false;
-    final sent = await showModalBottomSheet<bool>(
-      context: context,
+    final navigator = Navigator.of(context);
+    final localizations = MaterialLocalizations.of(context);
+    final route = ModalBottomSheetRoute<bool>(
+      capturedThemes: InheritedTheme.capture(
+        from: context,
+        to: navigator.context,
+      ),
       isScrollControlled: true,
       showDragHandle: true,
+      barrierLabel: localizations.scrimLabel,
+      barrierOnTapHint: localizations.scrimOnTapHint(
+        localizations.bottomSheetLabel,
+      ),
+      modalBarrierColor: Theme.of(context).bottomSheetTheme.modalBarrierColor,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
           padding: EdgeInsets.fromLTRB(
@@ -153,6 +168,11 @@ class _FamilyLetterScreenState extends State<FamilyLetterScreen>
         ),
       ),
     );
+    final sent = await navigator.push(route);
+    // Navigator.push completes as soon as pop starts. Keep the controller and
+    // inherited dependencies alive until the sheet's reverse transition has
+    // fully detached it from the widget tree.
+    await route.completed;
     controller.dispose();
     if (sent == true && mounted) {
       ScaffoldMessenger.of(

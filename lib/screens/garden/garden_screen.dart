@@ -820,12 +820,7 @@ class _GardenScreenState extends State<GardenScreen>
                       groupName: appData.group.groupName,
                       hasUnreadRecords: appData.hasUnreadMail,
                       onOpenMailbox: _openMailbox,
-                      onOpenNotebook: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CareNotebookListScreen(),
-                        ),
-                      ),
+                      onOpenNotebook: () => openCareNotebook(context),
                     ),
                   ),
 

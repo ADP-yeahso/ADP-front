@@ -1,16 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../data/flower_catalog.dart';
 import '../../../models/emotions.dart';
 import '../../../utils/emotion_utils.dart';
 import 'diary_care_content_screen.dart';
 
-class DiaryResultScreen extends StatelessWidget {
+class DiaryResultScreen extends StatefulWidget {
   final Emotion? emotion;
 
   const DiaryResultScreen({
     super.key,
     this.emotion,
   });
+
+  @override
+  State<DiaryResultScreen> createState() => _DiaryResultScreenState();
+}
+
+class _DiaryResultScreenState extends State<DiaryResultScreen> {
+  late final FlowerCardInfo _flowerCard;
+
+  @override
+  void initState() {
+    super.initState();
+    _flowerCard = FlowerCatalog.randomCardForEmotion(
+      widget.emotion ?? EmotionValues.neutral,
+    );
+  }
 
   Widget _buildAssetWidget({
     required List<String> candidatePaths,
@@ -76,7 +92,7 @@ class DiaryResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeEmotion = emotion ?? EmotionValues.neutral;
+    final activeEmotion = widget.emotion ?? EmotionValues.neutral;
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0),
       appBar: AppBar(
@@ -160,7 +176,8 @@ class DiaryResultScreen extends StatelessWidget {
 
                       // 앞쪽 꽃카드 (메인 이미지 asset 또는 시안 다크 카드 렌더링)
                       _buildAssetWidget(
-                        candidatePaths: const [
+                        candidatePaths: [
+                          _flowerCard.assetPath,
                           'assets/record/choice/svg/3-2-5.svg/svg/꽃카드.svg',
                           'assets/record/choice/png/3-2-5.png/png/꽃카드.png',
                         ],
@@ -256,7 +273,7 @@ class DiaryResultScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => DiaryCareContentScreen(emotion: emotion),
+                            builder: (context) => DiaryCareContentScreen(emotion: widget.emotion),
                           ),
                         );
                       },

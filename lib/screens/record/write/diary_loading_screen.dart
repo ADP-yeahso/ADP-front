@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../models/emotions.dart';
 import 'diary_result_screen.dart';
 
 class DiaryLoadingScreen extends StatefulWidget {
   final Widget? nextScreen;
+  final Emotion? emotion;
 
   const DiaryLoadingScreen({
     super.key,
     this.nextScreen,
+    this.emotion,
   });
 
   @override
@@ -23,7 +26,8 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => widget.nextScreen ?? const DiaryResultScreen(),
+            builder: (context) =>
+                widget.nextScreen ?? DiaryResultScreen(emotion: widget.emotion),
           ),
         );
       }
@@ -71,6 +75,7 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> {
                 height: 180,
                 child: _buildAssetWidget(
                   candidatePaths: const [
+                    'assets/record/squirrels/diary_loading.png',
                     'assets/record/choice/svg/로딩중.svg/svg/로딩중 다람쥐5.svg',
                     'assets/record/choice/png/로딩중.png/png/로딩중 다람쥐5.png',
                   ],

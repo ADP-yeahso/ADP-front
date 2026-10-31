@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../../data/flower_catalog.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:full_svg_flutter/full_svg_flutter.dart' as full_svg;
 import 'package:provider/provider.dart';
@@ -903,14 +904,14 @@ class _FlowerInfoCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
+          SizedBox(
             width: 100,
             height: 140,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFF6B9FBD), width: 2),
+            child: Image.asset(
+              FlowerCatalog.cardForName(flower.flowerName)?.assetPath ??
+                  'assets/images/flower.png',
+              fit: BoxFit.fill,
             ),
-            child: Image.asset('assets/images/flower.png', fit: BoxFit.contain),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -918,8 +919,7 @@ class _FlowerInfoCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Text(
-                  '꽃 이름',
+                Text(flower.flowerName,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -927,8 +927,7 @@ class _FlowerInfoCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  '꽃말',
+                Text(flower.sentence,
                   style: const TextStyle(fontSize: 13, color: Colors.black87),
                 ),
               ],

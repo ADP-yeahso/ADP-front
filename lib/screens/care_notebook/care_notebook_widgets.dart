@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../data/app_data.dart';
 import '../profile/patient_info_screen.dart';
 
-const careBackground = Color(0xFFFFFBEF);
+const careBackground = Color(0xFFFFFBF0);
 const careGreen = Color(0xFF547B35);
 Widget careAsset(String name, {double? width, double? height}) =>
     SvgPicture.asset(
@@ -12,11 +12,53 @@ Widget careAsset(String name, {double? width, double? height}) =>
       width: width,
       height: height,
     );
+
+Widget careFrame(
+  String name, {
+  required Widget child,
+  EdgeInsets padding = EdgeInsets.zero,
+}) => Stack(
+  fit: StackFit.passthrough,
+  children: [
+    Positioned.fill(
+      child: Image.asset(
+        'assets/images/care_note/$name.png',
+        scale: 3,
+        centerSlice: switch (name) {
+          'record_content_frame' => const Rect.fromLTRB(16, 15, 77, 17),
+          'care_note_entry_frame' => const Rect.fromLTRB(12, 12, 303, 150),
+          'patient_info_frame' => const Rect.fromLTRB(12, 12, 307, 77),
+          'medical_change_frame' => const Rect.fromLTRB(12, 12, 272, 24),
+          _ => null,
+        },
+        fit: BoxFit.fill,
+        filterQuality: FilterQuality.high,
+        excludeFromSemantics: true,
+      ),
+    ),
+    Padding(padding: padding, child: child),
+  ],
+);
+
+Widget careDivider(String name) => SizedBox(
+  height: 1,
+  child: FittedBox(
+    fit: BoxFit.fill,
+    child: careAsset(name, width: 301, height: 1),
+  ),
+);
+
 PreferredSizeWidget careAppBar() => AppBar(
   backgroundColor: careBackground,
   surfaceTintColor: Colors.transparent,
   centerTitle: true,
   toolbarHeight: 52,
+  flexibleSpace: ExcludeSemantics(
+    child: SvgPicture.asset(
+      'assets/images/care_note/top_bar.svg',
+      fit: BoxFit.fill,
+    ),
+  ),
   leading: Builder(
     builder: (context) => IconButton(
       tooltip: '뒤로 가기',
@@ -37,13 +79,9 @@ class CarePatientCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = context.watch<AppData>();
     final birth = data.patient.patientBirthDate.toString().padLeft(8, '0');
-    return Container(
+    return careFrame(
+      'patient_info_frame',
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: const Color(0xFFE6E2D7)),
-      ),
       child: Row(
         children: [
           careAsset('patient_avatar_default', width: 58, height: 58),
@@ -60,12 +98,34 @@ class CarePatientCard extends StatelessWidget {
                     color: Color(0xFF243B17),
                   ),
                 ),
-                Text(
-                  '${data.patient.patientName} · ${birth.substring(0, 4)}.${birth.substring(4, 6)}.${birth.substring(6)}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF607251),
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        data.patient.patientName,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF607251),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      child: careAsset(
+                        'patient_info_divider',
+                        width: 1,
+                        height: 12,
+                      ),
+                    ),
+                    Text(
+                      '${birth.substring(0, 4)}.${birth.substring(4, 6)}.${birth.substring(6)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF607251),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -110,7 +170,10 @@ class CareAssetButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final option = asset.startsWith('option_');
     final pngButton =
-        option || asset == 'save_green_button' || asset == 'save_yellow_button';
+        option ||
+        asset == 'write_note_button' ||
+        asset == 'save_green_button' ||
+        asset == 'save_yellow_button';
     final write = asset == 'write_note_button';
     final greenAction = write || asset == 'save_green_button';
     final background = option
@@ -153,7 +216,8 @@ class CareAssetButton extends StatelessWidget {
                                 'assets/images/care_note/$asset.png',
                                 width: double.infinity,
                                 height: height,
-                                fit: BoxFit.fill,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.high,
                                 excludeFromSemantics: true,
                               )
                             : Center(

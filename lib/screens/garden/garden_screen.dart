@@ -369,17 +369,12 @@ class _GardenScreenState extends State<GardenScreen> {
             child: IconButton(
               tooltip: '돌봄수첩',
               icon: SvgPicture.asset(
-                'assets/icons/care_notebook.svg',
+                'assets/images/care_note/care_note_icon.svg',
                 width: 40,
                 height: 40,
               ),
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const CareNotebookListScreen(),
-                  ),
-                );
+                openCareNotebook(context);
               },
             ),
           ),

@@ -7,6 +7,14 @@ import 'care_notebook_detail_screen.dart';
 import 'care_record_view_data.dart';
 import 'care_notebook_widgets.dart';
 
+Future<void> openCareNotebook(BuildContext context) =>
+    Navigator.of(context, rootNavigator: true).push<void>(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: '/care-notebook'),
+        builder: (_) => const CareNotebookListScreen(),
+      ),
+    );
+
 class CareNotebookListScreen extends StatelessWidget {
   const CareNotebookListScreen({super.key});
   Future<void> _write(BuildContext context) async {
@@ -81,28 +89,27 @@ class CareNotebookListScreen extends StatelessWidget {
     BuildContext context,
     CareRecordViewData record,
   ) => Material(
-    color: const Color(0xFFFFF9DC),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(6),
-      side: const BorderSide(color: careGreen),
-    ),
-    clipBehavior: Clip.antiAlias,
+    color: Colors.transparent,
     child: InkWell(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => CareNotebookDetailScreen(record: record),
         ),
       ),
-      child: Padding(
+      child: careFrame(
+        'care_note_entry_frame',
         padding: const EdgeInsets.all(8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               '${DateFormat('yyyy.MM.dd').format(record.date)} ${const ['월', '화', '수', '목', '금', '토', '일'][record.date.weekday - 1]}요일',
-              style: const TextStyle(fontSize: 12, color: careGreen),
+              style: const TextStyle(fontSize: 13, color: careGreen),
             ),
-            const Divider(height: 8, color: careGreen),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: careDivider('entry_date_divider'),
+            ),
             Row(
               children: [
                 Expanded(child: _tag('식사 ${record.mealStatus}')),
@@ -115,47 +122,79 @@ class CareNotebookListScreen extends StatelessWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                Expanded(flex: 2, child: _tag('배변 ${record.bowelStatus}')),
+                Expanded(flex: 4, child: _tag('배변 ${record.bowelStatus}')),
                 const SizedBox(width: 5),
                 Expanded(
-                  flex: 3,
+                  flex: 5,
                   child: _tag(
-                    '평소와 다른 점 · ${record.unusualChanges.isEmpty ? '없음' : record.unusualChanges.join(', ')}',
+                    '평소와 다른 점 - ${record.unusualChanges.isEmpty ? '없음' : record.unusualChanges.join(', ')}',
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Text(
-              '특이사항: ${record.note.isEmpty ? '없음' : record.note}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                careAsset('notes_label', width: 55, height: 14),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    record.note.isEmpty ? '없음' : record.note,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                ),
+              ],
             ),
-            if (record.hasMedicalUpdate)
-              Text(
-                '진료·약 변경: ${[record.hospitalDepartment, record.visitDetails, record.medicationChanges].where((s) => s.isNotEmpty).join(' · ')}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13),
+            if (record.hasMedicalUpdate) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  careAsset('medical_record_label', width: 48, height: 18),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      [
+                        record.hospitalDepartment,
+                        record.visitDetails,
+                        record.medicationChanges,
+                      ].where((s) => s.isNotEmpty).join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ),
+                ],
               ),
+            ],
           ],
         ),
       ),
     ),
   );
-  Widget _tag(String text) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-    decoration: BoxDecoration(
-      border: Border.all(color: careGreen),
-      borderRadius: BorderRadius.circular(24),
-    ),
-    child: Text(
-      text,
-      textAlign: TextAlign.center,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(fontSize: 12, height: 1.2),
+  Widget _tag(String text) => SizedBox(
+    height: 32,
+    child: careFrame(
+      'record_content_frame',
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Center(
+        child: SizedBox(
+          width: double.infinity,
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.2,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
     ),
   );
 }

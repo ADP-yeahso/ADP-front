@@ -13,6 +13,7 @@ class CareNotebookWriteScreen extends StatefulWidget {
 }
 
 class _CareNotebookWriteScreenState extends State<CareNotebookWriteScreen> {
+  static const _labelWidth = 64.0;
   static const _mealOptions = ['좋음', '보통', '적음'];
 
   static const _sleepOptions = ['좋음', '보통', '나쁨'];
@@ -233,30 +234,40 @@ class _CareNotebookWriteScreenState extends State<CareNotebookWriteScreen> {
                                       fontSize: 13,
                                     ),
                                   ),
-                                  const Icon(
-                                    Icons.expand_more,
-                                    color: careGreen,
-                                    size: 20,
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: careAsset(
+                                      'dropdown_arrow',
+                                      width: 12,
+                                      height: 7,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
                           ),
                         ),
-                        const Text(
-                          '의 돌봄 기록',
-                          style: TextStyle(
-                            color: Color(0xFF243B17),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                        Semantics(
+                          label: '의 돌봄 기록',
+                          excludeSemantics: true,
+                          child: careAsset(
+                            'record_type_label',
+                            width: 72,
+                            height: 14,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      '선택형 * 짧은 메모로 간단히 기록해보세요',
-                      style: TextStyle(fontSize: 11),
+                    Semantics(
+                      label: '선택형 + 짧은 메모로 간단히 기록해보세요',
+                      excludeSemantics: true,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: careAsset('record_prompt_text', height: 11),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     _status(
@@ -300,7 +311,7 @@ class _CareNotebookWriteScreenState extends State<CareNotebookWriteScreen> {
                       child: _hasUnusualChanges == true
                           ? Padding(
                               padding: const EdgeInsets.only(
-                                left: 80,
+                                left: _labelWidth,
                                 bottom: 8,
                               ),
                               child: LayoutBuilder(
@@ -323,7 +334,7 @@ class _CareNotebookWriteScreenState extends State<CareNotebookWriteScreen> {
                                               .contains(
                                                 _unusualChangeOptions[i],
                                               ),
-                                          height: 26,
+                                          height: 30,
                                           onTap: () => setState(() {
                                             if (!_selectedUnusualChanges.add(
                                               _unusualChangeOptions[i],
@@ -343,74 +354,184 @@ class _CareNotebookWriteScreenState extends State<CareNotebookWriteScreen> {
                     ),
                     const Text(
                       '특이사항 메모',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF243B17)),
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontSize: 12,
+                        color: Color(0xFF3F5630),
+                      ),
                     ),
                     const SizedBox(height: 4),
-                    TextField(
-                      controller: _noteController,
-                      style: const TextStyle(fontSize: 12, height: 1.5),
-                      scrollPadding: const EdgeInsets.only(bottom: 100),
-                      minLines: 3,
-                      maxLines: 6,
-                      decoration: InputDecoration(
-                        hintText: '오늘 있었던 특이사항을 입력하세요.',
-                        hintStyle: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFFA4B58D),
-                        ),
-                        fillColor: careBackground,
-                        filled: true,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(7),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF7F9F5A),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxWidth * 81 / 286,
+                          ),
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: Image.asset(
+                                  'assets/images/care_note/notes_frame.png',
+                                  scale: 3,
+                                  centerSlice: const Rect.fromLTRB(
+                                    12,
+                                    12,
+                                    272,
+                                    67,
+                                  ),
+                                  filterQuality: FilterQuality.high,
+                                  fit: BoxFit.fill,
+                                  excludeFromSemantics: true,
+                                ),
+                              ),
+                              TextField(
+                                controller: _noteController,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  height: 1.5,
+                                ),
+                                scrollPadding: const EdgeInsets.only(
+                                  bottom: 100,
+                                ),
+                                minLines: 3,
+                                maxLines: 6,
+                                decoration: InputDecoration(
+                                  hintText: '오늘 있었던 특이사항을 입력하세요.',
+                                  hintStyle: const TextStyle(
+                                    color: Colors.transparent,
+                                  ),
+                                  filled: false,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  contentPadding: const EdgeInsets.fromLTRB(
+                                    10,
+                                    10,
+                                    10,
+                                    18,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                left: 12,
+                                right: 20,
+                                top: 10,
+                                child: IgnorePointer(
+                                  child: ExcludeSemantics(
+                                    child:
+                                        ValueListenableBuilder<
+                                          TextEditingValue
+                                        >(
+                                          valueListenable: _noteController,
+                                          builder: (context, value, child) =>
+                                              value.text.isEmpty
+                                              ? Align(
+                                                  alignment:
+                                                      Alignment.centerLeft,
+                                                  child: FittedBox(
+                                                    fit: BoxFit.scaleDown,
+                                                    child: careAsset(
+                                                      'notes_placeholder',
+                                                      width: 167,
+                                                      height: 11,
+                                                    ),
+                                                  ),
+                                                )
+                                              : const SizedBox.shrink(),
+                                        ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                left: 12,
+                                right: 20,
+                                top:
+                                    12 +
+                                    MediaQuery.textScalerOf(context).scale(12) *
+                                        1.5,
+                                child: IgnorePointer(
+                                  child: ExcludeSemantics(
+                                    child: SizedBox(
+                                      height: 2,
+                                      child: FittedBox(
+                                        fit: BoxFit.fill,
+                                        child: careAsset(
+                                          'notes_input_underline',
+                                          width: 254,
+                                          height: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(7),
-                          borderSide: const BorderSide(
-                            color: careGreen,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.all(10),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    OutlinedButton(
-                      onPressed: () => setState(
-                        () => _showMedicalSection = !_showMedicalSection,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF243B17),
-                        backgroundColor: careBackground,
-                        side: const BorderSide(color: Color(0xFF7F9F5A)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        minimumSize: const Size(0, 32),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.add, size: 18),
-                          const SizedBox(width: 4),
-                          const Expanded(
-                            child: Text(
-                              '진료 · 약 변경 내용 추가',
-                              style: TextStyle(fontSize: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Semantics(
+                        label: '진료 · 약 변경 내용 추가',
+                        button: true,
+                        expanded: _showMedicalSection,
+                        excludeSemantics: true,
+                        child: InkWell(
+                          onTap: () => setState(
+                            () => _showMedicalSection = !_showMedicalSection,
+                          ),
+                          child: careFrame(
+                            'medical_change_frame',
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 10,
+                            ),
+                            child: Stack(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 3),
+                                  child: Row(
+                                    children: [
+                                      careAsset(
+                                        'add_icon',
+                                        width: 15,
+                                        height: 15,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: careAsset(
+                                            'add_medical_change_text',
+                                            height: 11,
+                                          ),
+                                        ),
+                                      ),
+                                      RotatedBox(
+                                        quarterTurns: _showMedicalSection
+                                            ? 2
+                                            : 0,
+                                        child: careAsset(
+                                          'dropdown_arrow',
+                                          width: 17,
+                                          height: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Positioned(
+                                  left: 19,
+                                  right: 22,
+                                  bottom: 0,
+                                  child: careDivider('medical_change_divider'),
+                                ),
+                              ],
                             ),
                           ),
-                          Icon(
-                            _showMedicalSection
-                                ? Icons.expand_less
-                                : Icons.expand_more,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                     AnimatedSize(
@@ -496,31 +617,43 @@ class _CareNotebookWriteScreenState extends State<CareNotebookWriteScreen> {
     child: Row(
       children: [
         SizedBox(
-          width: 80,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF3F5630)),
+          width: _labelWidth,
+          child: Semantics(
+            label: label,
+            excludeSemantics: true,
+            child: Center(
+              child: careAsset(
+                const {
+                  '식사': 'meal_label',
+                  '수면': 'sleep_label',
+                  '배변': 'bowel_label',
+                  '복약': 'medication_label',
+                  '평소와 다른 점': 'unusual_change_label',
+                }[label]!,
+                height: 11,
+              ),
+            ),
           ),
         ),
         Expanded(
           child: Row(
             children: [
-              for (var i = 0; i < options.length; i++)
+              for (var i = 0; i < 3; i++) ...[
+                if (i > 0) const SizedBox(width: 4),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: CareAssetButton(
-                      asset:
-                          'option_${assets[i]}_${selected == options[i] ? 'selected' : 'unselected'}',
-                      label: '$label ${options[i]}',
-                      text: options[i],
-                      selected: selected == options[i],
-                      height: 30,
-                      onTap: () => onSelected(options[i]),
-                    ),
-                  ),
+                  child: i < options.length
+                      ? CareAssetButton(
+                          asset:
+                              'option_${assets[i]}_${selected == options[i] ? 'selected' : 'unselected'}',
+                          label: '$label ${options[i]}',
+                          text: options[i],
+                          selected: selected == options[i],
+                          height: 30,
+                          onTap: () => onSelected(options[i]),
+                        )
+                      : const SizedBox(),
                 ),
-              if (options.length == 2) const Expanded(child: SizedBox()),
+              ],
             ],
           ),
         ),

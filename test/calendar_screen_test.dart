@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_svg/flutter_svg.dart' as svg;
+import 'package:full_svg_flutter/full_svg_flutter.dart' as full_svg;
 import 'package:provider/provider.dart';
 
 import 'package:care_garden/data/app_data.dart';
 import 'package:care_garden/screens/calendar/calendar_screen.dart';
+
+Finder _svgAsset(String assetName) {
+  return find.byWidgetPredicate((widget) {
+    if (widget is svg.SvgPicture) {
+      final loader = widget.bytesLoader;
+      return loader is svg.SvgAssetLoader && loader.assetName == assetName;
+    }
+    if (widget is full_svg.SvgPicture) {
+      final loader = widget.bytesLoader;
+      return loader is full_svg.SvgAssetLoader && loader.assetName == assetName;
+    }
+    return false;
+  });
+}
 
 Widget _buildTestApp(AppData appData) {
   return ChangeNotifierProvider<AppData>.value(
@@ -12,6 +28,25 @@ Widget _buildTestApp(AppData appData) {
       home: CalendarScreen(),
     ),
   );
+}
+
+Finder _dayNumber(DateTime date) {
+  final String asset;
+  if (date.weekday == DateTime.sunday) {
+    asset = 'assets/page2/numbers/red/red_${date.day}.svg';
+  } else if (date.weekday == DateTime.saturday) {
+    asset = 'assets/page2/numbers/blue/blue_${date.day}.svg';
+  } else {
+    asset = 'assets/page2/numbers/black/${date.day}.svg';
+  }
+  return _svgAsset(asset);
+}
+
+Future<void> _tapBack(WidgetTester tester) async {
+  final back = _svgAsset('assets/page2/record_detail/back_button.svg');
+  await tester.ensureVisible(back);
+  await tester.pumpAndSettle();
+  await tester.tap(back);
 }
 
 Future<void> _openMonth(
@@ -33,7 +68,7 @@ Future<void> _openDay(
 ) async {
   await _openMonth(tester, date);
 
-  final day = find.text('${date.day}');
+  final day = _dayNumber(date);
 
   await tester.ensureVisible(day);
   await tester.pumpAndSettle();
@@ -62,7 +97,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('${today.year}년 전체보기'),
+        find.text('${today.year}'),
         findsOneWidget,
       );
 
@@ -73,7 +108,7 @@ void main() {
         findsOneWidget,
       );
 
-      final day = find.text('${today.day}');
+      final day = _dayNumber(today);
 
       await tester.ensureVisible(day);
       await tester.pumpAndSettle();
@@ -84,10 +119,10 @@ void main() {
         find.text(_dayTitle(today)),
         findsOneWidget,
       );
-      expect(find.text('나무 기록'), findsWidgets);
-      expect(find.text('꽃 기록'), findsOneWidget);
+      expect(_svgAsset('assets/page2/record_detail/tree_record_label.svg'), findsWidgets);
+      expect(_svgAsset('assets/page2/record_detail/flower_record_label.svg'), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.arrow_back));
+      await _tapBack(tester);
       await tester.pumpAndSettle();
 
       expect(
@@ -95,11 +130,11 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(find.byIcon(Icons.arrow_back));
+      await _tapBack(tester);
       await tester.pumpAndSettle();
 
       expect(
-        find.text('${today.year}년 전체보기'),
+        find.text('${today.year}'),
         findsOneWidget,
       );
     },
@@ -138,7 +173,7 @@ void main() {
         findsNothing,
       );
 
-      await tester.tap(find.text('꽃 기록').first);
+      await tester.tap(_svgAsset('assets/page2/record_detail/flower_record_label.svg'));
       await tester.pumpAndSettle();
 
       expect(
@@ -173,7 +208,7 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(find.text('꽃 기록'));
+      await tester.tap(_svgAsset('assets/page2/record_detail/flower_record_label.svg'));
       await tester.pumpAndSettle();
 
       expect(

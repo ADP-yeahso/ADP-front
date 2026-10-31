@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../models/media.dart';
-import '../../models/emotions.dart';
 import '../../utils/emotion_utils.dart';
 import 'diary_result_screen.dart';
 
 class DiaryLoadingScreen extends StatefulWidget {
   final DateTime date;
+  final String? title;
   final String content;
   final bool isPublic;
   final List<Media> mediaList;
@@ -15,6 +15,7 @@ class DiaryLoadingScreen extends StatefulWidget {
   const DiaryLoadingScreen({
     super.key,
     required this.date,
+    this.title,
     required this.content,
     required this.isPublic,
     this.mediaList = const [],
@@ -60,6 +61,7 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> with SingleTick
       MaterialPageRoute(
         builder: (_) => DiaryResultScreen(
           date: widget.date,
+          title: widget.title,
           content: widget.content,
           emotion: mockEmotion,
           isPublic: widget.isPublic,
@@ -72,7 +74,7 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F5EE),
+      backgroundColor: const Color(0xFFFFFBF0),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),

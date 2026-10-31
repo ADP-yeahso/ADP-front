@@ -5,12 +5,12 @@ import '../../data/app_data.dart';
 import '../../data/emotion_analyzer.dart';
 import '../../models/emotions.dart';
 import '../../models/media.dart';
-import '../../utils/emotion_utils.dart';
 import '../../widgets/emotion_chip.dart';
 import '../../widgets/recommendation_card.dart';
 
 class DiaryResultScreen extends StatelessWidget {
   final DateTime date;
+  final String? title;
   final String content;
   final Emotion emotion;
   final bool isPublic;
@@ -19,6 +19,7 @@ class DiaryResultScreen extends StatelessWidget {
   const DiaryResultScreen({
     super.key,
     required this.date,
+    this.title,
     required this.content,
     required this.emotion,
     required this.isPublic,
@@ -72,6 +73,7 @@ class DiaryResultScreen extends StatelessWidget {
                 onPressed: () {
                   context.read<AppData>().addDiary(
                     date: date, 
+                    title: title,
                     content: content, 
                     emotion: emotion,
                     mediaList: mediaList,

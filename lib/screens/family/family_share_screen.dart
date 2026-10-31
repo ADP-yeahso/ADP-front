@@ -9,6 +9,7 @@ import '../../models/users.dart';
 import '../../models/memory.dart';
 import '../../widgets/emotion_chip.dart';
 import '../garden/entry_detail_sheet.dart';
+import '../calendar/calendar_screen.dart';
 
 class FamilyShareScreen extends StatefulWidget {
   const FamilyShareScreen({super.key});
@@ -34,7 +35,7 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
         : feedItems.where((f) => f.authorId == _filterMemberId).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('가족 공유'), automaticallyImplyLeading: false),
+      appBar: AppBar(title: const Text('가족 공유')),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
@@ -91,7 +92,11 @@ class _FamilyShareScreenState extends State<FamilyShareScreen> {
                 author: appData.userById(item.authorId),
                 onTap: () {
                   if (item.memory != null) {
-                    showMemoryDetailSheet(context, item.memory!);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => CalendarScreen(initialDay: item.memory!.recordDate),
+                      ),
+                    );
                   } else {
                     showDiaryDetailSheet(context, item.diary!);
                   }

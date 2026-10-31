@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../debug/care_activity_preview_screen.dart';
 import 'signup_screen.dart';
 import 'family_group_list_screen.dart';
 
@@ -67,14 +69,28 @@ class LoginScreen extends StatelessWidget {
                     MaterialPageRoute(builder: (_) => const FamilyGroupListScreen()),
                   );
                 },
-                child: Image.asset(
-                  'assets/auth/login/login_button.png', 
-                  width: 267 * wScale, 
-                  height: 66 * wScale,
-                  fit: BoxFit.fill,
+                child: Semantics(
+                  label: '로그인',
+                  button: true,
+                  child: Image.asset(
+                    'assets/auth/login/login_button.png',
+                    width: 267 * wScale,
+                    height: 66 * wScale,
+                    fit: BoxFit.fill,
+                  ),
                 ),
               ),
               // 버튼과 하단 메뉴 사이 간격 (시안 비례 계산: 약 24px)
+              if (kDebugMode) ...[
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const CareActivityPreviewScreen(),
+                  )),
+                  icon: const Icon(Icons.developer_mode),
+                  label: const Text('추천 활동 미리보기 (디버그)'),
+                ),
+              ],
               SizedBox(height: 24 * hScale),
               
               // 7. 하단 메뉴
@@ -175,7 +191,7 @@ class _SvgInputWidgetState extends State<_SvgInputWidget> {
             Align(
               alignment: Alignment.centerLeft,
               child: Padding(
-                padding: EdgeInsets.only(left: 5 * widget.wScale), // 안내 텍스트 조절 위치 패딩값 튜닝
+                padding: EdgeInsets.only(left: 18 * widget.wScale), // 안내 텍스트 조절 위치 패딩값 튜닝
                 child: Image.asset(widget.textAsset, width: widget.textWidth * widget.wScale, height: widget.textHeight * widget.wScale),
               ),
             ),

@@ -1,0 +1,191 @@
+[
+  {
+    "file": "Affection_Bindweed.glb",
+    "triangles": 7552,
+    "bytes": 370760,
+    "parts": 5,
+    "mapped": true
+  },
+  {
+    "file": "Affection_Calendula.glb",
+    "triangles": 60144,
+    "bytes": 1946344,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Affection_Lisianthus.glb",
+    "triangles": 19118,
+    "bytes": 340300,
+    "parts": 2,
+    "mapped": true
+  },
+  {
+    "file": "Affection_Nasturtium.glb",
+    "triangles": 10032,
+    "bytes": 304240,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Anger_Gerbera.glb",
+    "triangles": 17008,
+    "bytes": 337516,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Anger_Linaria.glb",
+    "triangles": 19890,
+    "bytes": 375992,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Anger_Phlox.glb",
+    "triangles": 16368,
+    "bytes": 1259656,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Anger_Zinnia.glb",
+    "triangles": 20496,
+    "bytes": 1422580,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Anxiety_Borage.glb",
+    "triangles": 13536,
+    "bytes": 508640,
+    "parts": 5,
+    "mapped": true
+  },
+  {
+    "file": "Anxiety_Geranium.glb",
+    "triangles": 19495,
+    "bytes": 343652,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Anxiety_Hellebore.glb",
+    "triangles": 18052,
+    "bytes": 1124648,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Anxiety_Stock.glb",
+    "triangles": 21968,
+    "bytes": 830024,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Guilt_Canna.glb",
+    "triangles": 11666,
+    "bytes": 830976,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Guilt_Clematis.glb",
+    "triangles": 18938,
+    "bytes": 327512,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Guilt_Delphinium.glb",
+    "triangles": 17650,
+    "bytes": 322156,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Guilt_Iris.glb",
+    "triangles": 13824,
+    "bytes": 309052,
+    "parts": 2,
+    "mapped": true
+  },
+  {
+    "file": "Neutral_four_cl.glb",
+    "triangles": 3040,
+    "bytes": 120928,
+    "parts": 2,
+    "mapped": true
+  },
+  {
+    "file": "Neutral_foxtail.glb",
+    "triangles": 1664,
+    "bytes": 2553192,
+    "parts": 2,
+    "mapped": true
+  },
+  {
+    "file": "Neutral_three_cl.glb",
+    "triangles": 2368,
+    "bytes": 108424,
+    "parts": 2,
+    "mapped": true
+  },
+  {
+    "file": "Sadness_Aquilegia.glb",
+    "triangles": 14192,
+    "bytes": 414988,
+    "parts": 4,
+    "mapped": true
+  },
+  {
+    "file": "Sadness_ebw.glb",
+    "triangles": 18812,
+    "bytes": 683208,
+    "parts": 2,
+    "mapped": true
+  },
+  {
+    "file": "Sadness_mmc.glb",
+    "triangles": 11840,
+    "bytes": 365780,
+    "parts": 4,
+    "mapped": true
+  },
+  {
+    "file": "Sadness_ydc.glb",
+    "triangles": 14288,
+    "bytes": 1003488,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Gratitude_Campanula.glb",
+    "triangles": 12448,
+    "bytes": 379300,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Gratitude_Freesia.glb",
+    "triangles": 14704,
+    "bytes": 310356,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Gratitude_Marigold.glb",
+    "triangles": 29520,
+    "bytes": 548612,
+    "parts": 3,
+    "mapped": true
+  },
+  {
+    "file": "Gratitude_ychwa.glb",
+    "triangles": 14432,
+    "bytes": 300220,
+    "parts": 4,
+    "mapped": true
+  }
+]

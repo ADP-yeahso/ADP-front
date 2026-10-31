@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_svg/flutter_svg.dart' as svg;
+import 'package:full_svg_flutter/full_svg_flutter.dart' as full_svg;
 import 'package:provider/provider.dart';
 
 import 'package:care_garden/data/app_data.dart';
 import 'package:care_garden/screens/calendar/day_record_detail_view.dart';
+
+Finder _svgAsset(String assetName) {
+  return find.byWidgetPredicate((widget) {
+    if (widget is svg.SvgPicture) {
+      final loader = widget.bytesLoader;
+      return loader is svg.SvgAssetLoader && loader.assetName == assetName;
+    }
+    if (widget is full_svg.SvgPicture) {
+      final loader = widget.bytesLoader;
+      return loader is full_svg.SvgAssetLoader && loader.assetName == assetName;
+    }
+    return false;
+  });
+}
 
 final DateTime _selectedDay = DateTime(2026, 8, 10);
 
@@ -62,8 +78,8 @@ void main() {
       await tester.pumpWidget(_buildTestApp(appData));
       await tester.pumpAndSettle();
 
-      expect(find.text('나무 기록'), findsWidgets);
-      expect(find.text('꽃 기록'), findsOneWidget);
+      expect(_svgAsset('assets/page2/record_detail/tree_record_label.svg'), findsWidgets);
+      expect(_svgAsset('assets/page2/record_detail/flower_record_label.svg'), findsOneWidget);
 
       expect(
         find.text('선택한 날짜의 나무 기록 내용'),
@@ -79,7 +95,7 @@ void main() {
         findsNothing,
       );
 
-      await tester.tap(find.text('꽃 기록'));
+      await tester.tap(_svgAsset('assets/page2/record_detail/flower_record_label.svg'));
       await tester.pumpAndSettle();
 
       expect(
@@ -113,7 +129,7 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(find.text('꽃 기록'));
+      await tester.tap(_svgAsset('assets/page2/record_detail/flower_record_label.svg'));
       await tester.pumpAndSettle();
 
       expect(
@@ -174,7 +190,7 @@ void main() {
       await tester.pumpWidget(_buildTestApp(appData));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('꽃 기록'));
+      await tester.tap(_svgAsset('assets/page2/record_detail/flower_record_label.svg'));
       await tester.pumpAndSettle();
 
       expect(

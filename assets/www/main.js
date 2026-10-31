@@ -612,6 +612,12 @@ function showGardenLoadError(message, generation, retry) {
   loading.style.display = 'block';
 }
 
+const FLOWER_TARGET_HEIGHT = 4.0;
+
+const FLOWER_SCALE_MULTIPLIERS = {
+  // 'Sadness_ebw.glb': 1.1, // 해당 꽃만 10% 크게
+};
+
 function createFlowerInstances(
   gltf,
   assignedDiaries,
@@ -622,8 +628,6 @@ function createFlowerInstances(
   const baseFlower = gltf.scene;
   const numInstances = assignedDiaries.length;
   const modelFile = modelUrl.split('?')[0].split('/').pop();
-  const flowerScale =
-    modelFile === 'Gratitude_Marigold.glb' ? 0.106 : 0.2;
   const dummy = new THREE.Object3D();
   const createdMeshes = [];
 
@@ -638,7 +642,19 @@ function createFlowerInstances(
 
     const baseBox = new THREE.Box3().setFromObject(baseFlower);
     const baseMinY = baseBox.min.y;
-    const flowerRadius = baseBox.getBoundingSphere(new THREE.Sphere()).radius * flowerScale;
+    const modelHeight = baseBox.max.y - baseBox.min.y;
+
+    if (!Number.isFinite(modelHeight) || modelHeight <= 0) {
+      throw new Error(`Invalid flower height: ${modelFile}`);
+    }
+
+    const sizeMultiplier = FLOWER_SCALE_MULTIPLIERS[modelFile] ?? 1;
+
+    const flowerScale =
+      (FLOWER_TARGET_HEIGHT / modelHeight) * sizeMultiplier;
+
+    const flowerRadius =
+      baseBox.getBoundingSphere(new THREE.Sphere()).radius * flowerScale;
     const minZoomDistance = THREE.MathUtils.clamp(
       flowerRadius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.15,
       2.5,
@@ -701,7 +717,7 @@ function createFlowerInstances(
         Math.sin(angle) * radius
       );
       dummy.scale.set(flowerScale, flowerScale, flowerScale);
-      dummy.lookAt(origin);
+      dummy.lookAt(origin.x, dummy.position.y, origin.z);
       dummy.updateMatrix();
 
       // 위치 객체도 일기별로 한 번만 생성한다.

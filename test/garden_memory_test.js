@@ -175,7 +175,10 @@ function runtime({ diagnostics = false } = {}) {
       updateMatrix() {}
     },
     Box3: class {
-      constructor() { this.min = { y: 0 }; }
+      constructor() {
+        this.min = { y: 0 };
+        this.max = { y: 1 };
+      }
       setFromObject() { return this; }
       getBoundingSphere(sphere) { return sphere; }
       getCenter(vector) { return vector.set(1, 0, 1); }

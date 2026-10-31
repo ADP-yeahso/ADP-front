@@ -110,6 +110,8 @@ flutter:
     - assets/bottom_bar/
 
     - assets/record/
+    - assets/record/squirrels/
+    - assets/record/flower_card_pack/png/
     - assets/record/choice/
     - assets/record/choice/svg/
     - assets/record/choice/png/

@@ -5,7 +5,7 @@ import '../models/diary.dart';
 import '../screens/care_notebook/care_record_view_data.dart';
 import '../models/emergency_contact.dart';
 import '../models/emotions.dart';
-import '../models/flower.dart';
+import 'flower_catalog.dart';
 import '../models/groups.dart';
 import '../models/media.dart';
 import '../models/medication.dart';
@@ -396,13 +396,7 @@ class AppData extends ChangeNotifier {
     final analysis = analyzeEmotion(content);
     final finalEmotion = emotion ?? analysis.primary;
 
-    final flower = Flower(
-      id: finalEmotion.id,
-      emotionId: finalEmotion,
-      flowerName: 'Mock Flower',
-      colorCode: '#000000',
-      sentence: 'Mock sentence',
-    );
+    final flower = FlowerCatalog.randomFlowerForEmotion(finalEmotion);
 
     final diaryId = _nextId();
     final updatedMedia = mediaList

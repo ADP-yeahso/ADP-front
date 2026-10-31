@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../models/emotion_model.dart';
+import '../../../models/emotions.dart';
+import '../../../utils/emotion_utils.dart';
 import 'diary_loading_screen.dart';
 
 class DiaryEmotionSelectScreen extends StatefulWidget {
@@ -66,7 +68,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
     [
       EmotionModel(name: '사랑스러움', color: Color(0xFFFF9131)),
       EmotionModel(name: '다행스러움', color: Color(0xFFFFE367)),
-      EmotionModel(name: '무력감', color: Color(0xFF5EA7FF)),
+      EmotionModel(name: '무력감', color: Color(0xFFE36887)),
     ],
   ];
 
@@ -100,6 +102,17 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
         }
       }
     });
+  }
+
+  Emotion _emotionForSelectedCategory() {
+    final color = _selectedEmotions.first.color;
+    if (color == const Color(0xFFE36887)) return EmotionValues.anger;
+    if (color == const Color(0xFFAEAEAE)) return EmotionValues.anxiety;
+    if (color == const Color(0xFF5EA7FF)) return EmotionValues.sadness;
+    if (color == const Color(0xFFD09ED7)) return EmotionValues.guilt;
+    if (color == const Color(0xFFFFE367)) return EmotionValues.gratitude;
+    if (color == const Color(0xFFFF9131)) return EmotionValues.affection;
+    return EmotionValues.neutral;
   }
 
   Widget _buildAssetWidget({
@@ -283,6 +296,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                       height: 150,
                       child: _buildAssetWidget(
                         candidatePaths: const [
+                          'assets/record/squirrels/acorn.png',
                           'assets/record/choice/svg/3-2-3.svg/svg/3-2-3 다람쥐4.svg',
                           'assets/record/choice/png/3-2-3.png/png/3-2-3 다람쥐4.png',
                         ],
@@ -394,7 +408,9 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const DiaryLoadingScreen(),
+                                    builder: (context) => DiaryLoadingScreen(
+                                      emotion: _emotionForSelectedCategory(),
+                                    ),
                                   ),
                                 );
                               }

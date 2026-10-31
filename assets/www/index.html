@@ -8,17 +8,40 @@
     body {
       margin: 0;
       overflow: hidden;
-      background-color: transparent;
-      /* Soft off-white background matching the flutter app's vibe */
+      background: #93cc6b url('background/floor.png') center / cover no-repeat;
+    }
+    /* 모든 PNG는 852 × 852의 같은 캔버스이므로 동일한 크기와 기준점으로 겹친다.
+       앞에서부터 땅 → 산 → 물 → 구름 → 하늘 순서다. */
+    #garden-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 60%;
+      pointer-events: none;
+      background-image:
+        url('background/land.png'),
+        url('background/mountains.png'),
+        url('background/water.png'),
+        url('background/clouds.png'),
+        url('background/sky.png');
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
     }
     #canvas-container {
+      position: relative;
       width: 100vw;
       height: 100vh;
+      display: block;
+    }
+    #canvas-container canvas {
       display: block;
     }
     /* Simple loading text if needed */
     #loading {
       position: absolute;
+      z-index: 1;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
@@ -29,6 +52,7 @@
   </style>
 </head>
 <body>
+  <div id="garden-background" aria-hidden="true"></div>
   <div id="loading">정원을 가꾸는 중...</div>
   <div id="canvas-container"></div>
 

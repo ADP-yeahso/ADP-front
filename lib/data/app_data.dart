@@ -15,6 +15,7 @@ import '../models/medication.dart';
 import '../models/patients.dart';
 import '../models/users.dart';
 import '../models/users_groups.dart';
+import 'garden_range.dart';
 import 'emotion_analyzer.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -1054,6 +1055,22 @@ class AppData extends ChangeNotifier {
   List<Diary> diariesForMonth(DateTime month) =>
       diaries.where((d) => isSameMonth(d.recordDate, month)).toList()
         ..sort((a, b) => a.recordDate.compareTo(b.recordDate));
+
+  /// Completed flowers remain in the garden for 365 calendar days.
+  /// Diary rows are loaded from the backend, so this window survives app
+  /// restarts and device changes rather than depending on local storage.
+  List<Diary> diariesForGarden(DateTime asOf) {
+    final start = gardenWindowStart(asOf);
+    final end = DateTime(asOf.year, asOf.month, asOf.day + 1);
+    return diaries
+        .where(
+          (diary) =>
+              !diary.recordDate.isBefore(start) &&
+              diary.recordDate.isBefore(end),
+        )
+        .toList()
+      ..sort((a, b) => a.recordDate.compareTo(b.recordDate));
+  }
 
   List<DateTime> entryDatesForMonth(DateTime month) => {
     ...memoriesForMonth(month).map((m) => m.recordDate),

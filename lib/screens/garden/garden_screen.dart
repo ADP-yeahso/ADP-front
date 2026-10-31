@@ -76,6 +76,16 @@ class _GardenScreenState extends State<GardenScreen>
 
   DateTime get _currentMonth => gardenMonthAt(_anchor, _pageIndex);
 
+  DateTime get _gardenAsOf {
+    final today = DateTime.now();
+    final endOfSelectedMonth = DateTime(
+      _currentMonth.year,
+      _currentMonth.month + 1,
+      0,
+    );
+    return endOfSelectedMonth.isAfter(today) ? today : endOfSelectedMonth;
+  }
+
   bool get _shouldRun =>
       mounted &&
       !_disposed &&
@@ -559,7 +569,7 @@ class _GardenScreenState extends State<GardenScreen>
     });
   }
 
-  /// 달이 변경될 때마다 3D Scene의 데이터를 다시 주입
+  /// 기준 달이 변경될 때마다 해당 시점까지 최근 365일의 꽃을 다시 주입한다.
   void _reload3DScene() {
     final session = _session;
     final origin = session?.origin;
@@ -574,7 +584,7 @@ class _GardenScreenState extends State<GardenScreen>
     }
 
     final appData = context.read<AppData>();
-    final diaries = appData.diariesForMonth(_currentMonth);
+    final diaries = appData.diariesForGarden(_gardenAsOf);
 
     final realDiaryPayload = diaries
         .map(
@@ -599,12 +609,11 @@ class _GardenScreenState extends State<GardenScreen>
     }
 
     const assetVersion = 'flower-mapping-v3';
-    final treeUrl =
-        _gardenDiagnosticsEnabled && _gardenScenario == 'fail-tree'
-            ? '$origin/images/__missing_tree__.glb'
-                '?v=$assetVersion'
-            : '$origin/images/worldtree.glb'
-                '?v=$assetVersion';
+    final treeUrl = _gardenDiagnosticsEnabled && _gardenScenario == 'fail-tree'
+        ? '$origin/images/__missing_tree__.glb'
+              '?v=$assetVersion'
+        : '$origin/images/worldtree.glb'
+              '?v=$assetVersion';
 
     final flowerBaseUrl = '$origin/images/flower';
 
@@ -918,71 +927,68 @@ class _GardenScreenState extends State<GardenScreen>
     );
   }
 
-Future<void> _handleFlowerTap(String diaryId) async {
-  final session = _session;
-  final documentId = session?.jsSessionId;
+  Future<void> _handleFlowerTap(String diaryId) async {
+    final session = _session;
+    final documentId = session?.jsSessionId;
 
-  if (!_shouldRun ||
-      session == null ||
-      !session.isReady ||
-      _isFocusing) {
-    return;
-  }
+    if (!_shouldRun || session == null || !session.isReady || _isFocusing) {
+      return;
+    }
 
-  final appData = context.read<AppData>();
-  final diary = diaryId.startsWith('dummy')
-      ? null
-      : appData.diaryById(int.tryParse(diaryId) ?? -1);
+    final appData = context.read<AppData>();
+    final diary = diaryId.startsWith('dummy')
+        ? null
+        : appData.diaryById(int.tryParse(diaryId) ?? -1);
 
-  if (diary == null) {
-    unawaited(
-      session.runScript(
-        _isFlowerBrowsing
-            ? 'window.resumeFlowerBrowse?.()'
-            : 'window.resetCamera?.()',
-      ),
-    );
-    return;
-  }
+    if (diary == null) {
+      unawaited(
+        session.runScript(
+          _isFlowerBrowsing
+              ? 'window.resumeFlowerBrowse?.()'
+              : 'window.resetCamera?.()',
+        ),
+      );
+      return;
+    }
 
-  setState(() => _isFocusing = true);
+    setState(() => _isFocusing = true);
 
-  try {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return SizedBox(
-          height: MediaQuery.of(context).size.height * 0.94,
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(24),
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) {
+          return SizedBox(
+            height: MediaQuery.of(context).size.height * 0.94,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+              child: CalendarScreen(
+                initialDay: diary.recordDate,
+                initialDiary: diary,
+              ),
             ),
-            child: CalendarScreen(
-              initialDay: diary.recordDate,
-              initialDiary: diary,
-            ),
+          );
+        },
+      );
+    } finally {
+      if (_ownsSession(session) &&
+          _shouldRun &&
+          session.jsSessionId == documentId) {
+        setState(() => _isFocusing = false);
+        unawaited(
+          session.runScript(
+            _isFlowerBrowsing
+                ? 'window.resumeFlowerBrowse?.()'
+                : 'window.resetCamera?.()',
           ),
         );
-      },
-    );
-  } finally {
-    if (_ownsSession(session) &&
-        _shouldRun &&
-        session.jsSessionId == documentId) {
-      setState(() => _isFocusing = false);
-      unawaited(
-      session.runScript(
-        _isFlowerBrowsing
-            ? 'window.resumeFlowerBrowse?.()'
-            : 'window.resetCamera?.()',
-      ),
-    );
+      }
     }
   }
-}
 
   Future<void> _handleTreeTap() async {
     final session = _session;

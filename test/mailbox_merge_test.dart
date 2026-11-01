@@ -75,7 +75,7 @@ void main() {
     expect(data.unreadMailCount, 0);
 
     data.addLetter(
-      receiver: '가족 모두에게',
+      receiverUserId: null,
       content: '머지 후 가족 편지',
       isAnonymous: true,
     );
@@ -88,6 +88,33 @@ void main() {
     data.dispose();
   });
 
+  test('동명이인에게도 선택한 사용자 ID로 편지를 보낸다', () {
+    final data = AppData();
+    addTearDown(data.dispose);
+
+    final recipient = data.users.firstWhere(
+      (user) => user.id != data.currentUserId,
+    );
+
+    // 내 이름을 수신자와 같게 만들어 동명이인 상황 재현
+    data.updateCurrentUserProfile(
+      name: recipient.name,
+      password: data.me.password,
+      phoneNumber: data.me.phoneNumber,
+    );
+
+    data.addLetter(
+      receiverUserId: recipient.id.toString(),
+      content: '동명이인 수신자 확인',
+      isAnonymous: false,
+    );
+
+    final letter = data.sentLetters.single;
+
+    expect(letter.receiverUserId, recipient.id.toString());
+    expect(letter.receiverUserId, isNot(data.currentMailboxUserId));
+    expect(letter.isGroupLetter, isFalse);
+  });
   testWidgets('latest home header keeps mailbox navigation and unread badge', (
     tester,
   ) async {
@@ -145,7 +172,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       final data = AppData();
       data.addLetter(
-        receiver: '가족 모두에게',
+        receiverUserId: null,
         content: '보낸 편지 보존 확인',
         isAnonymous: false,
       );

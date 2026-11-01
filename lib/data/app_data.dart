@@ -935,28 +935,24 @@ class AppData extends ChangeNotifier {
   }
 
   void addLetter({
-    required String receiver,
+    required String? receiverUserId,
     required String content,
     required bool isAnonymous,
   }) {
-    final isGroupLetter = receiver == '가족 모두에게';
+    // 수신자 ID가 null이면 가족 전체 편지
+    final isGroupLetter = receiverUserId == null;
 
-    String? receiverUserId;
-
-    if (!isGroupLetter) {
-      receiverUserId = users
-          .firstWhere((user) => user.name == receiver)
-          .id
-          .toString();
-    }
+    final receiverName = isGroupLetter
+        ? '가족 모두에게'
+        : users.firstWhere((user) => user.id.toString() == receiverUserId).name;
 
     final newLetter = MailLetter(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
-      groupId: 1,
+      groupId: group.id,
       senderUserId: currentMailboxUserId,
       receiverUserId: receiverUserId,
       sender: me.name,
-      receiver: receiver,
+      receiver: receiverName,
       content: content,
       isAnonymous: isAnonymous,
       isGroupLetter: isGroupLetter,

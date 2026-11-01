@@ -37,21 +37,32 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
 
   // 편지 쓰기 폼 컨트롤러 및 상태
   final TextEditingController _contentController = TextEditingController();
-  String _selectedReceiver = '가족 모두에게';
+  static const String _allReceiversId = 'all';
+  String _selectedReceiverId = _allReceiversId;
+
+  String _receiverName(String receiverId) {
+    if (receiverId == _allReceiversId) {
+      return '가족 모두에게';
+    }
+
+    return context
+        .read<AppData>()
+        .users
+        .firstWhere((user) => user.id.toString() == receiverId)
+        .name;
+  }
+
+  String get _selectedReceiver => _receiverName(_selectedReceiverId);
   bool _isAnonymous = false;
 
   List<String> _getReceiverOptions(BuildContext context) {
     final appData = context.read<AppData>();
 
-    final memberNames =
-        appData.users
-            .where((user) => user.id != appData.currentUserId)
-            .map((user) => user.name)
-            .toSet()
-            .toList()
-          ..sort();
+    final members =
+        appData.users.where((user) => user.id != appData.currentUserId).toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
 
-    return ['가족 모두에게', ...memberNames];
+    return [_allReceiversId, ...members.map((user) => user.id.toString())];
   }
 
   // 5. 수신자 선택 바텀시트 모달 (디자인 가이드 기반)
@@ -116,8 +127,8 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
 
                 // 수신자 옵션 리스트
                 ...receiverOptions.map((receiver) {
-                  final isSelected = receiver == _selectedReceiver;
-                  final isGroup = receiver == '가족 모두에게';
+                  final isSelected = receiver == _selectedReceiverId;
+                  final isGroup = receiver == _allReceiversId;
 
                   return GestureDetector(
                     onTap: () {
@@ -152,7 +163,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            receiver,
+                            _receiverName(receiver),
                             style: TextStyle(
                               color: const Color(0xFF1F2E1B),
                               fontSize: 16,
@@ -175,7 +186,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
 
     if (selectedReceiver != null && mounted) {
       setState(() {
-        _selectedReceiver = selectedReceiver;
+        _selectedReceiverId = selectedReceiver;
       });
     }
   }
@@ -233,7 +244,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        'To. ${isSentLetter ? receiverLabel : "나"}',
+                        'To. $receiverLabel',
                         style: const TextStyle(
                           color: Color(0xFF1F2E1B),
                           fontSize: 18,
@@ -324,7 +335,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
     if (!hasWrittenContent) {
       setState(() {
         _contentController.clear();
-        _selectedReceiver = '가족 모두에게';
+        _selectedReceiverId = _allReceiversId;
         _isAnonymous = false;
         _isComposing = false;
       });
@@ -384,7 +395,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
 
     setState(() {
       _contentController.clear();
-      _selectedReceiver = '가족 모두에게';
+      _selectedReceiverId = _allReceiversId;
       _isAnonymous = false;
       _isComposing = false;
     });
@@ -398,7 +409,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
       return;
     }
 
-    final messageText = _selectedReceiver == '가족 모두에게'
+    final messageText = _selectedReceiverId == _allReceiversId
         ? '가족 모두에게 편지를 보냅니다.'
         : '$_selectedReceiver 님에게 편지를 보냅니다.';
 
@@ -494,7 +505,9 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
     }
 
     context.read<AppData>().addLetter(
-      receiver: _selectedReceiver,
+      receiverUserId: _selectedReceiverId == _allReceiversId
+          ? null
+          : _selectedReceiverId,
       content: content,
       isAnonymous: _isAnonymous,
     );
@@ -502,7 +515,7 @@ class _FamilyMailboxScreenState extends State<FamilyMailboxScreen> {
     setState(() {
       _contentController.clear();
       _isAnonymous = false;
-      _selectedReceiver = '가족 모두에게';
+      _selectedReceiverId = _allReceiversId;
       _isComposing = false;
       _activeTabIndex = 1;
     });

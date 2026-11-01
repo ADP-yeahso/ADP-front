@@ -420,6 +420,7 @@ class LetterApi {
     required int groupId,
     required String content,
     String? receiverUserId,
+    bool isAnonymous = false,
   }) async => _map(
     await _api.post(
       '/letters',
@@ -428,6 +429,7 @@ class LetterApi {
         'group_id': groupId,
         'receiver_user_id': receiverUserId,
         'content': content,
+        'is_anonymous': isAnonymous,
       },
       expectedStatus: 201,
     ),

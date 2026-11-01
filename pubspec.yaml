@@ -50,7 +50,6 @@ dependencies:
   http_parser: ^4.1.2
 
   fl_chart: ^1.2.0
- 
 
 
 dev_dependencies:
@@ -86,6 +85,8 @@ flutter:
     - assets/icons/
     - assets/garden/home/
     - assets/images/
+    - assets/images/mailbox/
+    - assets/svg/mailbox/
     - assets/images/care_note/
     - assets/images/flower/
     - assets/www/

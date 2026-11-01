@@ -11,6 +11,7 @@ import '../models/emotions.dart';
 import '../models/flower.dart';
 import '../models/groups.dart';
 import '../models/media.dart';
+import '../models/mail_letter.dart';
 import '../models/memory.dart';
 import '../models/medication.dart';
 import '../models/patients.dart';
@@ -74,7 +75,20 @@ class AppData extends ChangeNotifier {
   );
   final List<UserGroup> userGroups = [];
   final List<User> users = [];
+  final List<MailLetter> letters = [];
   List<Group> _joinedGroups = const [];
+
+  String get currentMailboxUserId => currentUserId;
+  List<MailLetter> get receivedLetters =>
+      letters.where((letter) => letter.isReceivedBy(currentUserId)).toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  List<MailLetter> get sentLetters =>
+      letters.where((letter) => letter.isSentBy(currentUserId)).toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  bool get hasUnreadMail => receivedLetters.any((letter) => !letter.isRead);
+  int get unreadMailCount =>
+      receivedLetters.where((letter) => !letter.isRead).length;
+  bool get hasMailboxBackend => _tokens != null && group.id > 0;
 
   List<Group> get joinedGroups => _joinedGroups;
 
@@ -126,6 +140,7 @@ class AppData extends ChangeNotifier {
     _tokens = null;
     currentUserId = '';
     users.clear();
+    letters.clear();
     _joinedGroups = const [];
     userGroups.clear();
     memories.clear();
@@ -180,6 +195,7 @@ class AppData extends ChangeNotifier {
       memories.clear();
       diaries.clear();
       comments.clear();
+      letters.clear();
       _publicDiaryIds.clear();
       group = Group(
         id: groupId,
@@ -240,6 +256,125 @@ class AppData extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  Future<void> refreshMailbox() async {
+    final tokens = _tokens;
+    final groupId = group.id;
+    if (tokens == null || groupId <= 0) return;
+    try {
+      final api = LetterApi(_api);
+      final results = await Future.wait([
+        api.list(tokens, groupId),
+        api.list(tokens, groupId, sent: true),
+      ]);
+      final byId = <String, MailLetter>{};
+      for (final row in [...results[0], ...results[1]]) {
+        final senderId = row['sender_user_id']?.toString();
+        final receiverId = row['receiver_user_id']?.toString();
+        final normalized = <String, dynamic>{
+          ...row,
+          'group_id': row['group_id'] ?? groupId,
+          'sender_name': row['sender_name'] ?? _mailboxUserName(senderId),
+          'receiver_name':
+              row['receiver_name'] ??
+              (receiverId == null ? '가족 모두에게' : _mailboxUserName(receiverId)),
+          'is_group_letter': row['is_group_letter'] ?? receiverId == null,
+        };
+        final letter = MailLetter.fromJson(normalized);
+        byId[letter.id] = letter;
+      }
+      letters
+        ..clear()
+        ..addAll(byId.values);
+      notifyListeners();
+    } on ApiException {
+      // 편지함 오류가 그룹/정원 전체 로딩을 막지 않도록 기존 상태를 유지한다.
+    }
+  }
+
+  Future<void> sendMailboxLetter({
+    required String receiver,
+    required String content,
+    required bool isAnonymous,
+  }) async {
+    final tokens = _tokens;
+    if (tokens == null || group.id <= 0) {
+      addLetter(receiver: receiver, content: content, isAnonymous: isAnonymous);
+      return;
+    }
+    final receiverId = _mailboxReceiverId(receiver);
+    await LetterApi(_api).send(
+      tokens,
+      groupId: group.id,
+      receiverUserId: receiverId,
+      content: content,
+      isAnonymous: isAnonymous,
+    );
+    await refreshMailbox();
+  }
+
+  Future<void> openMailboxLetter(String id) async {
+    final tokens = _tokens;
+    final numericId = int.tryParse(id);
+    if (tokens != null && numericId != null) {
+      await LetterApi(_api).detail(tokens, numericId);
+    }
+    markLetterAsRead(id);
+  }
+
+  void replaceMailboxLetters(Iterable<MailLetter> values) {
+    letters
+      ..clear()
+      ..addAll(values);
+    notifyListeners();
+  }
+
+  void markLetterAsRead(String id) {
+    for (final letter in letters) {
+      if (letter.id != id || letter.isRead) continue;
+      letter.isRead = true;
+      notifyListeners();
+      return;
+    }
+  }
+
+  void addLetter({
+    required String receiver,
+    required String content,
+    required bool isAnonymous,
+  }) {
+    final receiverId = _mailboxReceiverId(receiver);
+    letters.add(
+      MailLetter(
+        id: 'local-${DateTime.now().microsecondsSinceEpoch}',
+        groupId: group.id,
+        senderUserId: currentUserId,
+        receiverUserId: receiverId,
+        sender: me.name.isEmpty ? '나' : me.name,
+        receiver: receiver,
+        content: content,
+        isAnonymous: isAnonymous,
+        isGroupLetter: receiverId == null,
+        createdAt: DateTime.now(),
+        isRead: true,
+      ),
+    );
+    notifyListeners();
+  }
+
+  String _mailboxUserName(String? id) {
+    if (id == null) return '가족';
+    if (id == currentUserId) return me.name.isEmpty ? '나' : me.name;
+    return userById(id).name;
+  }
+
+  String? _mailboxReceiverId(String receiver) {
+    if (receiver == '가족 모두에게') return null;
+    for (final user in users) {
+      if (user.id != currentUserId && user.name == receiver) return user.id;
+    }
+    return null;
   }
 
   void _setPatient(Map<String, dynamic> value) {

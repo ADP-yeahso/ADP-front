@@ -471,6 +471,17 @@ class AppData extends ChangeNotifier {
     return value;
   }
 
+  bool _hasMemoryMediaSnapshot(Map<String, dynamic> value) {
+    final media = value['media'];
+    if (media is! List) return false;
+    return media.every(
+      (item) =>
+          item is Map &&
+          ((item['download_url'] ?? item['file_url'])?.toString().isNotEmpty ??
+              false),
+    );
+  }
+
   Future<void> refreshRecords() async {
     final tokens = _tokens;
     if (tokens == null) return;
@@ -480,6 +491,17 @@ class AppData extends ChangeNotifier {
       final memoryRows = hasPatient
           ? await _allPages('/patients/${patient.id}/memory-records', tokens)
           : <Map<String, dynamic>>[];
+      final memoryDetails = <Map<String, dynamic>>[];
+      for (final row in memoryRows) {
+        if (_hasMemoryMediaSnapshot(row)) {
+          memoryDetails.add(row);
+        } else {
+          final detail = await MemoryRecordApi(
+            _api,
+          ).detail(tokens, row['id'] as int);
+          memoryDetails.add({...row, ...detail});
+        }
+      }
       final diaryRows = await _allPages(
         '/diaries?group_id=${group.id}',
         tokens,
@@ -499,7 +521,7 @@ class AppData extends ChangeNotifier {
         if (Diary.hasSavedEmotion(detail)) details.add(detail);
       }
       if (generation != _generation || request != _recordsRequest) return;
-      final loadedMemories = memoryRows.map(_memory).toList();
+      final loadedMemories = memoryDetails.map(_memory).toList();
       final loadedDiaries = details.map(_diary).toList();
       memories
         ..clear()

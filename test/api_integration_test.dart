@@ -158,6 +158,24 @@ void main() {
                     'record_date': '2026-10-20',
                   },
                 ]);
+              case '/api/v1/memory-records/81':
+                return jsonResponse({
+                  'id': 81,
+                  'patient_id': 43,
+                  'user_id': userId,
+                  'context': '산책한 날',
+                  'title': '산책 기록',
+                  'record_date': '2026-10-20',
+                  'media': [
+                    {
+                      'id': 11,
+                      'memory_record_id': 81,
+                      'file_type': 'image',
+                      'file_url': 'memory-records/81/photo.jpg',
+                      'download_url': 'https://storage.example/memory.jpg',
+                    },
+                  ],
+                });
               case '/api/v1/diaries':
                 expect(request.url.queryParameters['group_id'], '7');
                 return jsonResponse([
@@ -216,6 +234,10 @@ void main() {
       expect(data.diaries.single.title, '감사 일기');
       expect(data.memories.single.title, '산책 기록');
       expect(
+        data.memories.single.mediaList.single.fileUrl,
+        'https://storage.example/memory.jpg',
+      );
+      expect(
         data.diaries.single.mediaList.single.fileUrl,
         'https://storage.example/photo.jpg',
       );
@@ -272,6 +294,7 @@ void main() {
                   'user_id': userId,
                   'context': '기록',
                   'record_date': '2026-10-20',
+                  'media': <Object>[],
                 },
               ),
             );

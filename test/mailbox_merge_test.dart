@@ -144,6 +144,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.text('26 . 11'), findsOneWidget);
+    expect(find.text('11 . 26'), findsNothing);
     expect(svg('assets/garden/home/unread_badge.svg'), findsOneWidget);
     await tester.tap(find.byTooltip('편지함 · 읽지 않은 편지'));
     await tester.pumpAndSettle();

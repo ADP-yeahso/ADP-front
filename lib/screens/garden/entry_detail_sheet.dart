@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_data.dart';
 import '../../models/diary.dart';
+import '../../models/media.dart';
 import '../../models/memory.dart';
 import '../../widgets/emotion_chip.dart';
 import '../../widgets/recommendation_card.dart';
@@ -306,6 +309,7 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
   }
 
   Widget _buildMemoryCard(Memory memory, AppData appData) {
+    final photos = _memoryPhotos(memory);
     final timeStr =
         '${memory.recordDate.hour.toString().padLeft(2, '0')}:${memory.recordDate.minute.toString().padLeft(2, '0')}';
 
@@ -313,7 +317,10 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => CalendarScreen(initialDay: memory.recordDate, initialMemory: memory),
+            builder: (context) => CalendarScreen(
+              initialDay: memory.recordDate,
+              initialMemory: memory,
+            ),
           ),
         );
       },
@@ -335,17 +342,20 @@ class _MemoryListSheetState extends State<_MemoryListSheet> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Placeholder
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 70,
+                height: 70,
                 color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(8),
+                child: photos.isNotEmpty
+                    ? _MemoryPhoto(
+                        media: photos.first,
+                        fit: BoxFit.cover,
+                        key: ValueKey('memory-list-photo-${memory.id}'),
+                      )
+                    : const Icon(Icons.eco_outlined, color: Colors.black26),
               ),
-              child: memory.mediaList.isNotEmpty
-                  ? const Icon(Icons.photo_outlined, color: Colors.black26)
-                  : const Icon(Icons.eco_outlined, color: Colors.black26),
             ),
             const SizedBox(width: 12),
             // Content
@@ -463,6 +473,7 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
         final author = appData.userById(memory.userId);
         final isOwner = memory.userId == appData.me.id;
         final comments = appData.commentsForMemory(memory.id);
+        final photos = _memoryPhotos(memory);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,28 +488,30 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
-            if (memory.mediaList.isNotEmpty)
-              Container(
-                height: 140,
+            if (photos.isNotEmpty)
+              SizedBox(
+                height: 220,
                 width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFEAE0),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                alignment: Alignment.center,
-                child: const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.photo_outlined, size: 32, color: Colors.black38),
-                    SizedBox(height: 4),
-                    Text(
-                      '사진이 첨부되었어요',
-                      style: TextStyle(color: Colors.black45, fontSize: 12),
+                child: PageView.builder(
+                  itemCount: photos.length,
+                  itemBuilder: (context, index) => Padding(
+                    padding: EdgeInsets.only(
+                      right: index < photos.length - 1 ? 8 : 0,
                     ),
-                  ],
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: _MemoryPhoto(
+                        media: photos[index],
+                        fit: BoxFit.cover,
+                        key: ValueKey(
+                          'memory-detail-photo-${memory.id}-${photos[index].id}',
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
+            if (photos.isNotEmpty) const SizedBox(height: 12),
             Text(
               memory.contextText ?? '',
               style: const TextStyle(fontSize: 15, height: 1.5),
@@ -672,6 +685,49 @@ class _MemoryDetailContentState extends State<_MemoryDetailContent> {
           ],
         );
       },
+    );
+  }
+}
+
+List<Media> _memoryPhotos(Memory memory) =>
+    memory.mediaList.where((media) => media.fileType == 'image').toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+
+class _MemoryPhoto extends StatelessWidget {
+  const _MemoryPhoto({super.key, required this.media, required this.fit});
+
+  final Media media;
+  final BoxFit fit;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget errorBuilder(
+      BuildContext context,
+      Object error,
+      StackTrace? stackTrace,
+    ) => const ColoredBox(
+      color: Color(0xFFEFEAE0),
+      child: Center(
+        child: Icon(Icons.broken_image_outlined, color: Colors.black38),
+      ),
+    );
+
+    if (media.fileUrl.startsWith('http://') ||
+        media.fileUrl.startsWith('https://')) {
+      return Image.network(
+        media.fileUrl,
+        width: double.infinity,
+        height: double.infinity,
+        fit: fit,
+        errorBuilder: errorBuilder,
+      );
+    }
+    return Image.file(
+      File(media.fileUrl),
+      width: double.infinity,
+      height: double.infinity,
+      fit: fit,
+      errorBuilder: errorBuilder,
     );
   }
 }

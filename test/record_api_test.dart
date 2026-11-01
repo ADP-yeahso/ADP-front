@@ -21,6 +21,7 @@ const _memory = {
   'title': '산책',
   'context': '함께 걸었어요.',
   'record_date': '2026-10-20',
+  'media': <Object>[],
 };
 const _diary = {
   'id': 92,

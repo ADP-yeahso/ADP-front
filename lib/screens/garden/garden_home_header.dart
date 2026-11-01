@@ -63,7 +63,7 @@ class GardenHomeHeader extends StatelessWidget {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            '${month.month.toString().padLeft(2, '0')} . ${month.year.toString().substring(2)}',
+                            '${month.year.toString().substring(2)} . ${month.month.toString().padLeft(2, '0')}',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,

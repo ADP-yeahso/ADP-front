@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart' as svg;
@@ -5,7 +7,13 @@ import 'package:full_svg_flutter/full_svg_flutter.dart' as full_svg;
 import 'package:provider/provider.dart';
 
 import 'package:care_garden/data/app_data.dart';
+import 'package:care_garden/data/flower_catalog.dart';
+import 'package:care_garden/models/diary.dart';
+import 'package:care_garden/models/flower.dart';
+import 'package:care_garden/models/media.dart';
 import 'package:care_garden/screens/calendar/day_record_detail_view.dart';
+import 'package:care_garden/screens/garden/entry_detail_sheet.dart';
+import 'package:care_garden/utils/emotion_utils.dart';
 
 Finder _svgAsset(String assetName) {
   return find.byWidgetPredicate((widget) {
@@ -123,7 +131,20 @@ void main() {
       date: _selectedDay,
       title: '상세 확인용 나무 기록',
       content: '나무 기록 상세 열기 테스트',
+      mediaList: [
+        Media(
+          id: 501,
+          memoryId: null,
+          diaryId: null,
+          fileUrl: 'assets/images/flower.png',
+          fileType: 'image',
+          duration: null,
+          sortOrder: 0,
+          createdAt: _selectedDay,
+        ),
+      ],
     );
+    final memoryId = appData.memories.single.id;
 
     await tester.pumpWidget(_buildTestApp(appData));
     await tester.pumpAndSettle();
@@ -135,6 +156,11 @@ void main() {
 
     expect(find.text('가족 기록'), findsOneWidget);
     expect(find.text('가족에게 공개'), findsOneWidget);
+    expect(
+      find.byKey(ValueKey('memory-detail-photo-$memoryId-501')),
+      findsOneWidget,
+    );
+    expect(find.text('사진이 첨부되었어요'), findsNothing);
   });
 
   testWidgets('꽃 기록 카드를 누르면 기존 감정 일기 상세 시트가 열린다', (WidgetTester tester) async {
@@ -176,5 +202,93 @@ void main() {
 
     expect(_svgAsset('assets/page2/record_detail/edit.svg'), findsNothing);
     expect(_svgAsset('assets/page2/record_detail/delete.svg'), findsOneWidget);
+  });
+
+  testWidgets('서버 꽃이 없어도 AI 1순위 최종 감정의 꽃 카드를 표시한다', (tester) async {
+    final appData = _createEmptyAppData();
+    addTearDown(appData.dispose);
+    final emotion = EmotionValues.affection;
+    const diaryId = 91;
+    final expectedCard = FlowerCatalog.randomCardForEmotion(
+      emotion,
+      random: Random(diaryId),
+    );
+    final now = DateTime(2026, 8, 10, 12);
+    final diary = Diary(
+      id: diaryId,
+      userId: 'user-1',
+      context: 'AI 분석 결과로 만든 꽃 카드',
+      flowerType: Flower(
+        id: 0,
+        emotionId: emotion,
+        flowerName: '',
+        colorCode: '',
+        sentence: '',
+      ),
+      mediaList: const [],
+      recordDate: _selectedDay,
+      createdAt: now,
+      updatedAt: now,
+      isFinalized: false,
+    );
+    appData.diaries.add(diary);
+
+    await tester.pumpWidget(_buildTestApp(appData));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      _svgAsset('assets/page2/record_detail/flower_record_label.svg'),
+    );
+    await tester.pumpAndSettle();
+
+    final image = tester.widget<Image>(
+      find.byKey(const ValueKey('diary-flower-card-91')),
+    );
+    expect((image.image as AssetImage).assetName, expectedCard.assetPath);
+    expect(find.text(expectedCard.name), findsOneWidget);
+    expect(find.text(expectedCard.meaning), findsOneWidget);
+  });
+
+  testWidgets('나무 기억보기 목록에도 첨부 사진을 썸네일로 표시한다', (tester) async {
+    final appData = _createEmptyAppData();
+    addTearDown(appData.dispose);
+    appData.addMemory(
+      date: _selectedDay,
+      title: '사진 기록',
+      content: '함께 올린 사진',
+      mediaList: [
+        Media(
+          id: 502,
+          memoryId: null,
+          diaryId: null,
+          fileUrl: 'assets/images/flower.png',
+          fileType: 'image',
+          duration: null,
+          sortOrder: 0,
+          createdAt: _selectedDay,
+        ),
+      ],
+    );
+    final memory = appData.memories.single;
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppData>.value(
+        value: appData,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showMemoryListSheet(context, [memory]),
+              child: const Text('기억 보기'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('기억 보기'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(ValueKey('memory-list-photo-${memory.id}')),
+      findsOneWidget,
+    );
   });
 }

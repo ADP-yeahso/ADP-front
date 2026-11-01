@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import '../../data/flower_catalog.dart';
@@ -887,6 +888,22 @@ class _FlowerInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Some finalized diaries do not have a persisted flower yet. Keep the
+    // calendar detail consistent with the completion screen by deriving a
+    // stable card from the AI rank-1 emotion (stored as final_emotion_id).
+    final savedFlower = FlowerCatalog.cardForName(diary.flowerType.flowerName);
+    final fallbackFlower = FlowerCatalog.randomCardForEmotion(
+      diary.flowerType.emotionId,
+      random: Random(diary.id),
+    );
+    final flowerCard = savedFlower ?? fallbackFlower;
+    final flowerName = diary.flowerType.flowerName.trim().isNotEmpty
+        ? diary.flowerType.flowerName
+        : flowerCard.name;
+    final flowerMeaning = diary.flowerType.sentence.trim().isNotEmpty
+        ? diary.flowerType.sentence
+        : flowerCard.meaning;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(14, compact ? 8 : 14, 14, compact ? 8 : 14),
@@ -902,10 +919,8 @@ class _FlowerInfoCard extends StatelessWidget {
             width: 100,
             height: 140,
             child: Image.asset(
-              FlowerCatalog.cardForName(
-                    diary.flowerType.flowerName,
-                  )?.assetPath ??
-                  'assets/images/flower.png',
+              flowerCard.assetPath,
+              key: ValueKey('diary-flower-card-${diary.id}'),
               fit: BoxFit.fill,
             ),
           ),
@@ -916,7 +931,7 @@ class _FlowerInfoCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Text(
-                  diary.flowerType.flowerName,
+                  flowerName,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -925,7 +940,7 @@ class _FlowerInfoCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  diary.flowerType.sentence,
+                  flowerMeaning,
                   style: const TextStyle(fontSize: 13, color: Colors.black87),
                 ),
               ],

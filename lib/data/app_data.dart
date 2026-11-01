@@ -7,6 +7,7 @@ import '../models/emergency_contact.dart';
 import '../models/emotions.dart';
 import 'flower_catalog.dart';
 import '../models/groups.dart';
+import '../models/mail_letter.dart';
 import '../models/media.dart';
 import '../models/medication.dart';
 import '../models/memory.dart';
@@ -865,5 +866,101 @@ class AppData extends ChangeNotifier {
         );
       }
     }
+  }
+
+  // ── 편지함 (Mailbox) 관련 상태 및 데이터 ──────────────
+  final List<MailLetter> letters = [
+    MailLetter(
+      id: 'letter-1',
+      groupId: 1,
+      senderUserId: '3',
+      receiverUserId: '1',
+      sender: '정인선',
+      receiver: '강성윤',
+      content: '고생이 많다. 밥 잘 챙겨 먹어라. 날씨가 쌀쌀하니 감기 조심하고.',
+      isAnonymous: false,
+      isGroupLetter: false,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+      isRead: false,
+    ),
+    MailLetter(
+      id: 'letter-2',
+      groupId: 1,
+      senderUserId: '2',
+      receiverUserId: null,
+      sender: '강지민',
+      receiver: '가족 모두에게',
+      content: '이번 주 주말 병원 동행은 제가 갈게요. 서류 미리 준비해주세요.',
+      isAnonymous: false,
+      isGroupLetter: true,
+      createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
+      isRead: true,
+    ),
+    MailLetter(
+      id: 'letter-3',
+      groupId: 1,
+      senderUserId: null,
+      receiverUserId: null,
+      sender: '익명의 가족',
+      receiver: '가족 모두에게',
+      content: '오늘 약 드시는 시간 확인 부탁드려요.',
+      isAnonymous: true,
+      isGroupLetter: true,
+      createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 8)),
+      isRead: false,
+    ),
+  ];
+
+  String get currentMailboxUserId => currentUserId.toString();
+
+  List<MailLetter> get receivedLetters => letters
+      .where((letter) => letter.isReceivedBy(currentMailboxUserId))
+      .toList();
+
+  List<MailLetter> get sentLetters =>
+      letters.where((letter) => letter.isSentBy(currentMailboxUserId)).toList();
+
+  bool get hasUnreadMail => receivedLetters.any((letter) => !letter.isRead);
+
+  int get unreadMailCount =>
+      receivedLetters.where((letter) => !letter.isRead).length;
+
+  void markLetterAsRead(String id) {
+    final index = letters.indexWhere((letter) => letter.id == id);
+
+    if (index != -1 && !letters[index].isRead) {
+      letters[index].isRead = true;
+      notifyListeners();
+    }
+  }
+
+  void addLetter({
+    required String? receiverUserId,
+    required String content,
+    required bool isAnonymous,
+  }) {
+    // 수신자 ID가 null이면 가족 전체 편지
+    final isGroupLetter = receiverUserId == null;
+
+    final receiverName = isGroupLetter
+        ? '가족 모두에게'
+        : users.firstWhere((user) => user.id.toString() == receiverUserId).name;
+
+    final newLetter = MailLetter(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      groupId: group.id,
+      senderUserId: currentMailboxUserId,
+      receiverUserId: receiverUserId,
+      sender: me.name,
+      receiver: receiverName,
+      content: content,
+      isAnonymous: isAnonymous,
+      isGroupLetter: isGroupLetter,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+
+    letters.insert(0, newLetter);
+    notifyListeners();
   }
 }

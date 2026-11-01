@@ -12,8 +12,8 @@ import '../../data/garden_range.dart';
 import 'dart:async';
 import '../../utils/garden_viewer_session.dart';
 import '../care_notebook/care_notebook_list_screen.dart';
-import '../family/family_share_screen.dart';
 import 'entry_detail_sheet.dart';
+import '../mailbox/family_mailbox_screen.dart';
 import '../calendar/calendar_screen.dart';
 
 import 'garden_home_header.dart';
@@ -65,8 +65,6 @@ class _GardenScreenState extends State<GardenScreen>
   bool _isFlowerBrowsing = false;
   int _flowerIndex = 0;
   int _flowerCount = 0;
-  // Read state lasts for this home session until a persistent inbox is added.
-  final Set<String> _openedSharedRecordIds = {};
   bool _disposed = false;
   bool _appForeground = true;
   bool _innerRouteVisible = true;
@@ -599,12 +597,11 @@ class _GardenScreenState extends State<GardenScreen>
     }
 
     const assetVersion = 'flower-mapping-v3';
-    final treeUrl =
-        _gardenDiagnosticsEnabled && _gardenScenario == 'fail-tree'
-            ? '$origin/images/__missing_tree__.glb'
-                '?v=$assetVersion'
-            : '$origin/images/worldtree.glb'
-                '?v=$assetVersion';
+    final treeUrl = _gardenDiagnosticsEnabled && _gardenScenario == 'fail-tree'
+        ? '$origin/images/__missing_tree__.glb'
+              '?v=$assetVersion'
+        : '$origin/images/worldtree.glb'
+              '?v=$assetVersion';
 
     final flowerBaseUrl = '$origin/images/flower';
 
@@ -732,6 +729,7 @@ class _GardenScreenState extends State<GardenScreen>
     final controller = _session?.controller;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFE8F4F8),
       body: Stack(
         children: [
           // ── 1. 가장 밑바탕: 3D Three.js 뷰어 (WebView) 전체 화면 ──
@@ -820,9 +818,7 @@ class _GardenScreenState extends State<GardenScreen>
                       month: month,
                       showTitleAndActions: !_isFlowerBrowsing,
                       groupName: appData.group.groupName,
-                      hasUnreadRecords: _sharedRecordIds(
-                        appData,
-                      ).difference(_openedSharedRecordIds).isNotEmpty,
+                      hasUnreadRecords: appData.hasUnreadMail,
                       onOpenMailbox: _openMailbox,
                       onOpenNotebook: () => openCareNotebook(context),
                     ),
@@ -913,61 +909,20 @@ class _GardenScreenState extends State<GardenScreen>
     );
   }
 
-Future<void> _handleFlowerTap(String diaryId) async {
-  final session = _session;
-  final documentId = session?.jsSessionId;
+  Future<void> _handleFlowerTap(String diaryId) async {
+    final session = _session;
+    final documentId = session?.jsSessionId;
 
-  if (!_shouldRun ||
-      session == null ||
-      !session.isReady ||
-      _isFocusing) {
-    return;
-  }
+    if (!_shouldRun || session == null || !session.isReady || _isFocusing) {
+      return;
+    }
 
-  final appData = context.read<AppData>();
-  final diary = diaryId.startsWith('dummy')
-      ? null
-      : appData.diaryById(int.tryParse(diaryId) ?? -1);
+    final appData = context.read<AppData>();
+    final diary = diaryId.startsWith('dummy')
+        ? null
+        : appData.diaryById(int.tryParse(diaryId) ?? -1);
 
-  if (diary == null) {
-    unawaited(
-      session.runScript(
-        _isFlowerBrowsing
-            ? 'window.resumeFlowerBrowse?.()'
-            : 'window.resetCamera?.()',
-      ),
-    );
-    return;
-  }
-
-  setState(() => _isFocusing = true);
-
-  try {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return SizedBox(
-          height: MediaQuery.of(context).size.height * 0.94,
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(24),
-            ),
-            child: CalendarScreen(
-              initialDay: diary.recordDate,
-              initialDiary: diary,
-            ),
-          ),
-        );
-      },
-    );
-  } finally {
-    if (_ownsSession(session) &&
-        _shouldRun &&
-        session.jsSessionId == documentId) {
-      setState(() => _isFocusing = false);
+    if (diary == null) {
       unawaited(
         session.runScript(
           _isFlowerBrowsing
@@ -975,9 +930,47 @@ Future<void> _handleFlowerTap(String diaryId) async {
               : 'window.resetCamera?.()',
         ),
       );
+      return;
+    }
+
+    setState(() => _isFocusing = true);
+
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) {
+          return SizedBox(
+            height: MediaQuery.of(context).size.height * 0.94,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+              child: CalendarScreen(
+                initialDay: diary.recordDate,
+                initialDiary: diary,
+              ),
+            ),
+          );
+        },
+      );
+    } finally {
+      if (_ownsSession(session) &&
+          _shouldRun &&
+          session.jsSessionId == documentId) {
+        setState(() => _isFocusing = false);
+        unawaited(
+          session.runScript(
+            _isFlowerBrowsing
+                ? 'window.resumeFlowerBrowse?.()'
+                : 'window.resetCamera?.()',
+          ),
+        );
+      }
     }
   }
-}
 
   Future<void> _handleTreeTap() async {
     final session = _session;
@@ -1004,22 +997,8 @@ Future<void> _handleFlowerTap(String diaryId) async {
     }
   }
 
-  Set<String> _sharedRecordIds(AppData appData) => {
-    for (final memory in appData.sharedMemories)
-      if (!appData.isCurrentUser(memory.userId))
-        'memory:${memory.id}:${memory.updatedAt.microsecondsSinceEpoch}',
-    for (final diary in appData.sharedDiaries)
-      if (!appData.isCurrentUser(diary.userId))
-        'diary:${diary.id}:${diary.updatedAt.microsecondsSinceEpoch}',
-  };
-
   void _openMailbox() {
-    final records = _sharedRecordIds(context.read<AppData>());
-    setState(() => _openedSharedRecordIds.addAll(records));
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const FamilyShareScreen()),
-    );
+    openFamilyMailbox(context);
   }
 }
 

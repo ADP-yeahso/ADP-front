@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:care_garden/screens/record/patient_info_screen.dart';
 import 'package:file_picker/file_picker.dart';
@@ -104,7 +105,11 @@ void main() {
     await tester.tap(_attachment('audio'));
     picker.pending.complete(
       FilePickerResult([
-        PlatformFile(name: 'recording.m4a', path: '/tmp/recording.m4a', size: 12),
+        PlatformFile(
+          name: 'recording.m4a',
+          path: Directory.systemTemp.uri.resolve('recording.m4a').toFilePath(),
+          size: 12,
+        ),
       ]),
     );
     await tester.pumpAndSettle();
@@ -120,22 +125,28 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: SizedBox()));
     picker.pending.complete(
       FilePickerResult([
-        PlatformFile(name: 'late.wav', path: '/tmp/late.wav', size: 12),
+        PlatformFile(
+          name: 'late.wav',
+          path: Directory.systemTemp.uri.resolve('late.wav').toFilePath(),
+          size: 12,
+        ),
       ]),
     );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('iOS selects audio files through the document picker', (
-    tester,
-  ) async {
-    await _openScreen(tester);
-    await tester.tap(_attachment('audio'));
-    expect(picker.requests, [FileType.custom]);
-    expect(picker.extensions, containsAll(['mp3', 'm4a', 'wav']));
-    expect(picker.multiple, isTrue);
-    picker.pending.complete(null);
-    await tester.pumpAndSettle();
-  }, variant: TargetPlatformVariant({TargetPlatform.iOS}));
+  testWidgets(
+    'iOS selects audio files through the document picker',
+    (tester) async {
+      await _openScreen(tester);
+      await tester.tap(_attachment('audio'));
+      expect(picker.requests, [FileType.custom]);
+      expect(picker.extensions, containsAll(['mp3', 'm4a', 'wav']));
+      expect(picker.multiple, isTrue);
+      picker.pending.complete(null);
+      await tester.pumpAndSettle();
+    },
+    variant: TargetPlatformVariant({TargetPlatform.iOS}),
+  );
 }

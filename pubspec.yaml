@@ -47,7 +47,6 @@ dependencies:
   fc_native_video_thumbnail: ^3.0.1
   file_picker: ^10.3.10
   fl_chart: ^1.2.0
- 
 
 
 dev_dependencies:
@@ -83,6 +82,8 @@ flutter:
     - assets/icons/
     - assets/garden/home/
     - assets/images/
+    - assets/images/mailbox/
+    - assets/svg/mailbox/
     - assets/images/care_note/
     - assets/images/flower/
     - assets/www/

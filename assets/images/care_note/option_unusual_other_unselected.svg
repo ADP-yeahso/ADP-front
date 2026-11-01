@@ -1,0 +1,24 @@
+<svg width="65" height="22" viewBox="0 0 65 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g filter="url(#filter0_ii_145_4133)">
+<rect width="64.24" height="22" rx="4.4" fill="#FFFDF6"/>
+<path d="M30.9753 16.1978H29.8203V6.87531H30.9753V16.1978ZM28.1909 7.86531C28.1909 9.34687 27.8558 10.648 27.1855 11.7686C26.5152 12.8858 25.4031 13.8122 23.8494 14.5478L23.2513 13.63C24.4509 13.0594 25.3533 12.377 25.9583 11.583C26.5667 10.7855 26.9225 9.84875 27.0256 8.77281H23.7256V7.86531H28.1909ZM37.1009 8.61812H33.8628V10.2784H36.9359V11.1859H33.8628V13.1041C34.6431 13.0972 35.3272 13.0748 35.915 13.037C36.5028 12.9992 37.1044 12.9287 37.7197 12.8256L37.8228 13.7537C37.1422 13.8603 36.4702 13.9342 35.8067 13.9755C35.1467 14.0133 34.3681 14.0322 33.4709 14.0322H32.6975V7.67969H37.1009V8.61812ZM39.6172 10.4847H41.0506V11.4437H39.6172V16.1978H38.4725V6.87531H39.6172V10.4847Z" fill="#645555"/>
+</g>
+<defs>
+<filter id="filter0_ii_145_4133" x="0" y="0" width="65.12" height="22.88" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="1.144"/>
+<feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="shape" result="effect1_innerShadow_145_4133"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dx="0.88" dy="0.88"/>
+<feGaussianBlur stdDeviation="1.76"/>
+<feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"/>
+<feBlend mode="normal" in2="effect1_innerShadow_145_4133" result="effect2_innerShadow_145_4133"/>
+</filter>
+</defs>
+</svg>

@@ -387,6 +387,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                       height: 150,
                       child: _buildAssetWidget(
                         candidatePaths: const [
+                          'assets/record/squirrels/acorn.png',
                           'assets/record/choice/svg/3-2-3.svg/svg/3-2-3 다람쥐4.svg',
                           'assets/record/choice/png/3-2-3.png/png/3-2-3 다람쥐4.png',
                         ],

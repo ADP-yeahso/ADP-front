@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../data/app_data.dart';
 import '../../data/auth_session.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/care_notebook_service.dart';
-
 import 'care_notebook_write_screen.dart';
-import 'care_record_view_data.dart';
 import 'care_notebook_detail_screen.dart';
+import 'care_record_view_data.dart';
+import 'care_notebook_widgets.dart';
 import '../profile/patient_info_screen.dart' as profile;
+
+Future<void> openCareNotebook(BuildContext context) =>
+    Navigator.of(context, rootNavigator: true).push<void>(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: '/care-notebook'),
+        builder: (_) => const CareNotebookListScreen(),
+      ),
+    );
 
 class CareNotebookListScreen extends StatefulWidget {
   const CareNotebookListScreen({super.key});
@@ -19,22 +28,31 @@ class CareNotebookListScreen extends StatefulWidget {
 }
 
 class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
-  List<CareRecordViewData> _records = [];
+  List<CareRecordViewData> _records = const [];
+  bool _usesLocalData = false;
   bool _isLoading = true;
   String? _error;
   bool _needsPatientRegistration = false;
-  DateTime? _selectedDate;
 
   @override
   void initState() {
     super.initState();
-
     _loadRecords();
   }
 
   Future<void> _loadRecords() async {
     final data = context.read<AppData>();
-    final tokens = context.read<AuthSession>().tokens;
+    AuthTokens? tokens;
+    try {
+      tokens = context.read<AuthSession>().tokens;
+    } on ProviderNotFoundException {
+      setState(() {
+        _usesLocalData = true;
+        _records = data.careRecords;
+        _isLoading = false;
+      });
+      return;
+    }
     if (tokens == null) {
       setState(() {
         _error = '로그인이 만료되었습니다. 다시 로그인해주세요.';
@@ -50,14 +68,13 @@ class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
     final api = ApiService();
     try {
       if (!data.hasPatient && !await data.ensurePatientLoaded()) {
-        if (mounted) {
-          setState(() {
-            _needsPatientRegistration = data.patientLookupAvailable;
-            _error = data.patientLookupAvailable
-                ? '등록된 환자 정보가 없습니다.'
-                : '환자 정보를 불러오지 못했습니다.';
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _needsPatientRegistration = data.patientLookupAvailable;
+          _error = data.patientLookupAvailable
+              ? '등록된 환자 정보가 없습니다.'
+              : '환자 정보를 불러오지 못했습니다.';
+        });
         return;
       }
       final records = await CareNotebookService(
@@ -73,81 +90,22 @@ class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
   }
 
   Future<void> _openPatientRegistration() async {
-    await Navigator.push<void>(
-      context,
+    await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const profile.PatientInfoScreen()),
     );
     if (mounted) await _loadRecords();
   }
 
-  bool _isSameDay(DateTime first, DateTime second) {
-    return first.year == second.year &&
-        first.month == second.month &&
-        first.day == second.day;
-  }
-
-  List<CareRecordViewData> get _visibleRecords {
-    if (_selectedDate == null) {
-      return _records;
-    }
-
-    return _records
-        .where((record) => _isSameDay(record.date, _selectedDate!))
-        .toList();
-  }
-
-  Future<void> _pickFilterDate() async {
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      helpText: '확인할 돌봄 기록 날짜를 선택해 주세요',
-      cancelText: '취소',
-      confirmText: '확인',
-    );
-
-    if (pickedDate == null) {
-      return;
-    }
-
-    setState(() {
-      _selectedDate = pickedDate;
-    });
-  }
-
-  void _showAllRecords() {
-    setState(() {
-      _selectedDate = null;
-    });
-  }
-
-  void _openDetailScreen(CareRecordViewData record) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CareNotebookDetailScreen(record: record),
-      ),
-    );
-  }
-
-  Future<void> _openWriteScreen() async {
-    final createdRecord = await Navigator.push<CareRecordViewData>(
-      context,
+  Future<void> _write(BuildContext context) async {
+    final record = await Navigator.of(context).push<CareRecordViewData>(
       MaterialPageRoute(builder: (_) => const CareNotebookWriteScreen()),
     );
-
-    if (createdRecord == null || !mounted) {
-      return;
-    }
-
+    if (!context.mounted || record == null) return;
+    context.read<AppData>().addCareRecord(record);
     setState(() {
-      _records.add(createdRecord);
-      _records.sort((a, b) => b.date.compareTo(a.date));
-
-      _selectedDate = createdRecord.date;
+      _records = [..._records, record]
+        ..sort((a, b) => b.date.compareTo(a.date));
     });
-
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('돌봄 기록이 저장되었어요.')));
@@ -155,298 +113,196 @@ class _CareNotebookListScreenState extends State<CareNotebookListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final visibleRecords = _visibleRecords;
-
+    final records = _usesLocalData
+        ? context.watch<AppData>().careRecords
+        : _records;
     return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            onPressed: _isLoading ? null : _loadRecords,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-        title: const Text('돌봄 수첩'),
-      ),
+      backgroundColor: careBackground,
+      appBar: careAppBar(),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 52),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const CarePatientCard(),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _error != null
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(_error!, textAlign: TextAlign.center),
+                                const SizedBox(height: 8),
+                                TextButton(
+                                  onPressed: _loadRecords,
+                                  child: const Text('다시 시도'),
+                                ),
+                                if (_needsPatientRegistration)
+                                  FilledButton(
+                                    onPressed: _openPatientRegistration,
+                                    child: const Text('환자 정보 등록하기'),
+                                  ),
+                              ],
+                            ),
+                          )
+                        : records.isEmpty
+                        ? LayoutBuilder(
+                            builder: (context, constraints) => Align(
+                              alignment: const Alignment(0, -0.12),
+                              child: SingleChildScrollView(
+                                child: careAsset(
+                                  'empty_state',
+                                  width: 248,
+                                  height: constraints.maxHeight
+                                      .clamp(120, 278)
+                                      .toDouble(),
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: records.length,
+                            separatorBuilder: (_, index) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (context, index) =>
+                                _recordCard(context, records[index]),
+                          ),
+                  ),
+                  const SizedBox(height: 16),
+                  CareAssetButton(
+                    asset: 'write_note_button',
+                    label: '수첩 쓰기',
+                    height: 48,
+                    onTap: _isLoading || _error != null
+                        ? () {}
+                        : () => _write(context),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _recordCard(
+    BuildContext context,
+    CareRecordViewData record,
+  ) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CareNotebookDetailScreen(record: record),
+        ),
+      ),
+      child: careFrame(
+        'care_note_entry_frame',
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '${DateFormat('yyyy.MM.dd').format(record.date)} ${const ['월', '화', '수', '목', '금', '토', '일'][record.date.weekday - 1]}요일',
+              style: const TextStyle(fontSize: 13, color: careGreen),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: careDivider('entry_date_divider'),
+            ),
+            Row(
+              children: [
+                Expanded(child: _tag('식사 ${record.mealStatus}')),
+                const SizedBox(width: 5),
+                Expanded(child: _tag('수면 ${record.sleepStatus}')),
+                const SizedBox(width: 5),
+                Expanded(child: _tag('복약 ${record.medicationStatus}')),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(flex: 4, child: _tag('배변 ${record.bowelStatus}')),
+                const SizedBox(width: 5),
+                Expanded(
+                  flex: 5,
+                  child: _tag(
+                    '평소와 다른 점 - ${record.unusualChanges.isEmpty ? '없음' : record.unusualChanges.join(', ')}',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                careAsset('notes_label', width: 55, height: 14),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    record.note.isEmpty ? '없음' : record.note,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                ),
+              ],
+            ),
+            if (record.hasMedicalUpdate) ...[
+              const SizedBox(height: 4),
               Row(
                 children: [
-                  const Expanded(
+                  careAsset('medical_record_label', width: 48, height: 18),
+                  const SizedBox(width: 4),
+                  Expanded(
                     child: Text(
-                      '최근 기록',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _isLoading || _error != null
-                        ? null
-                        : _openWriteScreen,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 54),
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                    ),
-                    icon: const Icon(Icons.edit_note),
-                    label: const Text(
-                      '기록 작성하기',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                      [
+                        record.hospitalDepartment,
+                        record.visitDetails,
+                        record.medicationChanges,
+                      ].where((s) => s.isNotEmpty).join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              const Text(
-                '날짜별로 기록한 돌봄 내용을 확인할 수 있어요.',
-                style: TextStyle(fontSize: 13, color: Colors.black54),
-              ),
-              const SizedBox(height: 16),
-
-              _DateFilterBar(
-                selectedDate: _selectedDate,
-                onDatePressed: _pickFilterDate,
-                onShowAllPressed: _showAllRecords,
-              ),
-
-              const SizedBox(height: 22),
-
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(_error!, textAlign: TextAlign.center),
-                            TextButton(
-                              onPressed: _loadRecords,
-                              child: const Text('다시 시도'),
-                            ),
-                            if (_needsPatientRegistration)
-                              FilledButton(
-                                onPressed: _openPatientRegistration,
-                                child: const Text('환자 정보 등록하기'),
-                              ),
-                          ],
-                        ),
-                      )
-                    : visibleRecords.isEmpty
-                    ? _EmptyCareRecordView(selectedDate: _selectedDate)
-                    : ListView.builder(
-                        itemCount: visibleRecords.length,
-                        itemBuilder: (context, index) {
-                          final record = visibleRecords[index];
-
-                          return _TimelineRecordTile(
-                            record: record,
-                            isLast: index == visibleRecords.length - 1,
-                            onTap: () => _openDetailScreen(record),
-                          );
-                        },
-                      ),
-              ),
             ],
+          ],
+        ),
+      ),
+    ),
+  );
+  Widget _tag(String text) => SizedBox(
+    height: 32,
+    child: careFrame(
+      'record_content_frame',
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Center(
+        child: SizedBox(
+          width: double.infinity,
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.2,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _DateFilterBar extends StatelessWidget {
-  final DateTime? selectedDate;
-  final VoidCallback onDatePressed;
-  final VoidCallback onShowAllPressed;
-
-  const _DateFilterBar({
-    required this.selectedDate,
-    required this.onDatePressed,
-    required this.onShowAllPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: onDatePressed,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-            ),
-            icon: const Icon(Icons.calendar_month_outlined),
-            label: Text(
-              selectedDate == null
-                  ? '날짜 선택'
-                  : DateFormat('yyyy년 M월 d일').format(selectedDate!),
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
-        if (selectedDate != null) ...[
-          const SizedBox(width: 8),
-          TextButton(
-            onPressed: onShowAllPressed,
-            style: TextButton.styleFrom(minimumSize: const Size(0, 52)),
-            child: const Text(
-              '전체 보기',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _TimelineRecordTile extends StatelessWidget {
-  final CareRecordViewData record;
-  final bool isLast;
-  final VoidCallback onTap;
-
-  const _TimelineRecordTile({
-    required this.record,
-    required this.isLast,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 34,
-            child: Column(
-              children: [
-                Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: primary.withValues(alpha: 0.25),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
-                if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: primary.withValues(alpha: 0.25),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: onTap,
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          record.hasMedicalUpdate
-                              ? Icons.medical_services_outlined
-                              : Icons.note_alt_outlined,
-                          color: primary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                DateFormat('M월 d일').format(record.date),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 7),
-                              Text(
-                                record.summary,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  height: 1.4,
-                                ),
-                              ),
-                              if (record.note.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  record.note,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    height: 1.4,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right, color: Colors.black38),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyCareRecordView extends StatelessWidget {
-  final DateTime? selectedDate;
-
-  const _EmptyCareRecordView({this.selectedDate});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.note_alt_outlined, size: 54, color: Colors.black26),
-          const SizedBox(height: 14),
-          const Text(
-            '아직 작성된 돌봄 기록이 없어요.',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            '첫 번째 돌봄 기록을 작성해 보세요.',
-            style: TextStyle(fontSize: 13, color: Colors.black45),
-          ),
-        ],
-      ),
-    );
-  }
+    ),
+  );
 }

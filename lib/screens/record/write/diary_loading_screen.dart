@@ -87,6 +87,7 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen> {
                   height: 180,
                   child: _buildAssetWidget(
                     candidatePaths: const [
+                      'assets/record/squirrels/diary_loading.png',
                       'assets/record/choice/svg/로딩중.svg/svg/로딩중 다람쥐5.svg',
                       'assets/record/choice/png/로딩중.png/png/로딩중 다람쥐5.png',
                     ],

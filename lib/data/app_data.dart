@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/comment.dart';
 import '../utils/emotion_utils.dart';
 import '../models/diary.dart';
+import '../screens/care_notebook/care_record_view_data.dart';
 import '../models/emotions.dart';
 import '../models/flower.dart';
 import '../models/groups.dart';
@@ -36,6 +37,15 @@ extension UserUIInfo on User {
 
 class AppData extends ChangeNotifier {
   AppData({ApiService? api}) : _api = api ?? ApiService();
+
+  final List<CareRecordViewData> _careRecords = [];
+  List<CareRecordViewData> get careRecords => List.unmodifiable(_careRecords);
+
+  void addCareRecord(CareRecordViewData record) {
+    _careRecords.add(record);
+    _careRecords.sort((a, b) => b.date.compareTo(a.date));
+    notifyListeners();
+  }
 
   final ApiService _api;
   AuthTokens? _tokens;

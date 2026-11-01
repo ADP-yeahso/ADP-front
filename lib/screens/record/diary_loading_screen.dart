@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../data/app_data.dart';
 
 import '../../models/media.dart';
 import '../../services/auth_service.dart';
@@ -11,19 +9,21 @@ class DiaryLoadingScreen extends StatefulWidget {
   const DiaryLoadingScreen({
     super.key,
     required this.date,
-    required this.title,
+    this.title,
     required this.content,
     required this.tokens,
     required this.isPublic,
     this.mediaList = const [],
+    this.gifAssetPath,
   });
 
   final DateTime date;
-  final String title;
+  final String? title;
   final String content;
   final AuthTokens tokens;
   final bool isPublic;
   final List<Media> mediaList;
+  final String? gifAssetPath;
 
   @override
   State<DiaryLoadingScreen> createState() => _DiaryLoadingScreenState();
@@ -32,7 +32,10 @@ class DiaryLoadingScreen extends StatefulWidget {
 class _DiaryLoadingScreenState extends State<DiaryLoadingScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
-  final _service = DiaryService();
+  late final Animation<double> _scaleAnimation;
+  final DiaryService _service = DiaryService();
+  String? _error;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -41,7 +44,10 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    _createDiary();
+    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _startAnalysis();
   }
 
   @override
@@ -51,14 +57,18 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen>
     super.dispose();
   }
 
-  Future<void> _createDiary() async {
+  Future<void> _startAnalysis() async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final draft = await _service.createDraftAndQuestion(
         tokens: widget.tokens,
-        title: widget.title.isEmpty ? null : widget.title,
         situationText: widget.content,
+        title: widget.title,
         recordDate: widget.date,
-        groupId: context.read<AppData>().group.id,
         mediaList: widget.mediaList,
       );
       if (!mounted) return;
@@ -73,40 +83,115 @@ class _DiaryLoadingScreenState extends State<DiaryLoadingScreen>
         ),
       );
     } on DiaryException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-      Navigator.pop(context);
+      if (mounted) setState(() => _error = error.message);
+    } on Exception {
+      if (mounted) {
+        setState(() => _error = '감정 분석을 시작하지 못했어요. 다시 시도해주세요.');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFF7F5EE),
-    body: Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ScaleTransition(
-            scale: Tween<double>(
-              begin: .95,
-              end: 1.05,
-            ).animate(_animationController),
-            child: const Icon(
-              Icons.auto_awesome,
-              size: 88,
-              color: Color(0xFFE1613B),
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_isLoading,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFFBF0),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: const Color(0xFFE1613B).withValues(alpha: 0.3),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: widget.gifAssetPath == null
+                          ? _buildDefaultMotion()
+                          : Image.asset(
+                              widget.gifAssetPath!,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => _buildDefaultMotion(),
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                if (_error == null) ...[
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Color(0xFFE1613B),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          'AI가 감정을 추출하고 있어요...',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2C3E50),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '일기 속 마음의 결을 따뜻하게 읽어내고 있습니다 ✨',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: Colors.black45),
+                  ),
+                ] else ...[
+                  Text(_error!, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: _startAnalysis,
+                    child: const Text('다시 시도'),
+                  ),
+                ],
+                const SizedBox(height: 16),
+              ],
             ),
           ),
-          const SizedBox(height: 20),
-          const CircularProgressIndicator(strokeWidth: 2.5),
-          const SizedBox(height: 12),
-          const Text(
-            'AI가 일기를 읽고 질문을 만들고 있어요...',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultMotion() => ScaleTransition(
+    scale: _scaleAnimation,
+    child: Center(
+      child: Image.asset(
+        'assets/record/squirrels/diary_loading.png',
+        width: 280,
+        height: 280,
+        fit: BoxFit.contain,
       ),
     ),
   );

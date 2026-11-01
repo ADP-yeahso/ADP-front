@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:care_garden/data/app_data.dart';
+import 'package:care_garden/data/flower_catalog.dart';
 import 'package:care_garden/models/diary.dart';
+import 'package:care_garden/utils/emotion_utils.dart';
 import 'package:care_garden/screens/calendar/calendar_screen.dart';
 import 'package:care_garden/screens/record/write/diary_result_screen.dart';
 import 'package:care_garden/screens/record/write/diary_care_content_screen.dart';
@@ -413,7 +415,7 @@ void main() {
   );
 
   testWidgets(
-    'record completion shows the green placeholder and Next opens follow-up activities',
+    'record completion maps the AI primary emotion to a flower card',
     (tester) async {
       final data = await _load(_saved(6));
       final date = data.diaries.single.recordDate;
@@ -423,6 +425,7 @@ void main() {
           child: MaterialApp(
             home: DiaryResultScreen(
               finalization: DiaryFinalization(
+                diaryId: 91,
                 emotionId: 6,
                 emotionName: '애틋함/수용',
                 flowerName: '',
@@ -430,6 +433,7 @@ void main() {
                 hasFlower: false,
                 isFinalized: false,
                 recordDate: date,
+                selectedEmotionName: '중립',
               ),
             ),
           ),
@@ -437,11 +441,19 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('감정 기록 완료'), findsOneWidget);
-      expect(find.text('꽃 카드 준비 중'), findsOneWidget);
-      final card = tester.widget<Container>(
-        find.byKey(const ValueKey('pending-flower-card')),
+      expect(find.text('꽃 카드 준비 중'), findsNothing);
+      final allowedAssets = FlowerCatalog.cardsForEmotion(
+        EmotionValues.affection,
+      ).map((card) => card.assetPath).toSet();
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Image &&
+              widget.image is AssetImage &&
+              allowedAssets.contains((widget.image as AssetImage).assetName),
+        ),
+        findsOneWidget,
       );
-      expect((card.decoration as BoxDecoration).color, const Color(0xFF8BC34A));
       expect(find.text('캘린더에서 확인'), findsNothing);
       expect(find.byType(CalendarScreen), findsNothing);
       await tester.ensureVisible(find.text('다음'));

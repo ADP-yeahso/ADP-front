@@ -107,6 +107,7 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
   @override
   Widget build(BuildContext context) {
     const backgroundColor = Color(0xFFFFFBF0);
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -124,31 +125,37 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: keyboardVisible ? 4 : 10,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 다람쥐 캐릭터 (150x150으로 확대)
-              Center(
-                child: SizedBox(
-                  width: 150,
-                  height: 150,
-                  child: _buildAssetWidget(
-                    candidatePaths: const [
-                      'assets/record/squirrels/question.png',
-                      'assets/record/choice/svg/3-2-2.svg/svg/3-2-2 다람쥐3.svg',
-                      'assets/record/choice/png/3-2-2.png/png/3-2-2 다람쥐3.png',
-                    ],
-                    fallback: Container(
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFDCDCDC),
-                        shape: BoxShape.circle,
+              if (!keyboardVisible) ...[
+                Center(
+                  child: SizedBox(
+                    width: 150,
+                    height: 150,
+                    child: _buildAssetWidget(
+                      candidatePaths: const [
+                        'assets/record/squirrels/question.png',
+                        'assets/record/choice/svg/3-2-2.svg/svg/3-2-2 다람쥐3.svg',
+                        'assets/record/choice/png/3-2-2.png/png/3-2-2 다람쥐3.png',
+                      ],
+                      fallback: Container(
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFDCDCDC),
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ] else
+                const SizedBox(height: 4),
 
               // 명세서의 ai-question 응답을 화면에 표시한다.
               Center(
@@ -162,11 +169,12 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: keyboardVisible ? 12 : 20),
 
               // 입력창 (텍스트 입력) - 단일 테두리 적용 (이중 경계 제거)
               Expanded(
                 child: TextField(
+                  key: const ValueKey('emotion-answer-field'),
                   controller: _controller,
                   maxLines: null,
                   expands: true,
@@ -199,7 +207,7 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: keyboardVisible ? 12 : 20),
 
               // 하단 다음 버튼 (텍스트 입력 전까지 클릭 불가)
               Builder(
@@ -237,7 +245,7 @@ class _DiaryEmotionExploreScreenState extends State<DiaryEmotionExploreScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: keyboardVisible ? 4 : 10),
             ],
           ),
         ),

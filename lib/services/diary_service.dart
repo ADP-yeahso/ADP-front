@@ -40,6 +40,7 @@ class EmotionTagOption {
 
 class DiaryFinalization {
   const DiaryFinalization({
+    this.diaryId,
     required this.emotionId,
     required this.emotionName,
     required this.flowerName,
@@ -50,6 +51,7 @@ class DiaryFinalization {
     this.selectedEmotionName,
   });
 
+  final int? diaryId;
   final int? emotionId;
   final String emotionName;
   final String flowerName;
@@ -310,6 +312,7 @@ class DiaryService {
     required AuthTokens tokens,
     required int diaryId,
     required List<int> tagIds,
+    int? aiPrimaryEmotionId,
   }) async {
     if (tagIds.length != 3 || tagIds.toSet().length != 3) {
       throw const DiaryException('감정 태그를 정확히 3개 선택해주세요.');
@@ -343,8 +346,24 @@ class DiaryService {
     final flowerMap = flower is Map<String, dynamic>
         ? flower
         : const <String, dynamic>{};
+    final predictions = result['ai_emotion_predictions'];
+    int? rankedPrimaryEmotionId;
+    if (predictions is List) {
+      for (final prediction in predictions.whereType<Map>()) {
+        if (prediction['rank'] == 1 && prediction['emotion_id'] is int) {
+          rankedPrimaryEmotionId = prediction['emotion_id'] as int;
+          break;
+        }
+      }
+    }
     return DiaryFinalization(
-      emotionId: (emotionMap['id'] ?? result['final_emotion_id']) as int?,
+      diaryId: diaryId,
+      emotionId:
+          (result['final_emotion_id'] ??
+                  rankedPrimaryEmotionId ??
+                  aiPrimaryEmotionId ??
+                  emotionMap['id'])
+              as int?,
       emotionName:
           (emotionMap['display_name'] ?? emotionMap['emotion'] ?? '오늘의 감정')
               .toString(),

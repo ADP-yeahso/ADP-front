@@ -144,6 +144,7 @@ class _DiaryEmotionSelectScreenState extends State<DiaryEmotionSelectScreen> {
                 tokens: tokens,
                 diaryId: widget.draft.id,
                 tagIds: tagIds,
+                aiPrimaryEmotionId: widget.suggestions.first.emotionId,
               );
               await data.refreshDiary(widget.draft.id);
               return DiaryResultScreen(finalization: finalization);

@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../data/flower_catalog.dart';
 import '../../../models/emotions.dart';
 import '../../../utils/emotion_utils.dart';
 import '../../../services/diary_service.dart';
@@ -86,8 +89,19 @@ class DiaryResultScreen extends StatelessWidget {
             (item) => item.id == finalization!.emotionId,
             orElse: () => EmotionValues.neutral,
           );
-    final recommendationEmotion = emotion ?? finalizedEmotion;
+    // final_emotion_id is the AI rank-1 emotion from the second answer.
+    // The user's selected-tag majority is stored separately as correct_emotion_id.
+    final recommendationEmotion = finalizedEmotion ?? emotion;
     final activeEmotion = recommendationEmotion ?? EmotionValues.neutral;
+    final serverFlower = finalization?.flowerName.isEmpty ?? true
+        ? null
+        : FlowerCatalog.cardForName(finalization!.flowerName);
+    final flowerCard =
+        serverFlower ??
+        FlowerCatalog.randomCardForEmotion(
+          activeEmotion,
+          random: Random(finalization?.diaryId ?? activeEmotion.id),
+        );
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF0),
       appBar: AppBar(
@@ -174,7 +188,18 @@ class DiaryResultScreen extends StatelessWidget {
                         ),
                       ),
 
-                      const PendingFlowerCard(),
+                      Semantics(
+                        label: '${flowerCard.name}, ${flowerCard.meaning}',
+                        image: true,
+                        child: Image.asset(
+                          flowerCard.assetPath,
+                          key: ValueKey('flower-card-${flowerCard.id}'),
+                          width: 240,
+                          height: 340,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) => const PendingFlowerCard(),
+                        ),
+                      ),
                     ],
                   ),
                 ),
